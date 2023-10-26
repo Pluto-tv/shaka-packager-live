@@ -81,7 +81,6 @@ private:
 
 SegmentData::SegmentData(const uint8_t *data, size_t size)
   : data_(data), size_(size) {
-
 }
 
 const uint8_t *SegmentData::Data() const {
