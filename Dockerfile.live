@@ -1,0 +1,25 @@
+ARG ECR_ACCOUNT="972525491246"
+ARG VERSION="1.20-11.5-slim"
+ARG DEB_VERSION="11.5-slim"
+
+FROM $ECR_ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/pluto-golang-dev:$VERSION
+
+# install deps
+RUN apt update; \
+    apt install -y --no-install-recommends git openssh-client ca-certificates wget make gcc g++ python3 gcc-multilib cmake zlib1g-dev wget libpcre2-dev
+
+# Copy source to container
+RUN mkdir /shaka-packager
+COPY . /shaka-packager/
+WORKDIR /shaka-packager
+
+ARG BUILD_DIR=build
+ARG CMAKE=cmake
+ARG CMAKE_OPTIONS="-DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release"
+
+RUN mkdir $BUILD_DIR
+RUN cd build && $CMAKE $CMAKE_OPTIONS ..
+RUN make -j4 -C $BUILD_DIR
+RUN make -j4 install -C $BUILD_DIR
+
+WORKDIR /

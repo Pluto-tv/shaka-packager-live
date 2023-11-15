@@ -24,6 +24,7 @@ RUN apk add --no-cache libstdc++ python3
 #                    /usr/bin/
 
 # Copy pyproto directory, which is needed by pssh-box.py script. This line
+
 # cannot be combined with the line above as Docker's copy command skips the
 # directory itself. See https://github.com/moby/moby/issues/15858 for details.
 # TODO(joeyparrish): Copy binaries when build system is complete
