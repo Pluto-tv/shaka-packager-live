@@ -3,7 +3,7 @@ name: Build Image
 
 on:
   push:
-    branches: [main,develop]
+    branches: [main,develop,feature/ecr-image]
   workflow_call:
   workflow_dispatch:
 
