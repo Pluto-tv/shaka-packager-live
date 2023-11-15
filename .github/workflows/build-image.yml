@@ -1,0 +1,33 @@
+---
+name: Build Image
+
+on:
+  push:
+    branches: [main,develop]
+  workflow_call:
+  workflow_dispatch:
+
+env:
+  ECR_REPO: shaka-packager-live
+  GIT_LOGIN: pluto-deploy
+  GIT_TOKEN: ${{ secrets.PLUTO_DEPLOY_TOKEN }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure git for private Go modules
+        run: git config --global url."https://${{ env.GIT_LOGIN }}:${{ env.GIT_TOKEN }}@github.com".insteadOf "https://github.com"
+      - name: Check out source code
+        uses: actions/checkout@v3
+      - name: Checkout submodules
+        shell: bash
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --force --recursive --depth=1
+      - uses: ./.github/actions/build-composite
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID_ECR }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY_ECR }}
+          ssh_key: ${{ secrets.PLUTO_DEPLOY_SSH_KEY }}
+          ecr_repo: ${{ env.ECR_REPO }}

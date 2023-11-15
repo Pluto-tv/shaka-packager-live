@@ -1,0 +1,87 @@
+---
+name: "Build Packager"
+description: "Build packager and push Docker image to ECR"
+
+inputs:
+  aws_access_key_id:
+    description: "AWS Access key"
+    required: true
+  aws_secret_access_key:
+    description: "AWS Secret Access key"
+    required: true
+  aws_region:
+    description: "AWS Region"
+    default: us-east-1
+    required: true
+  ecr_repo:
+    description: "ECR repo name"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ inputs.aws_access_key_id }}
+        aws-secret-access-key: ${{ inputs.aws_secret_access_key }}
+        aws-region: ${{ inputs.aws_region }}
+
+    - id: create-ecr
+      uses: ./.github/actions/create-ecr
+      with:
+        repo: ${{ inputs.ecr_repo }}
+
+    - name: Login to ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Set env
+      shell: bash
+      id: set-env
+      run: |
+        git fetch --tags 
+        git fetch --prune --unshallow
+        echo "TAG=$(git rev-parse --short=8 HEAD)" >> $GITHUB_OUTPUT
+        echo "VERSION=$(grep -m 1 "^## " CHANGELOG.md | cut -d "[" -f2 | cut -d "]" -f1)" >> $GITHUB_OUTPUT
+        echo "BRANCH=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+
+    - name: Set outputs
+      id: set-out
+      shell: bash
+      run: |
+        BRANCH=${{ steps.set-env.outputs.branch }}
+        GIT_HASH=$(echo ${GITHUB_SHA::8}) # 13c988d4
+        if [[ $BRANCH =~ ^release.* ]]; then
+          VERSION_TAG=$(echo $BRANCH |  cut -d'/' -f2-) # v1.0.0
+          ECR_STABLE_TAG=$(echo rc-${VERSION_TAG}) # rc-v1.0.0
+          ECR_TAG=$(echo ${ECR_STABLE_TAG}-${GIT_HASH}) # rc-v1.0.0-13c988d4
+        else
+          GIT_TAG=$(git describe --tags $(git rev-list --tags --max-count=1)) # v1.0.0
+          VERSION_TAG=$(echo ${GIT_TAG}-dev-${GIT_HASH}) # v1.0.0-dev-13c988d4
+          ECR_TAG=$(echo dev-${GIT_HASH}) # dev-13c988d4
+          ECR_STABLE_TAG=$(echo $ECR_TAG) # dev-13c988d4 , stable is the same for dev env
+        fi
+        VERSION_TAG=${VERSION_TAG//v}
+
+        echo "GIT_HASH=$(echo $GIT_HASH)" >> $GITHUB_OUTPUT
+        echo "VERSION_TAG=$(echo $VERSION_TAG)" >> $GITHUB_OUTPUT
+        echo "ECR_TAG=$(echo $ECR_TAG)" >> $GITHUB_OUTPUT
+        echo "ECR_STABLE_TAG=$(echo $ECR_STABLE_TAG)" >> $GITHUB_OUTPUT
+
+    - name: Build, tag, and push image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPO: ${{ inputs.ecr_repo }}
+        TAG: ${{ steps.set-env.outputs.tag }}
+        BRANCH: ${{ steps.set-env.outputs.branch }}
+        VERSION: ${{ steps.set-env.outputs.version }}
+      shell: bash
+      run: |
+        docker build -f Dockerfile.live -t $ECR_REGISTRY/$ECR_REPO:${{ steps.set-out.outputs.ECR_STABLE_TAG }} \
+          -t $ECR_REGISTRY/$ECR_REPO:${{ steps.set-out.outputs.ECR_TAG }} .
+        docker push $ECR_REGISTRY/$ECR_REPO:${{ steps.set-out.outputs.ECR_STABLE_TAG }}
+
+    - name: Logout of Amazon ECR
+      if: always()
+      shell: bash
+      run: docker logout ${{ steps.login-ecr.outputs.registry }}
