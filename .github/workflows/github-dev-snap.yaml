@@ -79,8 +79,8 @@ jobs:
           else
             DEVELOPMENT_TAG=$(echo dev-${CURR_HASH})
           fi
-          echo "${DEVELOPMENT_TAG}"
-          echo "DEVELOPMENT_TAG=$(echo ${DEVELOPMENT_TAG})" >> $GITHUB_OUTPUT
+          echo "The tag is ${DEVELOPMENT_TAG}"
+          echo "DEVELOPMENT_TAG=$(echo ${DEVELOPMENT_TAG})" >> $GITHUB_ENV
 
       - name: Remove tag
         uses: actions/github-script@v7
