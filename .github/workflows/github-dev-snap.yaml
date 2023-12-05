@@ -9,15 +9,13 @@ name: GitHub Development Snapshot Build
 
 on:
   push:
-    branches: [ feature/TRANS-4831-nighty-builds ]
+    branches: [ pluto-cmake ]
   workflow_dispatch:
 
 env:
-  DEVELOPMENT_BRANCH: "pluto-cmake"
-  # default development tag
-  # TODO(sasha): provide tag on workflow dispatch
-  DEVELOPMENT_TAG: "develop"
-  ARTIFACT_NAME: "develop"
+  DEFAULT_DEVELOPMENT_BRANCH: "pluto-cmake"
+  DEFAULT_DEVELOPMENT_TAG: "develop"
+  ARTIFACT_NAME: "artifact"
 
 jobs:
   build_linux:
@@ -63,21 +61,37 @@ jobs:
     name: Setup snapshot tag
     runs-on: ubuntu-latest
     outputs:
-      tag: ${{ steps.compute_tag.outputs.tag }}
+      tag: ${{ steps.output_tag.outputs.tag }}
     steps:
       - name: Checkout development branch
         uses: actions/checkout@v4
-        with:
-          ref: ${{ env.DEVELOPMENT_BRANCH }}
+
+      - name: Get current branch name and hash
+        run: |
+          echo "CURR_BRANCH=$(git branch --show-current)" >> $GITHUB_ENV
+          echo "CURR_HASH=$(echo ${GITHUB_SHA::8})" >> $GITHUB_ENV # 13c988d4
+
+      - name: Compute tag
+        shell: bash
+        run: |
+          if [[ $CURR_BRANCH =~ $DEFAULT_DEVELOPMENT_BRANCH ]]; then
+            DEVELOPMENT_TAG=DEFAULT_DEVELOPMENT_TAG
+          else
+            DEVELOPMENT_TAG=$(echo dev-${CURR_HASH})
+          fi
+          echo "DEVELOPMENT_TAG=$(echo $DEVELOPMENT_TAG)" >> $GITHUB_OUTPUT
+
       - name: Remove tag
-        uses: actions/github-script@v5
+        uses: actions/github-script@v7
         with:
           script: |
-            github.rest.git.deleteRef({
+            let deleteResp = github.rest.git.deleteRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
               ref: "tags/${{ env.DEVELOPMENT_TAG }}"
             })
+            console.log(deleteResp)
+
       - name: Create tag
         uses: actions/github-script@v5
         with:
@@ -88,8 +102,9 @@ jobs:
               ref: "refs/tags/${{ env.DEVELOPMENT_TAG }}",
               sha: context.sha
             })
-      - name: Compute tag
-        id: compute_tag
+
+      - name: Output tag
+        id: output_tag
         run: |
           # Strip refs/tags/ from the input to get the tag name, then store
           # that in output.
@@ -121,9 +136,9 @@ jobs:
           allowUpdates: true
           replacesArtifacts: true
           artifacts: libpackager.so
-          token: ${{ secrets.BUILD_TOKEN_EPHEMERAL}}
-          commit: ${{ env.DEVELOPMENT_BRANCH }}
-          name: "Development snapshot"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit: ${{ env.CURR_BRANCH }}
+          name: Development snapshot of ${{ env.CURR_BRANCH }}
           tag: ${{ needs.setup_tag.outputs.tag }}
           draft: false
-          body: "Latest build of the development branch"
+          body: Latest build of the development branch ${{ env.CURR_BRANCH }}
