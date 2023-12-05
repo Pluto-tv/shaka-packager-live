@@ -85,12 +85,16 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            let deleteResp = github.rest.git.deleteRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: "tags/${{ env.DEVELOPMENT_TAG }}"
-            })
-            console.log(deleteResp)
+            try {
+              github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: "tags/${{ env.DEVELOPMENT_TAG }}"
+              })
+              console.log("Referred tag deleted successfully")
+            } catch (error) {
+              console.log("Referred tag does not exist yet")
+            }
 
       - name: Create tag
         uses: actions/github-script@v5
