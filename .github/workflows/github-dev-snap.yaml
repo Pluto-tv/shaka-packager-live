@@ -86,7 +86,7 @@ jobs:
         with:
           script: |
             try {
-              github.rest.git.deleteRef({
+              await github.rest.git.deleteRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 ref: "tags/${{ env.DEVELOPMENT_TAG }}"
