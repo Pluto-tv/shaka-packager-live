@@ -1,0 +1,149 @@
+# Copyright 2023 Pluto TV
+# Copyright 2022 Google LLC
+#
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file or at
+# https://developers.google.com/open-source/licenses/bsd
+
+name: GitHub Development Snapshot Build
+
+on:
+  push:
+    branches: [ pluto-cmake ]
+  workflow_dispatch:
+
+env:
+  DEFAULT_DEVELOPMENT_BRANCH: "pluto-cmake"
+  DEFAULT_DEVELOPMENT_TAG: "develop"
+  ARTIFACT_NAME: "artifact"
+
+jobs:
+  build_linux:
+    name: Build artifacts and upload to GitHub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install build tools
+        run: |
+          sudo apt update && sudo apt install -y \
+              cmake
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ env.DEVELOPMENT_BRANCH }}
+          submodules: recursive
+
+      - name: Apply ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+
+      - name: Generate build files
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+
+          mkdir -p build/
+
+          cmake \
+            -DCMAKE_BUILD_TYPE="Release" \
+            -DBUILD_SHARED_LIBS=1 \
+            -S . \
+            -B build/
+
+      - name: Build
+        run: cmake --build build/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: build/packager/libpackager.so
+
+  setup_tag:
+    name: Setup snapshot tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.output.outputs.tag }}
+      branch: ${{ steps.output.outputs.branch }}
+    steps:
+      - name: Checkout development branch
+        uses: actions/checkout@v4
+
+      - name: Get current branch name and hash
+        run: |
+          echo "CURR_BRANCH=$(git branch --show-current)" >> $GITHUB_ENV
+          echo "CURR_HASH=$(echo ${GITHUB_SHA::8})" >> $GITHUB_ENV # 13c988d4
+
+      - name: Compute tag
+        shell: bash
+        run: |
+          if [[ $CURR_BRANCH =~ $DEFAULT_DEVELOPMENT_BRANCH ]]; then
+            DEVELOPMENT_TAG=DEFAULT_DEVELOPMENT_TAG
+          else
+            DEVELOPMENT_TAG=$(echo dev-${CURR_HASH})
+          fi
+          echo "The tag is ${DEVELOPMENT_TAG}"
+          echo "DEVELOPMENT_TAG=$(echo ${DEVELOPMENT_TAG})" >> $GITHUB_ENV
+
+      - name: Remove tag
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: "tags/${{ env.DEVELOPMENT_TAG }}"
+              })
+              console.log("Referred tag deleted successfully")
+            } catch (error) {
+              console.log("Referred tag does not exist yet")
+            }
+
+      - name: Create tag
+        uses: actions/github-script@v5
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "refs/tags/${{ env.DEVELOPMENT_TAG }}",
+              sha: context.sha
+            })
+
+      - name: Output tag and branch
+        id: output
+        run: |
+          echo "tag=$DEVELOPMENT_TAG" >> $GITHUB_OUTPUT
+          echo "branch=$CURR_BRANCH" >> $GITHUB_OUTPUT
+
+  draft_release:
+    needs: [build_linux, setup_tag]
+    name: Create GitHub development snapshot draft release
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.draft_release.outputs.id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+
+      # Debug
+      - name: Display structure of downloaded files
+        run: ls -la
+
+      - name: Publish release
+        id: publish_release
+        uses: ncipollo/release-action@v1.13.0
+        with:
+          allowUpdates: true
+          replacesArtifacts: true
+          artifacts: libpackager.so
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit: ${{ needs.setup_tag.outputs.branch }}
+          name: Development snapshot of ${{ needs.setup_tag.outputs.branch }}
+          tag: ${{ needs.setup_tag.outputs.tag }}
+          draft: false
+          body: Latest build of the development branch ${{ needs.setup_tag.outputs.branch }}
