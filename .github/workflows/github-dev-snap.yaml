@@ -45,7 +45,7 @@ jobs:
             -B build/
 
       - name: Build
-        run: cmake --build build/
+        run: cmake --build build/ --parallel $(getconf _NPROCESSORS_ONLN)
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
