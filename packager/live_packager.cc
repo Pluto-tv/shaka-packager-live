@@ -56,6 +56,8 @@ StreamDescriptors setupStreamDescriptors(
   desc.segment_template =
       File::MakeCallbackFileName(cb_params, getSegmentTemplate(config));
 
+  desc.sequence_number = config.sequence_number;
+
   return StreamDescriptors{desc};
 }
 
