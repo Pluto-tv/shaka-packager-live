@@ -68,25 +68,29 @@ bool ParseAndCheckType(media::mp4::Box& box, media::mp4::BoxReader* reader) {
 }
 
 struct SegmentIndexBoxChecker {
-  SegmentIndexBoxChecker(media::mp4::SegmentIndex box) : sidx_(std::move(box)) {}
+  SegmentIndexBoxChecker(media::mp4::SegmentIndex box)
+      : sidx_(std::move(box)) {}
 
   void Check(media::mp4::BoxReader* reader) {
     media::mp4::SegmentIndex box;
     CHECK(ParseAndCheckType(box, reader));
     EXPECT_EQ(sidx_.timescale, box.timescale);
   }
+
  private:
   media::mp4::SegmentIndex sidx_;
 };
 
 struct MovieFragmentBoxChecker {
-  MovieFragmentBoxChecker(media::mp4::MovieFragment box) : moof_(std::move(box)) {}
+  MovieFragmentBoxChecker(media::mp4::MovieFragment box)
+      : moof_(std::move(box)) {}
 
   void Check(media::mp4::BoxReader* reader) {
     media::mp4::MovieFragment box;
     CHECK(ParseAndCheckType(box, reader));
     EXPECT_EQ(moof_.header.sequence_number, box.header.sequence_number);
   }
+
  private:
   media::mp4::MovieFragment moof_;
 };
