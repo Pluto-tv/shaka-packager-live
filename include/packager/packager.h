@@ -145,9 +145,6 @@ struct StreamDescriptor {
   bool dash_only = false;
   /// Set to true to indicate that the stream is for hls only.
   bool hls_only = false;
-
-  /// User-specified segment number.
-  uint32_t segment_number = 0;
 };
 
 class SHAKA_EXPORT Packager {
