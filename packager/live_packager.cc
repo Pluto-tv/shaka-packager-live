@@ -56,8 +56,6 @@ StreamDescriptors setupStreamDescriptors(
   desc.segment_template =
       File::MakeCallbackFileName(cb_params, getSegmentTemplate(config));
 
-  desc.segment_number = config.segment_number;
-
   return StreamDescriptors{desc};
 }
 
@@ -275,6 +273,8 @@ Status LivePackager::Package(const Segment& in, FullSegmentBuffer& out) {
   shaka::PackagingParams packaging_params;
   packaging_params.chunking_params.segment_duration_in_seconds =
       config_.segment_duration_sec;
+
+  packaging_params.mp4_output_params.sequence_number = config_.segment_number;
 
   EncryptionParams& encryption_params = packaging_params.encryption_params;
   // As a side effect of InitializeEncryption, encryption_params will be

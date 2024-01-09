@@ -195,7 +195,8 @@ void CheckSegment(const LiveConfig& config, const FullSegmentBuffer& buffer) {
         media::mp4::BoxReader::ReadBox(data, bytes_to_read, &err));
     EXPECT_FALSE(err);
 
-    SegmentTypeBoxChecker checker;    checker.Check(reader.get());
+    SegmentTypeBoxChecker checker;
+    checker.Check(reader.get());
 
     data += reader->size();
     bytes_to_read -= reader->size();
@@ -357,7 +358,7 @@ TEST_F(LivePackagerBaseTest, EncryptionFailure) {
   }
 }
 
-TEST_F(LivePackagerBaseTest, CustomSequenceNumberFMP4) {
+TEST_F(LivePackagerBaseTest, CustomMoofSequenceNumber) {
   std::vector<uint8_t> init_segment_buffer = ReadTestDataFile("input/init.mp4");
   ASSERT_FALSE(init_segment_buffer.empty());
   LiveConfig live_config;

@@ -27,7 +27,8 @@ struct Mp4OutputParams {
   /// decoupling latency from segment duration.
   bool low_latency_dash_mode = false;
 
-  /// User-specified sequence number used to set in output moof header.
+  /// User-specified sequence number to be set in the moof header.
+  /// The moof header sequence number starts at 1 so values less than 1 will be set to 1.
   uint32_t sequence_number = 1;
 };
 
