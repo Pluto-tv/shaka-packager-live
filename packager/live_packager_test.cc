@@ -381,10 +381,14 @@ TEST_F(LivePackagerBaseTest, CustomMoofSequenceNumber) {
     in.SetInitSegment(init_segment_buffer.data(), init_segment_buffer.size());
     in.AppendData(segment_buffer.data(), segment_buffer.size());
 
+    SegmentData init_seg(init_segment_buffer.data(),
+                         init_segment_buffer.size());
+    SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+
     FullSegmentBuffer out;
     LivePackager packager(live_config);
 
-    ASSERT_EQ(Status::OK, packager.Package(in, out));
+    ASSERT_EQ(Status::OK, packager.Package(init_seg, media_seg, out));
     ASSERT_GT(out.SegmentSize(), 0);
 
     CheckSegment(live_config, out);
