@@ -94,18 +94,16 @@ class MultiSegmentDataReader {
 
       position_ += first_chunk_size;
       return first_chunk_size;
-    } else {
-      auto segment_position = position_ - init_segment_.Size();
-      if (segment_position >= media_segment_.Size()) {
-        return 0;
-      }
-      const uint64_t second_chunk_size =
-          std::min(size, media_segment_.Size() - segment_position);
-      memcpy(buffer, media_segment_.Data() + segment_position,
-             second_chunk_size);
-      position_ += second_chunk_size;
-      return second_chunk_size;
     }
+    auto segment_position = position_ - init_segment_.Size();
+    if (segment_position >= media_segment_.Size()) {
+      return 0;
+    }
+    const uint64_t second_chunk_size =
+        std::min(size, media_segment_.Size() - segment_position);
+    memcpy(buffer, media_segment_.Data() + segment_position, second_chunk_size);
+    position_ += second_chunk_size;
+    return second_chunk_size;
   }
 
  private:
