@@ -221,7 +221,7 @@ void CheckSegment(const LiveConfig& config, const FullSegmentBuffer& buffer) {
     EXPECT_FALSE(err);
 
     media::mp4::MovieFragment expected;
-    expected.header.sequence_number = config.sequence_number;
+    expected.header.sequence_number = config.segment_number;
 
     MovieFragmentBoxChecker checker(expected);
     checker.Check(reader.get());
@@ -367,7 +367,7 @@ TEST_F(LivePackagerBaseTest, CustomSequenceNumberFMP4) {
   live_config.segment_duration_sec = kSegmentDurationInSeconds;
 
   for (unsigned int i = 0; i < kNumSegments; i++) {
-    live_config.sequence_number = i + 1;
+    live_config.segment_number = i + 1;
     std::string segment_num = absl::StrFormat("input/%04d.m4s", i);
     std::vector<uint8_t> segment_buffer = ReadTestDataFile(segment_num);
     ASSERT_FALSE(segment_buffer.empty());

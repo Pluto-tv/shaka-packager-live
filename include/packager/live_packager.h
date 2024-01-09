@@ -86,7 +86,8 @@ struct LiveConfig {
   std::vector<uint8_t> key;
   std::vector<uint8_t> key_id;
   EncryptionScheme protection_scheme;
-  uint32_t sequence_number = 1;
+
+  uint32_t segment_number = 0;
 };
 
 class LivePackager {

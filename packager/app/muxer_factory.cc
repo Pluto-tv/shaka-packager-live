@@ -37,7 +37,7 @@ std::shared_ptr<Muxer> MuxerFactory::CreateMuxer(
   options.output_file_name = stream.output;
   options.segment_template = stream.segment_template;
   options.bandwidth = stream.bandwidth;
-  options.mp4_params.sequence_number = stream.sequence_number;
+  options.mp4_params.sequence_number = stream.segment_number;
 
   std::shared_ptr<Muxer> muxer;
 
