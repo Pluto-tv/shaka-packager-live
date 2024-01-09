@@ -377,10 +377,6 @@ TEST_F(LivePackagerBaseTest, CustomMoofSequenceNumber) {
     std::vector<uint8_t> segment_buffer = ReadTestDataFile(segment_num);
     ASSERT_FALSE(segment_buffer.empty());
 
-    FullSegmentBuffer in;
-    in.SetInitSegment(init_segment_buffer.data(), init_segment_buffer.size());
-    in.AppendData(segment_buffer.data(), segment_buffer.size());
-
     SegmentData init_seg(init_segment_buffer.data(),
                          init_segment_buffer.size());
     SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
