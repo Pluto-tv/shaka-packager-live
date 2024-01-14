@@ -16,6 +16,7 @@
 #include <packager/chunking_params.h>
 #include <packager/file.h>
 #include <packager/live_packager.h>
+#include <packager/macros/compiler.h>
 #include <packager/media/base/aes_encryptor.h>
 #include <packager/packager.h>
 
@@ -345,25 +346,32 @@ int64_t SegmentManager::OnSegmentWrite(const std::string& name,
 Status SegmentManager::InitializeEncryption(
     const LiveConfig& config,
     EncryptionParams& encryption_params) {
-  // TODO: encryption for fmp4 will be added later
-  if (config.protection_scheme == LiveConfig::EncryptionScheme::SAMPLE_AES) {
-    // Internally shaka maps this to an internal code for sample aes
-    //
-    // This is a fake protection scheme fourcc code to indicate Apple Sample
-    // AES. FOURCC_cbca = 0x63626361,
-    //
+
+  switch (config.protection_scheme) {
+    case LiveConfig::EncryptionScheme::NONE:
+      return Status::OK;
+    // Internally shaka maps sample-aes to cbcs.
     // Additionally this seems to be the recommended protection schema to when
     // using the shaka CLI:
     // https://shaka-project.github.io/shaka-packager/html/tutorials/raw_key.html
-    encryption_params.protection_scheme =
-        EncryptionParams::kProtectionSchemeCbcs;
-
-    encryption_params.key_provider = KeyProvider::kRawKey;
-    RawKeyParams::KeyInfo& key_info = encryption_params.raw_key.key_map[""];
-    key_info.key = config.key;
-    key_info.key_id = config.key_id;
-    key_info.iv = config.iv;
+    case LiveConfig::EncryptionScheme::SAMPLE_AES:
+      FALLTHROUGH_INTENDED;
+    case LiveConfig::EncryptionScheme::CBCS:
+      encryption_params.protection_scheme = EncryptionParams::kProtectionSchemeCbcs;
+      break;
+    case LiveConfig::EncryptionScheme::CENC:
+      encryption_params.protection_scheme = EncryptionParams::kProtectionSchemeCenc;
+      break;
+    default:
+      return Status(error::INVALID_ARGUMENT, "invalid encryption scheme provided to LivePackager.");
   }
+
+  encryption_params.key_provider = KeyProvider::kRawKey;
+  RawKeyParams::KeyInfo& key_info = encryption_params.raw_key.key_map[""];
+  key_info.key = config.key;
+  key_info.key_id = config.key_id;
+  key_info.iv = config.iv;
+
   return Status::OK;
 }
 

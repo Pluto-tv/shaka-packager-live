@@ -13,10 +13,16 @@
 
 #include <absl/log/log.h>
 #include <absl/strings/str_format.h>
+#include <packager/crypto_params.h>
 #include <packager/file.h>
 #include <packager/live_packager.h>
 #include <packager/media/base/aes_decryptor.h>
+#include <packager/media/base/key_source.h>
+#include <packager/media/base/raw_key_source.h>
+#include <packager/media/base/media_sample.h>
+#include <packager/media/base/stream_info.h>
 #include <packager/media/formats/mp4/box_definitions.h>
+#include <packager/media/formats/mp4/mp4_media_parser.h>
 #include <packager/media/formats/mp4/box_reader.h>
 
 namespace shaka {
@@ -149,6 +155,78 @@ struct MovieBoxChecker {
   media::mp4::Movie moov_;
 };
 
+class MP4MediaParserTest {
+ public:
+  MP4MediaParserTest(media::KeySource *key_source) {
+    InitializeParser(key_source);
+  }
+
+  const std::vector<std::shared_ptr<media::MediaSample>>& GetSamples() {
+    return samples_;
+  }
+
+  bool Parse(const uint8_t *buf, size_t len) {
+    // Use a memoryfile so we can read inputs directly without going to disk
+    const std::string input_fname = "memory://file1";
+    shaka::File* writer(shaka::File::Open(input_fname.c_str(), "w"));
+    writer->Write(buf, len);
+    writer->Close();
+
+    if (!parser_->LoadMoov(input_fname)) {
+      return false;
+    }
+
+    return AppendDataInPieces(buf, len);
+  }
+
+ protected:
+  bool AppendData(const uint8_t* data, size_t length) {
+    return parser_->Parse(data, static_cast<int>(length));
+  }
+
+  bool AppendDataInPieces(const uint8_t* data,
+                          size_t length,
+                          size_t piece_size = 512) {
+    const uint8_t* start = data;
+    const uint8_t* end = data + length;
+    while (start < end) {
+      size_t append_size = std::min(piece_size,
+                                    static_cast<size_t>(end - start));
+      if (!AppendData(start, append_size))
+        return false;
+      start += append_size;
+    }
+    return true;
+  }
+
+  void InitF(const std::vector<std::shared_ptr<media::StreamInfo>>& streams) {
+    num_streams_ = streams.size();
+  }
+
+  bool NewSampleF(uint32_t track_id, std::shared_ptr<media::MediaSample> sample) {
+    samples_.push_back(std::move(sample));
+    return true;
+  }
+
+  bool NewTextSampleF(uint32_t track_id, std::shared_ptr<media::TextSample> sample) {
+    return false;
+  }
+
+  void InitializeParser(media::KeySource* decryption_key_source) {
+    parser_->Init(
+        std::bind(&MP4MediaParserTest::InitF, this, std::placeholders::_1),
+        std::bind(&MP4MediaParserTest::NewSampleF, this, std::placeholders::_1,
+                  std::placeholders::_2),
+        std::bind(&MP4MediaParserTest::NewTextSampleF, this,
+                  std::placeholders::_1, std::placeholders::_2),
+        decryption_key_source);
+  }
+
+  size_t num_streams_ = 0;
+  std::unique_ptr<media::mp4::MP4MediaParser> parser_ = std::make_unique<media::mp4::MP4MediaParser>();
+  std::vector<std::shared_ptr<media::MediaSample>> samples_;
+};
+
 void CheckVideoInitSegment(const FullSegmentBuffer& buffer) {
   bool err(true);
   size_t bytes_to_read(buffer.InitSegmentSize());
@@ -252,6 +330,8 @@ class LivePackagerBaseTest : public ::testing::Test {
         break;
       case LiveConfig::EncryptionScheme::SAMPLE_AES:
       case LiveConfig::EncryptionScheme::AES_128:
+      case LiveConfig::EncryptionScheme::CBCS:
+      case LiveConfig::EncryptionScheme::CENC:
         new_live_config.key = key_;
         new_live_config.iv = iv_;
         new_live_config.key_id = key_id_;
@@ -398,6 +478,7 @@ struct LivePackagerTestCase {
   LiveConfig::OutputFormat output_format;
   LiveConfig::TrackType track_type;
   const char* media_segment_format;
+  bool compare_samples;
 };
 
 class LivePackagerEncryptionTest
@@ -413,12 +494,46 @@ class LivePackagerEncryptionTest
     live_config.protection_scheme = GetParam().encryption_scheme;
     SetupLivePackagerConfig(live_config);
   }
+
+ protected:
+  std::vector<uint8_t> ReadExpectedData() {
+    // TODO: make this more generic to handle mp2t as well
+    std::vector<uint8_t> buf = ReadTestDataFile("expected/fmp4/init.mp4");
+    for (unsigned int i = 0; i < GetParam().num_segments; i++) {
+      auto seg_buf = ReadTestDataFile(absl::StrFormat("expected/fmp4/%04d.m4s", i + 1));
+      buf.insert(buf.end(), seg_buf.begin(), seg_buf.end());
+    }
+
+    return buf;
+  }
+
+  std::unique_ptr<media::KeySource> MakeKeySource() {
+    RawKeyParams raw_key;
+    RawKeyParams::KeyInfo& key_info = raw_key.key_map[""];
+    key_info.key = {std::begin(kKey), std::end(kKey)};
+    key_info.key_id = {std::begin(kKeyId), std::end(kKeyId)};
+    key_info.iv = {std::begin(kIv), std::end(kIv)};
+
+    return media::RawKeySource::Create(raw_key);
+  }
+
+  // TODO: once we have a similar parser created for mp2t, we can create a more generic 
+  // way to handle reading and comparison of media samples.
+  std::unique_ptr<media::KeySource> key_source_ = MakeKeySource();
+  std::unique_ptr<MP4MediaParserTest> parser_noenc_ = std::make_unique<MP4MediaParserTest>(nullptr);
+  std::unique_ptr<MP4MediaParserTest> parser_enc_ = std::make_unique<MP4MediaParserTest>(key_source_.get());
 };
 
 TEST_P(LivePackagerEncryptionTest, VerifyWithEncryption) {
   std::vector<uint8_t> init_segment_buffer =
       ReadTestDataFile(GetParam().init_segment_name);
   ASSERT_FALSE(init_segment_buffer.empty());
+
+  SegmentData init_seg(init_segment_buffer.data(),
+                       init_segment_buffer.size());
+
+  FullSegmentBuffer actual_buf;
+  live_packager_->PackageInit(init_seg, actual_buf);
 
   for (unsigned int i = 0; i < GetParam().num_segments; i++) {
     std::string format_output;
@@ -431,14 +546,33 @@ TEST_P(LivePackagerEncryptionTest, VerifyWithEncryption) {
     std::vector<uint8_t> segment_buffer = ReadTestDataFile(format_output);
     ASSERT_FALSE(segment_buffer.empty());
 
-    SegmentData init_seg(init_segment_buffer.data(),
-                         init_segment_buffer.size());
-    SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
-
     FullSegmentBuffer out;
-
+    SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
     ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
     ASSERT_GT(out.SegmentSize(), 0);
+
+    actual_buf.AppendData(out.SegmentData(), out.SegmentSize());
+  }
+
+  if(GetParam().compare_samples) {
+    auto expected_data = ReadExpectedData();
+    CHECK(parser_noenc_->Parse(expected_data.data(), expected_data.size()));
+    auto &expected_samples = parser_noenc_->GetSamples();
+
+    CHECK(parser_enc_->Parse(actual_buf.Data(), actual_buf.Size()));
+    auto actual_samples = parser_enc_->GetSamples();
+
+    CHECK_EQ(expected_samples.size(), actual_samples.size());
+    CHECK(std::equal(
+      expected_samples.begin(),
+      expected_samples.end(),
+      actual_samples.begin(),
+      actual_samples.end(),
+      [](const auto &s1, const auto &s2) {
+        return s1->data_size() == s2->data_size()  &&
+          0 == memcmp(s1->data(), s2->data(), s1->data_size());
+      }
+    ));
   }
 }
 
@@ -450,20 +584,36 @@ INSTANTIATE_TEST_CASE_P(
         LivePackagerTestCase{10, "input/init.mp4",
                              LiveConfig::EncryptionScheme::SAMPLE_AES,
                              LiveConfig::OutputFormat::TS,
-                             LiveConfig::TrackType::VIDEO, "input/%04d.m4s"},
-        // Verify FMP4 to FMP4 with Sample AES encryption.
-        LivePackagerTestCase{10, "input/init.mp4",
-                             LiveConfig::EncryptionScheme::SAMPLE_AES,
-                             LiveConfig::OutputFormat::FMP4,
-                             LiveConfig::TrackType::VIDEO, "input/%04d.m4s"},
+                             LiveConfig::TrackType::VIDEO, "input/%04d.m4s",
+                             false},
         // Verify FMP4 to TS with AES-128 encryption.
         LivePackagerTestCase{10, "input/init.mp4",
                              LiveConfig::EncryptionScheme::AES_128,
                              LiveConfig::OutputFormat::TS,
-                             LiveConfig::TrackType::VIDEO, "input/%04d.m4s"},
+                             LiveConfig::TrackType::VIDEO, "input/%04d.m4s",
+                             false},
+        // Verify FMP4 to FMP4 with Sample AES encryption.
+        LivePackagerTestCase{10, "input/init.mp4",
+                             LiveConfig::EncryptionScheme::SAMPLE_AES,
+                             LiveConfig::OutputFormat::FMP4,
+                             LiveConfig::TrackType::VIDEO, "input/%04d.m4s",
+                             true},
+        // Verify FMP4 to FMP4 with CENC encryption.
+        LivePackagerTestCase{10, "input/init.mp4",
+                             LiveConfig::EncryptionScheme::CENC,
+                             LiveConfig::OutputFormat::FMP4,
+                             LiveConfig::TrackType::VIDEO, "input/%04d.m4s",
+                             true},
+        // Verify FMP4 to FMP4 with CBCS encryption.
+        LivePackagerTestCase{10, "input/init.mp4",
+                             LiveConfig::EncryptionScheme::CBCS,
+                             LiveConfig::OutputFormat::FMP4,
+                             LiveConfig::TrackType::VIDEO, "input/%04d.m4s",
+                             true},
         // Verify AUDIO segments only to TS with Sample AES encryption.
         LivePackagerTestCase{
             5, "audio/en/init.mp4", LiveConfig::EncryptionScheme::SAMPLE_AES,
             LiveConfig::OutputFormat::TS, LiveConfig::TrackType::AUDIO,
-            "audio/en/%05d.m4s"}));
+            "audio/en/%05d.m4s", false}
+    ));
 }  // namespace shaka
