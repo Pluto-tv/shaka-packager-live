@@ -200,7 +200,6 @@ class MP4MediaParserTest {
   }
 
   void InitF(const std::vector<std::shared_ptr<media::StreamInfo>>& streams) {
-    num_streams_ = streams.size();
   }
 
   bool NewSampleF(uint32_t track_id, std::shared_ptr<media::MediaSample> sample) {
@@ -222,7 +221,6 @@ class MP4MediaParserTest {
         decryption_key_source);
   }
 
-  size_t num_streams_ = 0;
   std::unique_ptr<media::mp4::MP4MediaParser> parser_ = std::make_unique<media::mp4::MP4MediaParser>();
   std::vector<std::shared_ptr<media::MediaSample>> samples_;
 };
