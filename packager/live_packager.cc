@@ -346,7 +346,6 @@ int64_t SegmentManager::OnSegmentWrite(const std::string& name,
 Status SegmentManager::InitializeEncryption(
     const LiveConfig& config,
     EncryptionParams& encryption_params) {
-
   switch (config.protection_scheme) {
     case LiveConfig::EncryptionScheme::NONE:
       return Status::OK;
@@ -357,13 +356,16 @@ Status SegmentManager::InitializeEncryption(
     case LiveConfig::EncryptionScheme::SAMPLE_AES:
       FALLTHROUGH_INTENDED;
     case LiveConfig::EncryptionScheme::CBCS:
-      encryption_params.protection_scheme = EncryptionParams::kProtectionSchemeCbcs;
+      encryption_params.protection_scheme =
+          EncryptionParams::kProtectionSchemeCbcs;
       break;
     case LiveConfig::EncryptionScheme::CENC:
-      encryption_params.protection_scheme = EncryptionParams::kProtectionSchemeCenc;
+      encryption_params.protection_scheme =
+          EncryptionParams::kProtectionSchemeCenc;
       break;
     default:
-      return Status(error::INVALID_ARGUMENT, "invalid encryption scheme provided to LivePackager.");
+      return Status(error::INVALID_ARGUMENT,
+                    "invalid encryption scheme provided to LivePackager.");
   }
 
   encryption_params.key_provider = KeyProvider::kRawKey;
