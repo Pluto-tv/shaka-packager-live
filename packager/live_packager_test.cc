@@ -124,6 +124,8 @@ struct MovieBoxChecker {
     media::mp4::Movie moov;
     CHECK(ParseAndCheckType(moov, reader));
 
+    EXPECT_EQ(0, moov.pssh.size());
+
     EXPECT_EQ(moov_.tracks.size(), moov.tracks.size());
 
     for (unsigned i(0); i < moov_.tracks.size(); ++i) {
@@ -227,7 +229,7 @@ class MP4MediaParserTest {
   std::vector<std::shared_ptr<media::MediaSample>> samples_;
 };
 
-void CheckVideoInitSegment(const FullSegmentBuffer& buffer) {
+void CheckVideoInitSegment(const FullSegmentBuffer& buffer, media::FourCC format) {
   bool err(true);
   size_t bytes_to_read(buffer.InitSegmentSize());
   const uint8_t* data(buffer.InitSegmentData());
@@ -250,7 +252,7 @@ void CheckVideoInitSegment(const FullSegmentBuffer& buffer) {
     EXPECT_FALSE(err);
 
     media::mp4::VideoSampleEntry entry;
-    entry.format = media::FOURCC_avc1;
+    entry.format = format;
     entry.width = 1024;
     entry.height = 576;
 
@@ -366,7 +368,51 @@ TEST_F(LivePackagerBaseTest, InitSegmentOnly) {
   ASSERT_GT(out.InitSegmentSize(), 0);
   ASSERT_EQ(out.SegmentSize(), 0);
 
-  CheckVideoInitSegment(out);
+  CheckVideoInitSegment(out, media::FourCC::FOURCC_avc1);
+}
+
+TEST_F(LivePackagerBaseTest, InitSegmentOnlyWithCBCS) {
+  std::vector<uint8_t> init_segment_buffer = ReadTestDataFile("input/init.mp4");
+  ASSERT_FALSE(init_segment_buffer.empty());
+
+  FullSegmentBuffer in;
+  in.SetInitSegment(init_segment_buffer.data(), init_segment_buffer.size());
+
+  FullSegmentBuffer out;
+
+  LiveConfig live_config;
+  live_config.format = LiveConfig::OutputFormat::FMP4;
+  live_config.track_type = LiveConfig::TrackType::VIDEO;
+  live_config.protection_scheme = LiveConfig::EncryptionScheme::CBCS;
+  SetupLivePackagerConfig(live_config);
+
+  ASSERT_EQ(Status::OK, live_packager_->PackageInit(in, out));
+  ASSERT_GT(out.InitSegmentSize(), 0);
+  ASSERT_EQ(out.SegmentSize(), 0);
+
+  CheckVideoInitSegment(out, media::FourCC::FOURCC_encv);
+}
+
+TEST_F(LivePackagerBaseTest, InitSegmentOnlyWithCENC) {
+  std::vector<uint8_t> init_segment_buffer = ReadTestDataFile("input/init.mp4");
+  ASSERT_FALSE(init_segment_buffer.empty());
+
+  FullSegmentBuffer in;
+  in.SetInitSegment(init_segment_buffer.data(), init_segment_buffer.size());
+
+  FullSegmentBuffer out;
+
+  LiveConfig live_config;
+  live_config.format = LiveConfig::OutputFormat::FMP4;
+  live_config.track_type = LiveConfig::TrackType::VIDEO;
+  live_config.protection_scheme = LiveConfig::EncryptionScheme::CENC;
+  SetupLivePackagerConfig(live_config);
+
+  ASSERT_EQ(Status::OK, live_packager_->PackageInit(in, out));
+  ASSERT_GT(out.InitSegmentSize(), 0);
+  ASSERT_EQ(out.SegmentSize(), 0);
+
+  CheckVideoInitSegment(out, media::FourCC::FOURCC_encv);
 }
 
 TEST_F(LivePackagerBaseTest, VerifyAes128WithDecryption) {
