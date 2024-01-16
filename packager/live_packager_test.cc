@@ -604,12 +604,12 @@ TEST_P(LivePackagerEncryptionTest, VerifyWithEncryption) {
   }
 
   if (GetParam().compare_samples) {
-    auto expected_data = ReadExpectedData();
-    CHECK(parser_noenc_->Parse(expected_data.data(), expected_data.size()));
+    auto expected_buf = ReadExpectedData();
+    CHECK(parser_noenc_->Parse(expected_buf.data(), expected_buf.size()));
     auto& expected_samples = parser_noenc_->GetSamples();
 
     CHECK(parser_enc_->Parse(actual_buf.Data(), actual_buf.Size()));
-    auto actual_samples = parser_enc_->GetSamples();
+    auto& actual_samples = parser_enc_->GetSamples();
 
     CHECK_EQ(expected_samples.size(), actual_samples.size());
     CHECK(std::equal(expected_samples.begin(), expected_samples.end(),
