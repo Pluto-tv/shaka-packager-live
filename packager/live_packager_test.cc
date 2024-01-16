@@ -229,7 +229,8 @@ class MP4MediaParserTest {
   std::vector<std::shared_ptr<media::MediaSample>> samples_;
 };
 
-void CheckVideoInitSegment(const FullSegmentBuffer& buffer, media::FourCC format) {
+void CheckVideoInitSegment(const FullSegmentBuffer& buffer,
+                           media::FourCC format) {
   bool err(true);
   size_t bytes_to_read(buffer.InitSegmentSize());
   const uint8_t* data(buffer.InitSegmentData());
