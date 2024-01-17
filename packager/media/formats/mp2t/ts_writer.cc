@@ -162,7 +162,12 @@ bool WritePesToBuffer(const PesPacket& pes,
 }  // namespace
 
 TsWriter::TsWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer)
-    : pmt_writer_(std::move(pmt_writer)) {}
+    : TsWriter(std::move(pmt_writer), 0) {}
+
+TsWriter::TsWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer,
+                   unsigned int segment_number)
+    : pat_continuity_counter_(ContinuityCounter(segment_number)),
+      pmt_writer_(std::move(pmt_writer)) {}
 
 TsWriter::~TsWriter() {}
 
@@ -188,8 +193,7 @@ void TsWriter::SignalEncrypted() {
 }
 
 bool TsWriter::AddPesPacket(std::unique_ptr<PesPacket> pes_packet,
-		            BufferWriter* buffer) {
-
+                            BufferWriter* buffer) {
   if (!WritePesToBuffer(*pes_packet, &elementary_stream_continuity_counter_,
                         buffer)) {
     LOG(ERROR) << "Failed to write pes to buffer.";

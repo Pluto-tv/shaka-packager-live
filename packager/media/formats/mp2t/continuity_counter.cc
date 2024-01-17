@@ -10,14 +10,23 @@ namespace shaka {
 namespace media {
 namespace mp2t {
 
-ContinuityCounter::ContinuityCounter() {}
-ContinuityCounter::~ContinuityCounter() {}
+ContinuityCounter::ContinuityCounter() : ContinuityCounter(0) {}
+ContinuityCounter::ContinuityCounter(unsigned int segment_number)
+    : counter_(segment_number & 0xF) {}
 
-int ContinuityCounter::GetNext() {
-  int ret = counter_;
-  ++counter_;
-  counter_ %= 16;
+ContinuityCounter::~ContinuityCounter() = default;
+
+unsigned int ContinuityCounter::GetNext() {
+  //  int ret = counter_;
+  //  ++counter_;
+  //  counter_ %= 16;
+  //  return ret;
+  unsigned int ret = ((counter_++) & 0x0F);
   return ret;
+}
+
+unsigned int ContinuityCounter::GetContinuityCounter() const {
+  return counter_;
 }
 
 }  // namespace mp2t

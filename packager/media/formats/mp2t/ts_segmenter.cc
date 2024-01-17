@@ -76,6 +76,7 @@ Status TsSegmenter::Finalize() {
 
 Status TsSegmenter::AddSample(const MediaSample& sample) {
   if (!ts_writer_) {
+    uint32_t segment_number = muxer_options_.mp4_params.sequence_number;
     std::unique_ptr<ProgramMapTableWriter> pmt_writer;
     if (codec_ == kCodecAC3) {
       // https://goo.gl/N7Tvqi MPEG-2 Stream Encryption Format for HTTP Live
@@ -91,15 +92,16 @@ Status TsSegmenter::AddSample(const MediaSample& sample) {
       }
       const std::vector<uint8_t> setup_data(sample.data(),
                                             sample.data() + kSetupDataSize);
-      pmt_writer.reset(new AudioProgramMapTableWriter(codec_, setup_data));
-    } else if (IsAudioCodec(codec_)) {
       pmt_writer.reset(
-          new AudioProgramMapTableWriter(codec_, audio_codec_config_));
+          new AudioProgramMapTableWriter(codec_, setup_data, segment_number));
+    } else if (IsAudioCodec(codec_)) {
+      pmt_writer.reset(new AudioProgramMapTableWriter(
+          codec_, audio_codec_config_, segment_number));
     } else {
       DCHECK(IsVideoCodec(codec_));
-      pmt_writer.reset(new VideoProgramMapTableWriter(codec_));
+      pmt_writer.reset(new VideoProgramMapTableWriter(codec_, segment_number));
     }
-    ts_writer_.reset(new TsWriter(std::move(pmt_writer)));
+    ts_writer_.reset(new TsWriter(std::move(pmt_writer), segment_number));
   }
 
   if (sample.is_encrypted())
@@ -148,7 +150,6 @@ Status TsSegmenter::WritePesPackets() {
       return status;
 
     if (listener_ && IsVideoCodec(codec_) && pes_packet->is_key_frame()) {
-
       uint64_t start_pos = segment_buffer_.Size();
       const int64_t timestamp = pes_packet->pts();
       if (!ts_writer_->AddPesPacket(std::move(pes_packet), &segment_buffer_))
@@ -178,8 +179,8 @@ Status TsSegmenter::FinalizeSegment(int64_t start_timestamp, int64_t duration) {
   if (!segment_started_)
     return Status::OK;
   std::string segment_path =
-        GetSegmentName(muxer_options_.segment_template, segment_start_timestamp_,
-                       segment_number_++, muxer_options_.bandwidth);
+      GetSegmentName(muxer_options_.segment_template, segment_start_timestamp_,
+                     segment_number_++, muxer_options_.bandwidth);
 
   const int64_t file_size = segment_buffer_.Size();
   std::unique_ptr<File, FileCloser> segment_file;
@@ -195,14 +196,14 @@ Status TsSegmenter::FinalizeSegment(int64_t start_timestamp, int64_t duration) {
     return Status(
         error::FILE_FAILURE,
         "Cannot close file " + segment_path +
-        ", possibly file permission issue or running out of disk space.");
+            ", possibly file permission issue or running out of disk space.");
   }
 
   if (listener_) {
-    listener_->OnNewSegment(segment_path,
-                            start_timestamp * timescale_scale_ +
-                                transport_stream_timestamp_offset_,
-                            duration * timescale_scale_, file_size);
+    listener_->OnNewSegment(
+        segment_path,
+        start_timestamp * timescale_scale_ + transport_stream_timestamp_offset_,
+        duration * timescale_scale_, file_size);
   }
   segment_started_ = false;
 

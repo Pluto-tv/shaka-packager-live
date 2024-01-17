@@ -30,7 +30,14 @@ class ProgramMapTableWriter;
 /// the data to file. This also creates PSI from StreamInfo.
 class TsWriter {
  public:
-  explicit TsWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer);
+  TsWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer);
+
+  /// Create TsWriter with segment_number
+  /// @param pmt_writer the writes PMT into ts packets
+  //// @param segment_number is used to set the continuity counter for PAT
+  /// packets.
+  TsWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer,
+           unsigned int segment_number);
   virtual ~TsWriter();
 
   /// This will fail if the current segment is not finalized.
