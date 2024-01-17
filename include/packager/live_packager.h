@@ -8,8 +8,6 @@
 #define PACKAGER_LIVE_PACKAGER_H_
 
 #include <packager/packager.h>
-#include <memory>
-#include <string>
 
 namespace shaka {
 
@@ -74,6 +72,8 @@ struct LiveConfig {
     NONE,
     SAMPLE_AES,
     AES_128,
+    CBCS,
+    CENC,
   };
 
   OutputFormat format;
@@ -85,7 +85,7 @@ struct LiveConfig {
   std::vector<uint8_t> iv;
   std::vector<uint8_t> key;
   std::vector<uint8_t> key_id;
-  EncryptionScheme protection_scheme;
+  EncryptionScheme protection_scheme = EncryptionScheme::NONE;
 
   /// User-specified segment number.
   /// For FMP4 output:
@@ -124,6 +124,34 @@ class LivePackager {
 
   LiveConfig config_;
 };
+
+struct PSSHData {
+  std::vector<uint8_t> cenc_box;
+  std::vector<uint8_t> mspr_box;
+  std::vector<uint8_t> mspr_pro;
+  std::vector<uint8_t> wv_box;
+};
+
+struct PSSHGeneratorInput {
+  enum struct MP4ProtectionSchemeFourCC : uint32_t {
+    CBCS = 0x63626373,
+    CENC = 0x63656e63,
+  };
+
+  MP4ProtectionSchemeFourCC protection_scheme;
+
+  // key of a single adaption set for DRM systems that don't support
+  // multile keys (i.e PlayReady)
+  std::vector<uint8_t> key;
+  // key id of the key for DRM systems that don't support
+  // multile keys (i.e PlayReady)
+  std::vector<uint8_t> key_id;
+  // key ids of all adaptation sets for DRM systems that support
+  // multiple keys (i.e Widevine, Common Encryption)
+  std::vector<std::vector<uint8_t>> key_ids;
+};
+
+Status GeneratePSSHData(const PSSHGeneratorInput& in, PSSHData* out);
 
 }  // namespace shaka
 

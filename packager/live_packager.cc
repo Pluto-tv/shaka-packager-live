@@ -15,9 +15,18 @@
 #include <absl/log/log.h>
 #include <packager/chunking_params.h>
 #include <packager/file.h>
+
 #include <packager/live_packager.h>
+#include <packager/macros/compiler.h>
+#include <packager/macros/status.h>
 #include <packager/media/base/aes_encryptor.h>
 #include <packager/packager.h>
+
+#include "media/base/common_pssh_generator.h"
+#include "media/base/playready_pssh_generator.h"
+#include "media/base/protection_system_ids.h"
+#include "media/base/pssh_generator.h"
+#include "media/base/widevine_pssh_generator.h"
 
 namespace shaka {
 
@@ -249,6 +258,8 @@ Status LivePackager::PackageInit(const Segment& init_segment,
   packaging_params.chunking_params.segment_duration_in_seconds =
       config_.segment_duration_sec;
 
+  packaging_params.mp4_output_params.include_pssh_in_stream = false;
+
   // in order to enable init packaging as a separate execution.
   packaging_params.init_segment_only = true;
 
@@ -309,6 +320,7 @@ Status LivePackager::Package(const Segment& init_segment,
       config_.segment_duration_sec;
 
   packaging_params.mp4_output_params.sequence_number = config_.segment_number;
+  packaging_params.mp4_output_params.include_pssh_in_stream = false;
 
   EncryptionParams& encryption_params = packaging_params.encryption_params;
   // As a side effect of InitializeEncryption, encryption_params will be
@@ -345,25 +357,34 @@ int64_t SegmentManager::OnSegmentWrite(const std::string& name,
 Status SegmentManager::InitializeEncryption(
     const LiveConfig& config,
     EncryptionParams& encryption_params) {
-  // TODO: encryption for fmp4 will be added later
-  if (config.protection_scheme == LiveConfig::EncryptionScheme::SAMPLE_AES) {
-    // Internally shaka maps this to an internal code for sample aes
-    //
-    // This is a fake protection scheme fourcc code to indicate Apple Sample
-    // AES. FOURCC_cbca = 0x63626361,
-    //
+  switch (config.protection_scheme) {
+    case LiveConfig::EncryptionScheme::NONE:
+      return Status::OK;
+    // Internally shaka maps sample-aes to cbcs.
     // Additionally this seems to be the recommended protection schema to when
     // using the shaka CLI:
     // https://shaka-project.github.io/shaka-packager/html/tutorials/raw_key.html
-    encryption_params.protection_scheme =
-        EncryptionParams::kProtectionSchemeCbcs;
-
-    encryption_params.key_provider = KeyProvider::kRawKey;
-    RawKeyParams::KeyInfo& key_info = encryption_params.raw_key.key_map[""];
-    key_info.key = config.key;
-    key_info.key_id = config.key_id;
-    key_info.iv = config.iv;
+    case LiveConfig::EncryptionScheme::SAMPLE_AES:
+      FALLTHROUGH_INTENDED;
+    case LiveConfig::EncryptionScheme::CBCS:
+      encryption_params.protection_scheme =
+          EncryptionParams::kProtectionSchemeCbcs;
+      break;
+    case LiveConfig::EncryptionScheme::CENC:
+      encryption_params.protection_scheme =
+          EncryptionParams::kProtectionSchemeCenc;
+      break;
+    default:
+      return Status(error::INVALID_ARGUMENT,
+                    "invalid encryption scheme provided to LivePackager.");
   }
+
+  encryption_params.key_provider = KeyProvider::kRawKey;
+  RawKeyParams::KeyInfo& key_info = encryption_params.raw_key.key_map[""];
+  key_info.key = config.key;
+  key_info.key_id = config.key_id;
+  key_info.iv = config.iv;
+
   return Status::OK;
 }
 
@@ -416,6 +437,110 @@ Status Aes128EncryptedSegmentManager::InitializeEncryption(
     return Status(error::INVALID_ARGUMENT,
                   "invalid key and IV supplied to encryptor");
   }
+  return Status::OK;
+}
+
+void FillPSSHBoxByDRM(const media::ProtectionSystemSpecificInfo& pssh_info,
+                      PSSHData* data) {
+  if (std::equal(std::begin(media::kCommonSystemId),
+                 std::end(media::kCommonSystemId),
+                 pssh_info.system_id.begin())) {
+    data->cenc_box = pssh_info.psshs;
+    return;
+  }
+
+  if (std::equal(std::begin(media::kWidevineSystemId),
+                 std::end(media::kWidevineSystemId),
+                 pssh_info.system_id.begin())) {
+    data->wv_box = pssh_info.psshs;
+    return;
+  }
+
+  if (std::equal(std::begin(media::kPlayReadySystemId),
+                 std::end(media::kPlayReadySystemId),
+                 pssh_info.system_id.begin())) {
+    data->mspr_box = pssh_info.psshs;
+
+    std::unique_ptr<media::PsshBoxBuilder> box_builder =
+        media::PsshBoxBuilder::ParseFromBox(pssh_info.psshs.data(),
+                                            pssh_info.psshs.size());
+    data->mspr_pro = box_builder->pssh_data();
+  }
+}
+
+Status ValidatePSSHGeneratorInput(const PSSHGeneratorInput& input) {
+  constexpr int kKeySize = 16;
+
+  if (input.protection_scheme !=
+          PSSHGeneratorInput::MP4ProtectionSchemeFourCC::CBCS &&
+      input.protection_scheme !=
+          PSSHGeneratorInput::MP4ProtectionSchemeFourCC::CENC) {
+    LOG(WARNING) << "invalid encryption scheme in PSSH generator input";
+    return Status(error::INVALID_ARGUMENT,
+                  "invalid encryption scheme in PSSH generator input");
+  }
+
+  if (input.key.size() != kKeySize) {
+    LOG(WARNING) << "invalid key length in PSSH generator input";
+    return Status(error::INVALID_ARGUMENT,
+                  "invalid key length in PSSH generator input");
+  }
+
+  if (input.key_id.size() != kKeySize) {
+    LOG(WARNING) << "invalid key id length in PSSH generator input";
+    return Status(error::INVALID_ARGUMENT,
+                  "invalid key id length in PSSH generator input");
+  }
+
+  if (input.key_ids.empty()) {
+    LOG(WARNING) << "key ids cannot be empty in PSSH generator input";
+    return Status(error::INVALID_ARGUMENT,
+                  "key ids cannot be empty in PSSH generator input");
+  }
+
+  for (size_t i = 0; i < input.key_ids.size(); ++i) {
+    if (input.key_ids[i].size() != kKeySize) {
+      LOG(WARNING) << "invalid key id length in key ids array in PSSH "
+                      "generator input, index " +
+                          std::to_string(i);
+      return Status(error::INVALID_ARGUMENT,
+                    "invalid key id length in key ids array in PSSH generator "
+                    "input, index " +
+                        std::to_string(i));
+    }
+  }
+
+  return Status::OK;
+}
+
+Status GeneratePSSHData(const PSSHGeneratorInput& in, PSSHData* out) {
+  const char* kNoExtraHeadersForPlayReady = "";
+
+  RETURN_IF_ERROR(ValidatePSSHGeneratorInput(in));
+  if (!out) {
+    return Status(error::INVALID_ARGUMENT, "output data cannot be null");
+  }
+
+  std::vector<std::unique_ptr<media::PsshGenerator>> pssh_generators;
+  pssh_generators.emplace_back(std::make_unique<media::CommonPsshGenerator>());
+  pssh_generators.emplace_back(std::make_unique<media::PlayReadyPsshGenerator>(
+      kNoExtraHeadersForPlayReady,
+      static_cast<media::FourCC>(in.protection_scheme)));
+  pssh_generators.emplace_back(std::make_unique<media::WidevinePsshGenerator>(
+      static_cast<media::FourCC>(in.protection_scheme)));
+
+  for (const auto& pssh_generator : pssh_generators) {
+    media::ProtectionSystemSpecificInfo info;
+    if (pssh_generator->SupportMultipleKeys()) {
+      RETURN_IF_ERROR(
+          pssh_generator->GeneratePsshFromKeyIds(in.key_ids, &info));
+    } else {
+      RETURN_IF_ERROR(pssh_generator->GeneratePsshFromKeyIdAndKey(
+          in.key_id, in.key, &info));
+    }
+    FillPSSHBoxByDRM(info, out);
+  }
+
   return Status::OK;
 }
 }  // namespace shaka
