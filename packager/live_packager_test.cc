@@ -17,10 +17,17 @@
 #include <packager/file.h>
 #include <packager/live_packager.h>
 #include <packager/media/base/aes_decryptor.h>
+#include <packager/media/base/byte_queue.h>
 #include <packager/media/base/key_source.h>
 #include <packager/media/base/media_sample.h>
 #include <packager/media/base/raw_key_source.h>
 #include <packager/media/base/stream_info.h>
+#include <packager/media/formats/mp2t/mp2t_media_parser.h>
+#include <packager/media/formats/mp2t/ts_packet.h>
+#include <packager/media/formats/mp2t/ts_section.h>
+#include <packager/media/formats/mp2t/ts_section_pat.h>
+#include <packager/media/formats/mp2t/ts_section_pes.h>
+#include <packager/media/formats/mp2t/ts_section_pmt.h>
 #include <packager/media/formats/mp4/box_definitions.h>
 #include <packager/media/formats/mp4/box_reader.h>
 #include <packager/media/formats/mp4/mp4_media_parser.h>
@@ -427,6 +434,7 @@ TEST(GeneratePSSHData, FailsOnInvalidInput) {
 class LivePackagerBaseTest : public ::testing::Test {
  public:
   void SetUp() override {
+    mp2t_parser_ = std::make_unique<media::mp2t::Mp2tMediaParser>();
     key_.assign(kKey, kKey + std::size(kKey));
     iv_.assign(kIv, kIv + std::size(kIv));
     key_id_.assign(kKeyId, kKeyId + std::size(kKeyId));
@@ -457,6 +465,8 @@ class LivePackagerBaseTest : public ::testing::Test {
   std::vector<uint8_t> key_;
   std::vector<uint8_t> iv_;
   std::vector<uint8_t> key_id_;
+
+  std::unique_ptr<media::mp2t::Mp2tMediaParser> mp2t_parser_;
 };
 
 TEST_F(LivePackagerBaseTest, InitSegmentOnly) {
@@ -594,6 +604,80 @@ TEST_F(LivePackagerBaseTest, EncryptionFailure) {
     ASSERT_EQ(Status(error::INVALID_ARGUMENT,
                      "invalid key and IV supplied to encryptor"),
               live_packager_->Package(init_seg, media_seg, out));
+  }
+}
+
+TEST_F(LivePackagerBaseTest, CheckContinutityCounter) {
+  std::vector<uint8_t> init_segment_buffer = ReadTestDataFile("input/init.mp4");
+  ASSERT_FALSE(init_segment_buffer.empty());
+
+  media::ByteQueue ts_byte_queue;
+
+  for (unsigned int i = 0; i < kNumSegments; i++) {
+    std::string segment_num = absl::StrFormat("input/%04d.m4s", i);
+    std::vector<uint8_t> segment_buffer = ReadTestDataFile(segment_num);
+    ASSERT_FALSE(segment_buffer.empty());
+
+    SegmentData init_seg(init_segment_buffer.data(),
+                         init_segment_buffer.size());
+    SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+
+    FullSegmentBuffer out;
+
+    LiveConfig live_config;
+    live_config.format = LiveConfig::OutputFormat::TS;
+    live_config.track_type = LiveConfig::TrackType::VIDEO;
+    live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
+    live_config.segment_number = i;
+
+    SetupLivePackagerConfig(live_config);
+    ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
+    ASSERT_GT(out.SegmentSize(), 0);
+
+    ts_byte_queue.Push(out.SegmentData(), static_cast<int>(out.SegmentSize()));
+    while (true) {
+      const uint8_t* ts_buffer;
+      int ts_buffer_size;
+      ts_byte_queue.Peek(&ts_buffer, &ts_buffer_size);
+
+      if (ts_buffer_size < media::mp2t::TsPacket::kPacketSize)
+        break;
+
+      // Synchronization.
+      int skipped_bytes =
+          media::mp2t::TsPacket::Sync(ts_buffer, ts_buffer_size);
+      if (skipped_bytes > 0) {
+        LOG(WARNING) << "Packet not aligned on a TS syncword:"
+                     << " skipped_bytes=" << skipped_bytes;
+        ts_byte_queue.Pop(skipped_bytes);
+        continue;
+      }
+
+      // Parse the TS header, skipping 1 byte if the header is invalid.
+      std::unique_ptr<media::mp2t::TsPacket> ts_packet(
+          media::mp2t::TsPacket::Parse(ts_buffer, ts_buffer_size));
+      if (!ts_packet) {
+        LOG(WARNING) << "Error: invalid TS packet";
+        ts_byte_queue.Pop(1);
+        continue;
+      }
+
+      if (ts_packet->payload_unit_start_indicator() &&
+          ts_packet->pid() == media::mp2t::TsSection::kPidPat) {
+        LOG(WARNING) << "Processing PID=" << ts_packet->pid() << " start_unit="
+                     << ts_packet->payload_unit_start_indicator()
+                     << " continuity_counter="
+                     << ts_packet->continuity_counter();
+
+        // check the PAT continuity counter is in sync with the segment number.
+        EXPECT_EQ(ts_packet->continuity_counter(), live_config.segment_number);
+      }
+
+      // Go to the next packet.
+      ts_byte_queue.Pop(media::mp2t::TsPacket::kPacketSize);
+    }
+
+    ts_byte_queue.Reset();
   }
 }
 
