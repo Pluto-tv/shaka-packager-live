@@ -78,8 +78,6 @@ struct LiveConfig {
 
   OutputFormat format;
   TrackType track_type;
-  // TOOD: do we need non-integer durations?
-  double segment_duration_sec;
 
   // TODO: should we allow for keys to be hex string?
   std::vector<uint8_t> iv;
@@ -93,6 +91,11 @@ struct LiveConfig {
   /// For M2TS output:
   ///   It is be used to set the continuity counter (TODO: UNIMPLEMENTED).
   uint32_t segment_number = 0;
+
+  /// The offset to be applied to transport stream (e.g. MPEG2-TS, HLS packed
+  /// audio) timestamps to compensate for possible negative timestamps in the
+  /// input.
+  int32_t m2ts_offset_ms = 0;
 };
 
 class LivePackager {
