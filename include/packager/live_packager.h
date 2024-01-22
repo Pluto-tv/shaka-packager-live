@@ -91,6 +91,8 @@ struct LiveConfig {
   /// For M2TS output:
   ///   It is be used to set the continuity counter (TODO: UNIMPLEMENTED).
   uint32_t segment_number = 0;
+
+  int32_t m2ts_offset_ms = 0;
 };
 
 class LivePackager {
