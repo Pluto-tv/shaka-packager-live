@@ -230,6 +230,7 @@ if(BUILD_LIVE_TEST)
     gmock
     gtest
     gtest_main)
+  add_test(NAME live_packager_test COMMAND live_packager_test)
 endif()
 
 list(APPEND packager_test_py_sources

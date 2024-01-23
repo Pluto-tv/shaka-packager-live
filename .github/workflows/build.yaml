@@ -87,6 +87,7 @@ jobs:
         os: ${{ fromJSON(needs.build_matrix_config.outputs.OS) }}
         build_type: ["Debug", "Release"]
         lib_type: ["static", "shared"]
+        live_packager_tests: ["enabled", "disables"]
 
     name: ${{ matrix.os_name }} ${{ matrix.target_arch }} ${{ matrix.build_type }} ${{ matrix.lib_type }}
     runs-on: ${{ matrix.os }}
@@ -127,6 +128,12 @@ jobs:
           else
             BUILD_SHARED_LIBS="OFF"
           fi
+          
+          if [[ "${{ matrix.live_packager_tests }}" == "enabled" ]]; then
+            BUILD_LIVE_TEST="ON"
+          else
+            BUILD_LIVE_TEST="OFF"
+          fi 
 
           # If set, override the default generator for the platform.
           # Not every entry in the build matrix config defines this.
@@ -143,6 +150,7 @@ jobs:
           cmake \
             -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
             -DBUILD_SHARED_LIBS="$BUILD_SHARED_LIBS" \
+            -DBUILD_LIVE_TEST="$BUILD_LIVE_TEST" \
             -S . \
             -B build/
 
