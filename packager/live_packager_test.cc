@@ -22,12 +22,8 @@
 #include <packager/media/base/media_sample.h>
 #include <packager/media/base/raw_key_source.h>
 #include <packager/media/base/stream_info.h>
-#include <packager/media/formats/mp2t/mp2t_media_parser.h>
 #include <packager/media/formats/mp2t/ts_packet.h>
 #include <packager/media/formats/mp2t/ts_section.h>
-#include <packager/media/formats/mp2t/ts_section_pat.h>
-#include <packager/media/formats/mp2t/ts_section_pes.h>
-#include <packager/media/formats/mp2t/ts_section_pmt.h>
 #include <packager/media/formats/mp4/box_definitions.h>
 #include <packager/media/formats/mp4/box_reader.h>
 #include <packager/media/formats/mp4/mp4_media_parser.h>
@@ -343,8 +339,8 @@ void CheckSegment(const LiveConfig& config, const FullSegmentBuffer& buffer) {
 TEST(GeneratePSSHData, GeneratesPSSHBoxesAndMSPRObject) {
   PSSHGeneratorInput in{
       .protection_scheme = PSSHGeneratorInput::MP4ProtectionSchemeFourCC::CENC,
-      .key_id = unhex("00000000621f2afe7ab2c868d5fd2e2e"),
       .key = unhex("1af987fa084ff3c0f4ad35a6bdab98e2"),
+      .key_id = unhex("00000000621f2afe7ab2c868d5fd2e2e"),
       .key_ids = {unhex("00000000621f2afe7ab2c868d5fd2e2e"),
                   unhex("00000000621f2afe7ab2c868d5fd2e2f")}};
 
@@ -393,8 +389,8 @@ TEST(GeneratePSSHData, GeneratesPSSHBoxesAndMSPRObject) {
 TEST(GeneratePSSHData, FailsOnInvalidInput) {
   const PSSHGeneratorInput valid_input{
       .protection_scheme = PSSHGeneratorInput::MP4ProtectionSchemeFourCC::CENC,
-      .key_id = unhex("00000000621f2afe7ab2c868d5fd2e2e"),
       .key = unhex("1af987fa084ff3c0f4ad35a6bdab98e2"),
+      .key_id = unhex("00000000621f2afe7ab2c868d5fd2e2e"),
       .key_ids = {unhex("00000000621f2afe7ab2c868d5fd2e2e"),
                   unhex("00000000621f2afe7ab2c868d5fd2e2f")}};
 
@@ -433,7 +429,6 @@ TEST(GeneratePSSHData, FailsOnInvalidInput) {
 class LivePackagerBaseTest : public ::testing::Test {
  public:
   void SetUp() override {
-    mp2t_parser_ = std::make_unique<media::mp2t::Mp2tMediaParser>();
     key_.assign(kKey, kKey + std::size(kKey));
     iv_.assign(kIv, kIv + std::size(kIv));
     key_id_.assign(kKeyId, kKeyId + std::size(kKeyId));
@@ -463,8 +458,6 @@ class LivePackagerBaseTest : public ::testing::Test {
   std::vector<uint8_t> key_;
   std::vector<uint8_t> iv_;
   std::vector<uint8_t> key_id_;
-
-  std::unique_ptr<media::mp2t::Mp2tMediaParser> mp2t_parser_;
 };
 
 TEST_F(LivePackagerBaseTest, InitSegmentOnly) {
@@ -737,7 +730,7 @@ class LivePackagerEncryptionTest
   }
 
  protected:
-  std::vector<uint8_t> ReadExpectedData() {
+  static std::vector<uint8_t> ReadExpectedData() {
     // TODO: make this more generic to handle mp2t as well
     std::vector<uint8_t> buf = ReadTestDataFile("expected/fmp4/init.mp4");
     for (unsigned int i = 0; i < GetParam().num_segments; i++) {
@@ -749,7 +742,7 @@ class LivePackagerEncryptionTest
     return buf;
   }
 
-  std::unique_ptr<media::KeySource> MakeKeySource() {
+  static std::unique_ptr<media::KeySource> MakeKeySource() {
     RawKeyParams raw_key;
     RawKeyParams::KeyInfo& key_info = raw_key.key_map[""];
     key_info.key = {std::begin(kKey), std::end(kKey)};
