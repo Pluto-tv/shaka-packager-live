@@ -222,12 +222,13 @@ bool TsStuffingWriter::AddPesPacket(std::unique_ptr<PesPacket> pes_packet,
   do {
     const int pid = ProgramMapTableWriter::kElementaryPid;
     BufferWriter null_ts_packet_buffer;
-    null_ts_packet_buffer.AppendInt(
-        static_cast<uint8_t>(TsSection::kPidNullPacket));
+    // TODO(Fordyce): do the stuffing packets need a payload?
+    // null_ts_packet_buffer.AppendInt(static_cast<uint8_t>(TsSection::kPidNullPacket));
     WritePayloadToBufferWriter(null_ts_packet_buffer.Buffer(),
                                null_ts_packet_buffer.Size(),
                                !kPayloadUnitStartIndicator, pid, !kHasPcr, 0,
                                &elementary_stream_continuity_counter_, buffer);
+
   } while ((elementary_stream_continuity_counter_.GetCurrent() & 0x0F) != 0);
 
   // No need to keep pes_packet around so not passing it anywhere.
