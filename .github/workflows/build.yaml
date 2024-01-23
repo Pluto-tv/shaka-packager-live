@@ -87,7 +87,7 @@ jobs:
         os: ${{ fromJSON(needs.build_matrix_config.outputs.OS) }}
         build_type: ["Debug", "Release"]
         lib_type: ["static", "shared"]
-        live_packager_tests: ["enabled", "disables"]
+        live_packager_tests: ["enabled", "disabled"]
 
     name: ${{ matrix.os_name }} ${{ matrix.target_arch }} ${{ matrix.build_type }} ${{ matrix.lib_type }}
     runs-on: ${{ matrix.os }}
