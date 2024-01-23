@@ -34,8 +34,9 @@ namespace {
 
 using StreamDescriptors = std::vector<shaka::StreamDescriptor>;
 
-// Shaka requires a non-zero value for segment duration otherwise it throws an error.
-// For our use-case of packaging segments individually, this value has no effect.
+// Shaka requires a non-zero value for segment duration otherwise it throws an
+// error. For our use-case of packaging segments individually, this value has no
+// effect.
 constexpr double DEFAULT_SEGMENT_DURATION = 5.0;
 
 const std::string INPUT_FNAME = "memory://input_file";

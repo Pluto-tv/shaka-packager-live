@@ -661,16 +661,15 @@ TEST_F(LivePackagerBaseTest, CheckContinutityCounter) {
       }
 
       if (ts_packet->payload_unit_start_indicator() &&
-          ts_packet->pid() == media::mp2t::TsSection::kPidPat) {
-        LOG(WARNING) << "Processing PID=" << ts_packet->pid() << " start_unit="
-                     << ts_packet->payload_unit_start_indicator()
-                     << " continuity_counter="
-                     << ts_packet->continuity_counter();
-
-        // check the PAT continuity counter is in sync with the segment number.
+          (ts_packet->pid() == media::mp2t::TsSection::kPidPat ||
+           ts_packet->pid() == 0x20)) {
+        LOG(INFO) << "Processing PID=" << ts_packet->pid()
+                  << " start_unit=" << ts_packet->payload_unit_start_indicator()
+                  << " continuity_counter=" << ts_packet->continuity_counter();
+        // check the PAT (PID = 0x0) or PMT (PID = 0x20) continuity counter is
+        // in sync with the segment number.
         EXPECT_EQ(ts_packet->continuity_counter(), live_config.segment_number);
       }
-
       // Go to the next packet.
       ts_byte_queue.Pop(media::mp2t::TsPacket::kPacketSize);
     }

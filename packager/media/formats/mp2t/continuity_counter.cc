@@ -17,15 +17,11 @@ ContinuityCounter::ContinuityCounter(unsigned int segment_number)
 ContinuityCounter::~ContinuityCounter() = default;
 
 unsigned int ContinuityCounter::GetNext() {
-  //  int ret = counter_;
-  //  ++counter_;
-  //  counter_ %= 16;
-  //  return ret;
   unsigned int ret = ((counter_++) & 0x0F);
   return ret;
 }
 
-unsigned int ContinuityCounter::GetContinuityCounter() const {
+unsigned int ContinuityCounter::GetCurrent() const {
   return counter_;
 }
 

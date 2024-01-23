@@ -25,7 +25,7 @@ class ContinuityCounter {
   unsigned int GetNext();
 
   /// @return the current value of the continuity counter.
-  [[nodiscard]] unsigned int GetContinuityCounter() const;
+  [[nodiscard]] unsigned int GetCurrent() const;
 
  private:
   unsigned int counter_;

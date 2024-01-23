@@ -101,7 +101,8 @@ Status TsSegmenter::AddSample(const MediaSample& sample) {
       DCHECK(IsVideoCodec(codec_));
       pmt_writer.reset(new VideoProgramMapTableWriter(codec_, segment_number));
     }
-    ts_writer_.reset(new TsWriter(std::move(pmt_writer), segment_number));
+    ts_writer_.reset(
+        new TsStuffingWriter(std::move(pmt_writer), segment_number));
   }
 
   if (sample.is_encrypted())

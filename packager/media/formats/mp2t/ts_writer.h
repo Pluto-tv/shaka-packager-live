@@ -38,7 +38,7 @@ class TsWriter {
   /// packets.
   TsWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer,
            unsigned int segment_number);
-  virtual ~TsWriter();
+  virtual ~TsWriter() = default;
 
   /// This will fail if the current segment is not finalized.
   /// @param buffer to write segment data.
@@ -53,7 +53,11 @@ class TsWriter {
   /// @param pes_packet gets added to the writer.
   /// @param buffer to write pes packet.
   /// @return true on success, false otherwise.
-  virtual bool AddPesPacket(std::unique_ptr<PesPacket> pes_packet, BufferWriter* buffer);
+  virtual bool AddPesPacket(std::unique_ptr<PesPacket> pes_packet,
+                            BufferWriter* buffer);
+
+ protected:
+  ContinuityCounter elementary_stream_continuity_counter_;
 
  private:
   TsWriter(const TsWriter&) = delete;
@@ -63,9 +67,18 @@ class TsWriter {
   bool encrypted_ = false;
 
   ContinuityCounter pat_continuity_counter_;
-  ContinuityCounter elementary_stream_continuity_counter_;
 
   std::unique_ptr<ProgramMapTableWriter> pmt_writer_;
+};
+
+/// TsWriter to handle stuffing null TS Packets
+class TsStuffingWriter : public TsWriter {
+ public:
+  TsStuffingWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer,
+                   unsigned int segment_number);
+
+  bool AddPesPacket(std::unique_ptr<PesPacket> pes_packet,
+                    BufferWriter* buffer) override;
 };
 
 }  // namespace mp2t
