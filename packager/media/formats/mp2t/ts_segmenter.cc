@@ -175,6 +175,10 @@ Status TsSegmenter::FinalizeSegment(int64_t start_timestamp, int64_t duration) {
   if (!status.ok())
     return status;
 
+  // Since the ending CC of the previous segment could be anything,
+  // we must end all ES packets at 0xf so that the next segment can start
+  // at 0x0. This can be done by stuffing null packets at the end of the segment
+  // for each elementary stream
   if (muxer_options_.enable_null_ts_packet_stuffing) {
     ContinuityCounter* es_continuity_counter =
         ts_writer_->es_continuity_counter();
