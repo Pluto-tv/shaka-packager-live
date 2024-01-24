@@ -164,7 +164,7 @@ bool WritePesToBuffer(const PesPacket& pes,
 
 TsWriter::TsWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer,
                    unsigned int segment_number)
-    : pat_continuity_counter_(static_cast<int>(segment_number)),
+    : pat_continuity_counter_(segment_number),
       pmt_writer_(std::move(pmt_writer)) {}
 
 TsWriter::~TsWriter() = default;

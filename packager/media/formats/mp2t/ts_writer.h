@@ -54,8 +54,8 @@ class TsWriter {
   virtual bool AddPesPacket(std::unique_ptr<PesPacket> pes_packet,
                             BufferWriter* buffer);
 
-  ContinuityCounter* es_continuity_counter() {
-    return &elementary_stream_continuity_counter_;
+  ContinuityCounter& es_continuity_counter() {
+    return elementary_stream_continuity_counter_;
   }
 
  private:

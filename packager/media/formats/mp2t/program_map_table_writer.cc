@@ -198,7 +198,7 @@ void WritePmtWithParameters(uint8_t stream_type,
 // segments
 ProgramMapTableWriter::ProgramMapTableWriter(Codec codec,
                                              unsigned int segment_number)
-    : codec_(codec), continuity_counter_(static_cast<int>(segment_number)) {}
+    : codec_(codec), continuity_counter_(segment_number) {}
 
 bool ProgramMapTableWriter::EncryptedSegmentPmt(BufferWriter* writer) {
   if (encrypted_pmt_.Size() == 0) {

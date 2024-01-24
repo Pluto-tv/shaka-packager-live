@@ -180,19 +180,16 @@ Status TsSegmenter::FinalizeSegment(int64_t start_timestamp, int64_t duration) {
   // at 0x0. This can be done by stuffing null packets at the end of the segment
   // for each elementary stream
   if (muxer_options_.enable_null_ts_packet_stuffing) {
-    ContinuityCounter* es_continuity_counter =
+    ContinuityCounter& es_continuity_counter =
         ts_writer_->es_continuity_counter();
-    if (es_continuity_counter) {
-      do {
-        const int pid = ProgramMapTableWriter::kElementaryPid;
-        BufferWriter null_ts_packet_buffer;
-        // TODO(Fordyce): do the stuffing packets need a payload?
-        // null_ts_packet_buffer.AppendInt(static_cast<uint8_t>(TsSection::kPidNullPacket));
-        WritePayloadToBufferWriter(
-            null_ts_packet_buffer.Buffer(), null_ts_packet_buffer.Size(), false,
-            pid, false, 0, es_continuity_counter, &segment_buffer_);
-
-      } while ((es_continuity_counter->GetCurrent() & 0x0F) != 0);
+    while (es_continuity_counter.GetCurrent() != 0) {
+      const int pid = ProgramMapTableWriter::kElementaryPid;
+      BufferWriter null_ts_packet_buffer;
+      // TODO(Fordyce): do the stuffing packets need a payload?
+      // null_ts_packet_buffer.AppendInt(static_cast<uint8_t>(TsSection::kPidNullPacket));
+      WritePayloadToBufferWriter(
+          null_ts_packet_buffer.Buffer(), null_ts_packet_buffer.Size(), false,
+          pid, false, 0, &es_continuity_counter, &segment_buffer_);
     }
   }
 

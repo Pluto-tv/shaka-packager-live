@@ -15,7 +15,7 @@ namespace mp2t {
 
 class ContinuityCounter {
  public:
-  ContinuityCounter(int segment_number = 0);
+  ContinuityCounter(unsigned int segment_number = 0);
   ~ContinuityCounter();
 
   /// As specified by the spec, this starts from 0 and is incremented by 1 until
@@ -27,7 +27,7 @@ class ContinuityCounter {
   [[nodiscard]] int GetCurrent() const;
 
  private:
-  int counter_;
+  int counter_ = 0;
   DISALLOW_COPY_AND_ASSIGN(ContinuityCounter);
 };
 

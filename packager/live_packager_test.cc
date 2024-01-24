@@ -22,6 +22,7 @@
 #include <packager/media/base/media_sample.h>
 #include <packager/media/base/raw_key_source.h>
 #include <packager/media/base/stream_info.h>
+#include <packager/media/formats/mp2t/program_map_table_writer.h>
 #include <packager/media/formats/mp2t/ts_packet.h>
 #include <packager/media/formats/mp2t/ts_section.h>
 #include <packager/media/formats/mp4/box_definitions.h>
@@ -639,25 +640,16 @@ TEST_F(LivePackagerBaseTest, CheckContinutityCounter) {
       // Synchronization.
       int skipped_bytes =
           media::mp2t::TsPacket::Sync(ts_buffer, ts_buffer_size);
-      if (skipped_bytes > 0) {
-        LOG(WARNING) << "Packet not aligned on a TS syncword:"
-                     << " skipped_bytes=" << skipped_bytes;
-        ts_byte_queue.Pop(skipped_bytes);
-        continue;
-      }
+      ASSERT_EQ(skipped_bytes, 0);
 
       // Parse the TS header, skipping 1 byte if the header is invalid.
       std::unique_ptr<media::mp2t::TsPacket> ts_packet(
           media::mp2t::TsPacket::Parse(ts_buffer, ts_buffer_size));
-      if (!ts_packet) {
-        LOG(WARNING) << "Error: invalid TS packet";
-        ts_byte_queue.Pop(1);
-        continue;
-      }
+      ASSERT_NE(nullptr, ts_packet);
 
       if (ts_packet->payload_unit_start_indicator() &&
           (ts_packet->pid() == media::mp2t::TsSection::kPidPat ||
-           ts_packet->pid() == 0x20)) {
+           ts_packet->pid() == media::mp2t::ProgramMapTableWriter::kPmtPid)) {
         LOG(INFO) << "Processing PID=" << ts_packet->pid()
                   << " start_unit=" << ts_packet->payload_unit_start_indicator()
                   << " continuity_counter=" << ts_packet->continuity_counter();
