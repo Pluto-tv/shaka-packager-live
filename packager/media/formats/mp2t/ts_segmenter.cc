@@ -198,8 +198,8 @@ Status TsSegmenter::FinalizeSegment(int64_t start_timestamp, int64_t duration) {
   if (!segment_started_)
     return Status::OK;
   std::string segment_path =
-      GetSegmentName(muxer_options_.segment_template, segment_start_timestamp_,
-                     segment_number_++, muxer_options_.bandwidth);
+        GetSegmentName(muxer_options_.segment_template, segment_start_timestamp_,
+                       segment_number_++, muxer_options_.bandwidth);
 
   const int64_t file_size = segment_buffer_.Size();
   std::unique_ptr<File, FileCloser> segment_file;
@@ -215,14 +215,14 @@ Status TsSegmenter::FinalizeSegment(int64_t start_timestamp, int64_t duration) {
     return Status(
         error::FILE_FAILURE,
         "Cannot close file " + segment_path +
-            ", possibly file permission issue or running out of disk space.");
+        ", possibly file permission issue or running out of disk space.");
   }
 
   if (listener_) {
-    listener_->OnNewSegment(
-        segment_path,
-        start_timestamp * timescale_scale_ + transport_stream_timestamp_offset_,
-        duration * timescale_scale_, file_size);
+    listener_->OnNewSegment(segment_path,
+                            start_timestamp * timescale_scale_ +
+                                transport_stream_timestamp_offset_,
+                            duration * timescale_scale_, file_size);
   }
   segment_started_ = false;
 
