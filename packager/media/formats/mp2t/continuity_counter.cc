@@ -10,20 +10,19 @@ namespace shaka {
 namespace media {
 namespace mp2t {
 
-ContinuityCounter::ContinuityCounter() : ContinuityCounter(0) {}
-ContinuityCounter::ContinuityCounter(unsigned int segment_number)
+ContinuityCounter::ContinuityCounter(int segment_number)
     : counter_(segment_number & 0xF) {}
 
 ContinuityCounter::~ContinuityCounter() = default;
 
-unsigned int ContinuityCounter::GetNext() {
+int ContinuityCounter::GetNext() {
   unsigned int ret = counter_;
   ++counter_;
   counter_ %= 16;
   return ret;
 }
 
-unsigned int ContinuityCounter::GetCurrent() const {
+int ContinuityCounter::GetCurrent() const {
   return counter_;
 }
 

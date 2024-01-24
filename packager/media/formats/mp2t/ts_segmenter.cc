@@ -17,6 +17,7 @@
 #include <packager/media/event/muxer_listener.h>
 #include <packager/media/formats/mp2t/pes_packet.h>
 #include <packager/media/formats/mp2t/program_map_table_writer.h>
+#include <packager/media/formats/mp2t/ts_packet_writer_util.h>
 #include <packager/status.h>
 
 namespace shaka {
@@ -101,8 +102,7 @@ Status TsSegmenter::AddSample(const MediaSample& sample) {
       DCHECK(IsVideoCodec(codec_));
       pmt_writer.reset(new VideoProgramMapTableWriter(codec_, segment_number));
     }
-    ts_writer_.reset(
-        new TsStuffingWriter(std::move(pmt_writer), segment_number));
+    ts_writer_.reset(new TsWriter(std::move(pmt_writer), segment_number));
   }
 
   if (sample.is_encrypted())
@@ -174,6 +174,23 @@ Status TsSegmenter::FinalizeSegment(int64_t start_timestamp, int64_t duration) {
   Status status = WritePesPackets();
   if (!status.ok())
     return status;
+
+  if (muxer_options_.enable_null_ts_packet_stuffing) {
+    ContinuityCounter* es_continuity_counter =
+        ts_writer_->es_continuity_counter();
+    if (es_continuity_counter) {
+      do {
+        const int pid = ProgramMapTableWriter::kElementaryPid;
+        BufferWriter null_ts_packet_buffer;
+        // TODO(Fordyce): do the stuffing packets need a payload?
+        // null_ts_packet_buffer.AppendInt(static_cast<uint8_t>(TsSection::kPidNullPacket));
+        WritePayloadToBufferWriter(
+            null_ts_packet_buffer.Buffer(), null_ts_packet_buffer.Size(), false,
+            pid, false, 0, es_continuity_counter, &segment_buffer_);
+
+      } while ((es_continuity_counter->GetCurrent() & 0x0F) != 0);
+    }
+  }
 
   // This method may be called from Finalize() so segment_started_ could
   // be false.

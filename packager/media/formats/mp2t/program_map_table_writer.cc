@@ -193,15 +193,12 @@ void WritePmtWithParameters(uint8_t stream_type,
 
 }  // namespace
 
-ProgramMapTableWriter::ProgramMapTableWriter(Codec codec)
-    : ProgramMapTableWriter(codec, 0) {}
-
 // use segment number as continuity counter as PMT types have single packets,
 // therefore, using the segment number as the CC will be continuous across
 // segments
 ProgramMapTableWriter::ProgramMapTableWriter(Codec codec,
                                              unsigned int segment_number)
-    : codec_(codec), continuity_counter_(segment_number) {}
+    : codec_(codec), continuity_counter_(static_cast<int>(segment_number)) {}
 
 bool ProgramMapTableWriter::EncryptedSegmentPmt(BufferWriter* writer) {
   if (encrypted_pmt_.Size() == 0) {
@@ -273,9 +270,6 @@ bool ProgramMapTableWriter::ClearSegmentPmt(BufferWriter* writer) {
   return true;
 }
 
-VideoProgramMapTableWriter::VideoProgramMapTableWriter(Codec codec)
-    : VideoProgramMapTableWriter(codec, 0) {}
-
 VideoProgramMapTableWriter::VideoProgramMapTableWriter(
     Codec codec,
     unsigned int segment_number)
@@ -295,11 +289,6 @@ bool VideoProgramMapTableWriter::WriteDescriptors(
   WritePrivateDataIndicatorDescriptor(fourcc, descriptors);
   return true;
 }
-
-AudioProgramMapTableWriter::AudioProgramMapTableWriter(
-    Codec codec,
-    const std::vector<uint8_t>& audio_specific_config)
-    : AudioProgramMapTableWriter(codec, audio_specific_config, 0) {}
 
 AudioProgramMapTableWriter::AudioProgramMapTableWriter(
     Codec codec,

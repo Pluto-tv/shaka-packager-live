@@ -30,15 +30,13 @@ class ProgramMapTableWriter;
 /// the data to file. This also creates PSI from StreamInfo.
 class TsWriter {
  public:
-  TsWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer);
-
   /// Create TsWriter with segment_number
   /// @param pmt_writer the writes PMT into ts packets
   //// @param segment_number is used to set the continuity counter for PAT
   /// packets.
-  TsWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer,
-           unsigned int segment_number);
-  virtual ~TsWriter() = default;
+  explicit TsWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer,
+                    unsigned int segment_number = 0);
+  virtual ~TsWriter();
 
   /// This will fail if the current segment is not finalized.
   /// @param buffer to write segment data.
@@ -56,12 +54,9 @@ class TsWriter {
   virtual bool AddPesPacket(std::unique_ptr<PesPacket> pes_packet,
                             BufferWriter* buffer);
 
-  //  [[nodiscard]] ContinuityCounter es_continuity_counter() const {
-  //    return elementary_stream_continuity_counter_;
-  //  }
-
- protected:
-  ContinuityCounter elementary_stream_continuity_counter_;
+  ContinuityCounter* es_continuity_counter() {
+    return &elementary_stream_continuity_counter_;
+  }
 
  private:
   TsWriter(const TsWriter&) = delete;
@@ -71,18 +66,9 @@ class TsWriter {
   bool encrypted_ = false;
 
   ContinuityCounter pat_continuity_counter_;
+  ContinuityCounter elementary_stream_continuity_counter_;
 
   std::unique_ptr<ProgramMapTableWriter> pmt_writer_;
-};
-
-/// TsWriter to handle stuffing null TS Packets
-class TsStuffingWriter : public TsWriter {
- public:
-  TsStuffingWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer,
-                   unsigned int segment_number);
-
-  bool AddPesPacket(std::unique_ptr<PesPacket> pes_packet,
-                    BufferWriter* buffer) override;
 };
 
 }  // namespace mp2t

@@ -162,18 +162,12 @@ bool WritePesToBuffer(const PesPacket& pes,
 
 }  // namespace
 
-TsWriter::TsWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer)
-    : TsWriter(std::move(pmt_writer), 0) {}
-
 TsWriter::TsWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer,
                    unsigned int segment_number)
-    : pat_continuity_counter_(segment_number),
+    : pat_continuity_counter_(static_cast<int>(segment_number)),
       pmt_writer_(std::move(pmt_writer)) {}
 
-TsStuffingWriter::TsStuffingWriter(
-    std::unique_ptr<ProgramMapTableWriter> pmt_writer,
-    unsigned int segment_number)
-    : TsWriter(std::move(pmt_writer), segment_number) {}
+TsWriter::~TsWriter() = default;
 
 bool TsWriter::NewSegment(BufferWriter* buffer) {
   BufferWriter psi;
@@ -203,33 +197,6 @@ bool TsWriter::AddPesPacket(std::unique_ptr<PesPacket> pes_packet,
     LOG(ERROR) << "Failed to write pes to buffer.";
     return false;
   }
-
-  // No need to keep pes_packet around so not passing it anywhere.
-  return true;
-}
-
-bool TsStuffingWriter::AddPesPacket(std::unique_ptr<PesPacket> pes_packet,
-                                    BufferWriter* buffer) {
-  if (!WritePesToBuffer(*pes_packet, &elementary_stream_continuity_counter_,
-                        buffer)) {
-    LOG(ERROR) << "Failed to write pes to buffer.";
-    return false;
-  }
-
-  // We must end all ES packets at 0xf so that the next segment can start at
-  // 0x0. This can be done by stuffing null packets at the end of the segment
-  // for each elementary stream
-  do {
-    const int pid = ProgramMapTableWriter::kElementaryPid;
-    BufferWriter null_ts_packet_buffer;
-    // TODO(Fordyce): do the stuffing packets need a payload?
-    // null_ts_packet_buffer.AppendInt(static_cast<uint8_t>(TsSection::kPidNullPacket));
-    WritePayloadToBufferWriter(null_ts_packet_buffer.Buffer(),
-                               null_ts_packet_buffer.Size(),
-                               !kPayloadUnitStartIndicator, pid, !kHasPcr, 0,
-                               &elementary_stream_continuity_counter_, buffer);
-
-  } while ((elementary_stream_continuity_counter_.GetCurrent() & 0x0F) != 0);
 
   // No need to keep pes_packet around so not passing it anywhere.
   return true;

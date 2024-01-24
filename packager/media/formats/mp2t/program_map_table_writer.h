@@ -25,8 +25,7 @@ namespace mp2t {
 /// Puts PMT into TS packets and writes them to buffer.
 class ProgramMapTableWriter {
  public:
-  ProgramMapTableWriter(Codec codec);
-  ProgramMapTableWriter(Codec codec, unsigned int segment_number);
+  explicit ProgramMapTableWriter(Codec codec, unsigned int segment_number = 0);
   virtual ~ProgramMapTableWriter() = default;
 
   /// Writes TS packets with PMT for encrypted segments.
@@ -64,8 +63,8 @@ class ProgramMapTableWriter {
 /// ProgramMapTableWriter for video codecs.
 class VideoProgramMapTableWriter : public ProgramMapTableWriter {
  public:
-  explicit VideoProgramMapTableWriter(Codec codec);
-  VideoProgramMapTableWriter(Codec codec, unsigned int segment_number);
+  explicit VideoProgramMapTableWriter(Codec codec,
+                                      unsigned int segment_number = 0);
   ~VideoProgramMapTableWriter() override = default;
 
  private:
@@ -80,10 +79,8 @@ class VideoProgramMapTableWriter : public ProgramMapTableWriter {
 class AudioProgramMapTableWriter : public ProgramMapTableWriter {
  public:
   AudioProgramMapTableWriter(Codec codec,
-                             const std::vector<uint8_t>& audio_specific_config);
-  AudioProgramMapTableWriter(Codec codec,
                              const std::vector<uint8_t>& audio_specific_config,
-                             unsigned int segment_number);
+                             unsigned int segment_number = 0);
   ~AudioProgramMapTableWriter() override = default;
 
  private:

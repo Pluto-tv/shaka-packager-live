@@ -330,6 +330,7 @@ Status LivePackager::Package(const Segment& init_segment,
   packaging_params.mp4_output_params.include_pssh_in_stream = false;
   packaging_params.transport_stream_timestamp_offset_ms =
       config_.m2ts_offset_ms;
+  packaging_params.enable_null_ts_packet_stuffing = true;
 
   EncryptionParams& encryption_params = packaging_params.encryption_params;
   // As a side effect of InitializeEncryption, encryption_params will be
