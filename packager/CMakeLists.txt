@@ -216,7 +216,7 @@ target_link_libraries(packager_test
   gtest_main)
 
 # Disabled by default, otherwise build live packager unit tests if BUILD_LIVE_TEST is on.
-if(BUILD_LIVE_TEST)
+if(BUILD_LIVE_TEST AND NOT MSVC)
   add_executable(live_packager_test
           live_packager_test.cc
   )
