@@ -16,7 +16,7 @@ ContinuityCounter::ContinuityCounter(int segment_number)
 ContinuityCounter::~ContinuityCounter() = default;
 
 int ContinuityCounter::GetNext() {
-  unsigned int ret = counter_;
+  int ret = counter_;
   ++counter_;
   counter_ %= 16;
   return ret;
