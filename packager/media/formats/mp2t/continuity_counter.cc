@@ -10,8 +10,8 @@ namespace shaka {
 namespace media {
 namespace mp2t {
 
-ContinuityCounter::ContinuityCounter(unsigned int segment_number)
-    : counter_(static_cast<int>(segment_number) & 0xF) {}
+ContinuityCounter::ContinuityCounter(unsigned int initial_value)
+    : counter_(static_cast<int>(initial_value) & 0xF) {}
 
 ContinuityCounter::~ContinuityCounter() = default;
 
