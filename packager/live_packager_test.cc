@@ -550,12 +550,14 @@ TEST_F(LivePackagerBaseTest, VerifyAes128WithDecryption) {
     live_config.format = LiveConfig::OutputFormat::TS;
     live_config.track_type = LiveConfig::TrackType::VIDEO;
     live_config.protection_scheme = LiveConfig::EncryptionScheme::AES_128;
+    live_config.segment_number = i;
 
     SetupLivePackagerConfig(live_config);
     ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
     ASSERT_GT(out.SegmentSize(), 0);
 
-    std::string exp_segment_num = absl::StrFormat("expected/ts/%04d.ts", i + 1);
+    std::string exp_segment_num =
+        absl::StrFormat("expected/stuffing_ts/%04d.ts", i + 1);
     std::vector<uint8_t> exp_segment_buffer = ReadTestDataFile(exp_segment_num);
     ASSERT_FALSE(exp_segment_buffer.empty());
 
@@ -564,8 +566,7 @@ TEST_F(LivePackagerBaseTest, VerifyAes128WithDecryption) {
                                 out.SegmentData() + out.SegmentSize());
 
     ASSERT_TRUE(decryptor.Crypt(buffer, &decrypted));
-    // TODO(Fordyce): with null packet stuffing this is no longer valid
-    // ASSERT_EQ(decrypted, exp_segment_buffer);
+    ASSERT_EQ(decrypted, exp_segment_buffer);
   }
 }
 
