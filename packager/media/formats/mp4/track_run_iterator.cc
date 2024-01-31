@@ -87,11 +87,16 @@ TrackRunInfo::TrackRunInfo()
 TrackRunInfo::~TrackRunInfo() {}
 
 TrackRunIterator::TrackRunIterator(const Movie* moov)
-    : moov_(moov), sample_dts_(0), sample_offset_(0) {
+    : sample_dts_(0), moov_(moov), sample_offset_(0) {
   CHECK(moov);
 }
 
-TrackRunIterator::~TrackRunIterator() {}
+TrackRunIteratorExt::TrackRunIteratorExt(const shaka::media::mp4::Movie* moov)
+    : TrackRunIterator(moov) {}
+
+TrackRunIterator::~TrackRunIterator() = default;
+
+TrackRunIteratorExt::~TrackRunIteratorExt() = default;
 
 static void PopulateSampleInfo(const TrackExtends& trex,
                                const TrackFragmentHeader& tfhd,
@@ -116,6 +121,10 @@ static void PopulateSampleInfo(const TrackExtends& trex,
 
   if (i < trun.sample_composition_time_offsets.size()) {
     sample_info->cts_offset = trun.sample_composition_time_offsets[i];
+    // TODO: should adjustment be made here?
+    if (sample_info->cts_offset < 0) {
+      LOG(WARNING) << " negative cts offset: " << sample_info->cts_offset;
+    }
   } else {
     sample_info->cts_offset = 0;
   }
@@ -584,6 +593,15 @@ int64_t TrackRunIterator::dts() const {
 int64_t TrackRunIterator::cts() const {
   DCHECK(IsSampleValid());
   return sample_dts_ + sample_itr_->cts_offset;
+}
+
+int64_t TrackRunIteratorExt::cts() const {
+  DCHECK(IsSampleValid());
+  auto offset = sample_itr_->cts_offset;
+  if (offset < 0) {
+    return sample_dts_ + abs(offset);
+  }
+  return sample_dts_ + offset;
 }
 
 int64_t TrackRunIterator::duration() const {

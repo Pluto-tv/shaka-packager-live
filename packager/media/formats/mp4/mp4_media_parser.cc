@@ -259,7 +259,7 @@ bool MP4MediaParser::LoadMoov(const std::string& file_path) {
   }
   if (!file->Seek(0)) {
     LOG(WARNING) << "Filesystem does not support seeking on file '" << file_path
-               << "'";
+                 << "'";
     return false;
   }
 
@@ -314,7 +314,7 @@ bool MP4MediaParser::LoadMoov(const std::string& file_path) {
       }
       queue_.Reset();  // So that we don't need to adjust data offsets.
       mdat_tail_ = 0;  // So it will skip boxes until mdat.
-      break;  // Done.
+      break;           // Done.
     }
     file_position += box_size;
     if (!file->Seek(file_position)) {
@@ -398,8 +398,7 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
     } else if (moov_->extends.header.fragment_duration > 0) {
       DCHECK(moov_->header.timescale != 0);
       duration = Rescale(moov_->extends.header.fragment_duration,
-                         moov_->header.timescale,
-                         timescale);
+                         moov_->header.timescale, timescale);
     } else if (moov_->header.duration > 0 &&
                moov_->header.duration != std::numeric_limits<uint64_t>::max()) {
       DCHECK(moov_->header.timescale != 0);
@@ -749,7 +748,8 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
   init_cb_(streams);
   if (!FetchKeysIfNecessary(moov_->pssh))
     return false;
-  runs_.reset(new TrackRunIterator(moov_.get()));
+  // TODO: have this be conditional based on parameter setting
+  runs_.reset(new TrackRunIteratorExt(moov_.get()));
   RCHECK(runs_->Init());
   ChangeState(kEmittingSamples);
   return true;
@@ -761,7 +761,8 @@ bool MP4MediaParser::ParseMoof(BoxReader* reader) {
   MovieFragment moof;
   RCHECK(moof.Parse(reader));
   if (!runs_)
-    runs_.reset(new TrackRunIterator(moov_.get()));
+    // TODO: have this be conditional based on parameter setting
+    runs_.reset(new TrackRunIteratorExt(moov_.get()));
   RCHECK(runs_->Init(moof));
   if (!FetchKeysIfNecessary(moof.pssh))
     return false;
@@ -839,8 +840,8 @@ bool MP4MediaParser::EnqueueSample(bool* err) {
   queue_.PeekAt(sample_offset, &buf, &buf_size);
   if (buf_size < runs_->sample_size()) {
     if (sample_offset < queue_.head()) {
-      LOG(ERROR) << "Incorrect sample offset " << sample_offset
-                 << " < " << queue_.head();
+      LOG(ERROR) << "Incorrect sample offset " << sample_offset << " < "
+                 << queue_.head();
       *err = true;
     }
     return false;
@@ -890,10 +891,8 @@ bool MP4MediaParser::EnqueueSample(bool* err) {
   stream_sample->set_duration(runs_->duration());
 
   DVLOG(3) << "Pushing frame: "
-           << ", key=" << runs_->is_keyframe()
-           << ", dur=" << runs_->duration()
-           << ", dts=" << runs_->dts()
-           << ", cts=" << runs_->cts()
+           << ", key=" << runs_->is_keyframe() << ", dur=" << runs_->duration()
+           << ", dts=" << runs_->dts() << ", cts=" << runs_->cts()
            << ", size=" << runs_->sample_size();
 
   if (!new_sample_cb_(runs_->track_id(), stream_sample)) {

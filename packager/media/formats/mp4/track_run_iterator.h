@@ -27,7 +27,7 @@ class TrackRunIterator {
   /// Create a new TrackRunIterator from movie box.
   /// @param moov should not be NULL.
   explicit TrackRunIterator(const Movie* moov);
-  ~TrackRunIterator();
+  virtual ~TrackRunIterator();
 
   /// For non-fragmented mp4, moov contains all the chunk information; This
   /// function sets up the iterator to access all the chunks.
@@ -93,7 +93,7 @@ class TrackRunIterator {
   int64_t sample_offset() const;
   int sample_size() const;
   int64_t dts() const;
-  int64_t cts() const;
+  virtual int64_t cts() const;
   int64_t duration() const;
   bool is_keyframe() const;
   /// @}
@@ -101,6 +101,10 @@ class TrackRunIterator {
   /// Only call when is_encrypted() is true and AuxInfoNeedsToBeCached() is
   /// false. Result is owned by caller.
   std::unique_ptr<DecryptConfig> GetDecryptConfig();
+
+ protected:
+  std::vector<SampleInfo>::const_iterator sample_itr_;
+  int64_t sample_dts_;
 
  private:
   void ResetRun();
@@ -113,19 +117,30 @@ class TrackRunIterator {
 
   std::vector<TrackRunInfo> runs_;
   std::vector<TrackRunInfo>::const_iterator run_itr_;
-  std::vector<SampleInfo>::const_iterator sample_itr_;
 
   // Track the start dts of the next segment, only useful if decode_time box is
   // absent.
   std::vector<int64_t> next_fragment_start_dts_;
 
-  int64_t sample_dts_;
   int64_t sample_offset_;
 
   // TrackId => adjustment map.
   std::map<uint32_t, int64_t> timestamp_adjustment_map_;
 
   DISALLOW_COPY_AND_ASSIGN(TrackRunIterator);
+};
+
+// TODO: better name?
+class TrackRunIteratorExt : public TrackRunIterator {
+ public:
+  TrackRunIteratorExt(const Movie* moov);
+  ~TrackRunIteratorExt() override;
+
+  using TrackRunIterator::cts;
+  int64_t cts() const override;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(TrackRunIteratorExt);
 };
 
 }  // namespace mp4
