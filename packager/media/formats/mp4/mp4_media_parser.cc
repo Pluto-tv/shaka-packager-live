@@ -750,6 +750,7 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
     return false;
   // TODO: have this be conditional based on parameter setting
   runs_.reset(new TrackRunIteratorExt(moov_.get()));
+//  runs_.reset(new TrackRunIterator(moov_.get()));
   RCHECK(runs_->Init());
   ChangeState(kEmittingSamples);
   return true;
@@ -763,6 +764,7 @@ bool MP4MediaParser::ParseMoof(BoxReader* reader) {
   if (!runs_)
     // TODO: have this be conditional based on parameter setting
     runs_.reset(new TrackRunIteratorExt(moov_.get()));
+//  runs_.reset(new TrackRunIterator(moov_.get()));
   RCHECK(runs_->Init(moof));
   if (!FetchKeysIfNecessary(moof.pssh))
     return false;

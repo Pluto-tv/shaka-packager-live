@@ -121,10 +121,6 @@ static void PopulateSampleInfo(const TrackExtends& trex,
 
   if (i < trun.sample_composition_time_offsets.size()) {
     sample_info->cts_offset = trun.sample_composition_time_offsets[i];
-    // TODO: should adjustment be made here?
-    if (sample_info->cts_offset < 0) {
-      LOG(WARNING) << " negative cts offset: " << sample_info->cts_offset;
-    }
   } else {
     sample_info->cts_offset = 0;
   }
