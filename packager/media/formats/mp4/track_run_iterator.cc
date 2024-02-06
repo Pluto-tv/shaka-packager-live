@@ -463,7 +463,7 @@ void TrackRunIterator::ResetRun() {
                        });
   if (min_sample_itr != run_itr_->samples.end() &&
       min_sample_itr->cts_offset < 0) {
-    min_cts_offset_ = min_sample_itr->cts_offset;
+    min_cts_offset_ = abs(min_sample_itr->cts_offset);
   }
 }
 
@@ -592,13 +592,12 @@ int TrackRunIterator::sample_size() const {
 
 int64_t TrackRunIterator::dts() const {
   DCHECK(IsSampleValid());
-  return cts_offset_adjustment_ ? sample_dts_ - abs(min_cts_offset_)
-                                : sample_dts_;
+  return cts_offset_adjustment_ ? sample_dts_ - min_cts_offset_ : sample_dts_;
 }
 
 int64_t TrackRunIterator::cts() const {
   DCHECK(IsSampleValid());
-  return cts_offset_adjustment_ ? dts() + abs(min_cts_offset_)
+  return cts_offset_adjustment_ ? dts() + min_cts_offset_
                                 : sample_dts_ + sample_itr_->cts_offset;
 }
 
