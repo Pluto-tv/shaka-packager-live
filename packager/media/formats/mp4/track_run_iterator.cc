@@ -456,16 +456,14 @@ void TrackRunIterator::ResetRun() {
   sample_offset_ = run_itr_->sample_start_offset;
   sample_itr_ = run_itr_->samples.begin();
 
-  int64_t min_cts_offset(0);
-  auto min_runs =
+  auto min_sample_itr =
       std::min_element(run_itr_->samples.begin(), run_itr_->samples.end(),
                        [](SampleInfo const& s1, SampleInfo const& s2) {
                          return s1.cts_offset < s2.cts_offset;
                        });
-  if (min_runs != run_itr_->samples.end() && min_runs->cts_offset < 0) {
-    min_cts_offset = min_runs->cts_offset;
+  if (min_sample_itr != run_itr_->samples.end() && min_sample_itr->cts_offset < 0) {
+    min_cts_offset_ = min_sample_itr->cts_offset;
   }
-  min_cts_offset_ = min_cts_offset;
 }
 
 void TrackRunIterator::AdvanceSample() {
