@@ -749,9 +749,7 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
   init_cb_(streams);
   if (!FetchKeysIfNecessary(moov_->pssh))
     return false;
-  runs_ = cts_offset_adjustment_
-              ? std::make_unique<TrackRunIteratorExt>(moov_.get())
-              : std::make_unique<TrackRunIterator>(moov_.get());
+  runs_.reset(new TrackRunIterator(moov_.get(), cts_offset_adjustment_));
   RCHECK(runs_->Init());
   ChangeState(kEmittingSamples);
   return true;
@@ -763,9 +761,7 @@ bool MP4MediaParser::ParseMoof(BoxReader* reader) {
   MovieFragment moof;
   RCHECK(moof.Parse(reader));
   if (!runs_)
-    runs_ = cts_offset_adjustment_
-                ? std::make_unique<TrackRunIteratorExt>(moov_.get())
-                : std::make_unique<TrackRunIterator>(moov_.get());
+    runs_.reset(new TrackRunIterator(moov_.get(), cts_offset_adjustment_));
   RCHECK(runs_->Init(moof));
   if (!FetchKeysIfNecessary(moof.pssh))
     return false;

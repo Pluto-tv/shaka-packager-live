@@ -86,17 +86,16 @@ TrackRunInfo::TrackRunInfo()
       aux_info_total_size(0) {}
 TrackRunInfo::~TrackRunInfo() {}
 
-TrackRunIterator::TrackRunIterator(const Movie* moov)
-    : sample_dts_(0), moov_(moov), sample_offset_(0) {
+TrackRunIterator::TrackRunIterator(const Movie* moov,
+                                   bool cts_offset_adjustment)
+    : moov_(moov),
+      sample_dts_(0),
+      sample_offset_(0),
+      cts_offset_adjustment_(cts_offset_adjustment) {
   CHECK(moov);
 }
 
-TrackRunIteratorExt::TrackRunIteratorExt(const shaka::media::mp4::Movie* moov)
-    : TrackRunIterator(moov) {}
-
-TrackRunIterator::~TrackRunIterator() = default;
-
-TrackRunIteratorExt::~TrackRunIteratorExt() = default;
+TrackRunIterator::~TrackRunIterator() {}
 
 static void PopulateSampleInfo(const TrackExtends& trex,
                                const TrackFragmentHeader& tfhd,
@@ -456,6 +455,17 @@ void TrackRunIterator::ResetRun() {
   sample_dts_ = run_itr_->start_dts;
   sample_offset_ = run_itr_->sample_start_offset;
   sample_itr_ = run_itr_->samples.begin();
+
+  int64_t min_cts_offset(0);
+  auto min_runs =
+      std::min_element(run_itr_->samples.begin(), run_itr_->samples.end(),
+                       [](SampleInfo const& s1, SampleInfo const& s2) {
+                         return s1.cts_offset < s2.cts_offset;
+                       });
+  if (min_runs != run_itr_->samples.end() && min_runs->cts_offset < 0) {
+    min_cts_offset = min_runs->cts_offset;
+  }
+  min_cts_offset_ = min_cts_offset;
 }
 
 void TrackRunIterator::AdvanceSample() {
@@ -583,21 +593,14 @@ int TrackRunIterator::sample_size() const {
 
 int64_t TrackRunIterator::dts() const {
   DCHECK(IsSampleValid());
-  return sample_dts_;
+  return cts_offset_adjustment_ ? sample_dts_ - abs(min_cts_offset_)
+                                : sample_dts_;
 }
 
 int64_t TrackRunIterator::cts() const {
   DCHECK(IsSampleValid());
-  return sample_dts_ + sample_itr_->cts_offset;
-}
-
-int64_t TrackRunIteratorExt::cts() const {
-  DCHECK(IsSampleValid());
-  auto offset = sample_itr_->cts_offset;
-  if (offset < 0) {
-    return sample_dts_ + abs(offset);
-  }
-  return sample_dts_ + offset;
+  return cts_offset_adjustment_ ? dts() + abs(min_cts_offset_)
+                                : sample_dts_ + sample_itr_->cts_offset;
 }
 
 int64_t TrackRunIterator::duration() const {

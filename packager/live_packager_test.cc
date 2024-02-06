@@ -451,6 +451,7 @@ class LivePackagerBaseTest : public ::testing::Test {
         new_live_config.key_id = key_id_;
         break;
     }
+    new_live_config.m2ts_offset_ms = 9000;
     live_packager_ = std::make_unique<LivePackager>(new_live_config);
   }
 
