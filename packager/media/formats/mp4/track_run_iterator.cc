@@ -461,7 +461,8 @@ void TrackRunIterator::ResetRun() {
                        [](SampleInfo const& s1, SampleInfo const& s2) {
                          return s1.cts_offset < s2.cts_offset;
                        });
-  if (min_sample_itr != run_itr_->samples.end() && min_sample_itr->cts_offset < 0) {
+  if (min_sample_itr != run_itr_->samples.end() &&
+      min_sample_itr->cts_offset < 0) {
     min_cts_offset_ = min_sample_itr->cts_offset;
   }
 }
