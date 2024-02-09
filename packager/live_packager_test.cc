@@ -638,9 +638,7 @@ TEST_F(LivePackagerBaseTest, VerifyAes128WithDecryption) {
                                 out.SegmentData() + out.SegmentSize());
 
     ASSERT_TRUE(decryptor.Crypt(buffer, &decrypted));
-    // TODO: once calculation for adjusting negative CTS is agreed upon, will
-    // fix test outputs
-    //    ASSERT_EQ(decrypted, exp_segment_buffer);
+    ASSERT_EQ(decrypted, exp_segment_buffer);
   }
 }
 
