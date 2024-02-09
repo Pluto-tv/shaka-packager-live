@@ -597,8 +597,7 @@ int64_t TrackRunIterator::dts() const {
 
 int64_t TrackRunIterator::cts() const {
   DCHECK(IsSampleValid());
-  return cts_offset_adjustment_ ? dts() + min_cts_offset_
-                                : sample_dts_ + sample_itr_->cts_offset;
+  return sample_dts_ + sample_itr_->cts_offset;
 }
 
 int64_t TrackRunIterator::duration() const {
