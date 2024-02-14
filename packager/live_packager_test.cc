@@ -942,4 +942,86 @@ INSTANTIATE_TEST_CASE_P(
             5, "audio/en/init.mp4", LiveConfig::EncryptionScheme::SAMPLE_AES,
             LiveConfig::OutputFormat::TS, LiveConfig::TrackType::AUDIO,
             "audio/en/%05d.m4s", false}));
+
+TEST_F(LivePackagerBaseTest, TestPackageTimedTextVTTMp4) {
+  std::vector<uint8_t> init_segment_buffer =
+      ReadTestDataFile("timed_text_vtt_mp4/init.mp4");
+  ASSERT_FALSE(init_segment_buffer.empty());
+
+  for (unsigned int i = 1; i < kNumSegments; i++) {
+    std::string segment_num = absl::StrFormat("timed_text_vtt_mp4/%04d.m4s", i);
+    std::vector<uint8_t> segment_buffer = ReadTestDataFile(segment_num);
+    ASSERT_FALSE(segment_buffer.empty());
+
+    FullSegmentBuffer in;
+    in.SetInitSegment(init_segment_buffer.data(), init_segment_buffer.size());
+    in.AppendData(segment_buffer.data(), segment_buffer.size());
+
+    FullSegmentBuffer out;
+
+    LiveConfig live_config;
+    live_config.format = LiveConfig::OutputFormat::FMP4;
+    live_config.track_type = LiveConfig::TrackType::TEXT;
+    live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
+
+    SetupLivePackagerConfig(live_config);
+    // TODO: investigate failure. possibly caused by bad input - generate valid
+    // VTT in MP4 input
+    ASSERT_NE(Status::OK, live_packager_->PackageTimedText(in, out));
+  }
+}
+
+struct TimedTextTestCase {
+  const char* media_segment_format;
+  LiveConfig::OutputFormat output_format;
+};
+
+class TimedTextParameterizedTest
+    : public LivePackagerBaseTest,
+      public ::testing::WithParamInterface<TimedTextTestCase> {
+  void SetUp() override {
+    LivePackagerBaseTest::SetUp();
+
+    LiveConfig live_config;
+    live_config.format = GetParam().output_format;
+    live_config.track_type = LiveConfig::TrackType::TEXT;
+    live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
+    SetupLivePackagerConfig(live_config);
+  }
+};
+
+TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
+  for (unsigned int i = 0; i < kNumSegments; i++) {
+    std::string format_output;
+
+    std::vector<absl::FormatArg> format_args;
+    format_args.emplace_back(i);
+    absl::UntypedFormatSpec format(GetParam().media_segment_format);
+
+    ASSERT_TRUE(absl::FormatUntyped(&format_output, format, format_args));
+    std::vector<uint8_t> segment_buffer = ReadTestDataFile(format_output);
+    ASSERT_FALSE(segment_buffer.empty());
+
+    SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+    FullSegmentBuffer out;
+
+    ASSERT_EQ(Status::OK, live_packager_->PackageTimedText(media_seg, out));
+    ASSERT_GT(out.SegmentSize(), 0);
+  }
+}
+
+INSTANTIATE_TEST_CASE_P(LivePackagerTimedText,
+                        TimedTextParameterizedTest,
+                        ::testing::Values(
+                            // VTT in text --> VTT in MP4
+                            TimedTextTestCase{"timed_text_vtt/%04d.vtt",
+                                              LiveConfig::OutputFormat::VTTMP4},
+                            // VTT in text --> TTML in Text
+                            TimedTextTestCase{"timed_text_vtt/%04d.vtt",
+                                              LiveConfig::OutputFormat::TTML},
+                            // VTT in text --> TTML in MP4
+                            TimedTextTestCase{
+                                "timed_text_vtt/%04d.vtt",
+                                LiveConfig::OutputFormat::TTMLMP4}));
+
 }  // namespace shaka

@@ -61,11 +61,15 @@ struct LiveConfig {
   enum class OutputFormat {
     FMP4,
     TS,
+    VTTMP4,
+    TTMLMP4,
+    TTML,
   };
 
   enum class TrackType {
     AUDIO,
     VIDEO,
+    TEXT,
   };
 
   enum class EncryptionScheme {
@@ -89,7 +93,7 @@ struct LiveConfig {
   /// For FMP4 output:
   ///   It can be used to set the moof header sequence number if > 0.
   /// For M2TS output:
-  ///   It is be used to set the continuity counter (TODO: UNIMPLEMENTED).
+  ///   It is be used to set the continuity counter.
   uint32_t segment_number = 0;
 
   /// The offset to be applied to transport stream (e.g. MPEG2-TS, HLS packed
@@ -117,6 +121,9 @@ class LivePackager {
   Status Package(const Segment& init_segment,
                  const Segment& media_segment,
                  FullSegmentBuffer& output);
+
+  Status PackageTimedText(const Segment& media_segment,
+                          FullSegmentBuffer& output);
 
   LivePackager(const LivePackager&) = delete;
   LivePackager& operator=(const LivePackager&) = delete;

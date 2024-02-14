@@ -43,12 +43,27 @@ const std::string INPUT_FNAME = "memory://input_file";
 const std::string INIT_SEGMENT_FNAME = "init.mp4";
 
 std::string getSegmentTemplate(const LiveConfig& config) {
-  return LiveConfig::OutputFormat::TS == config.format ? "$Number$.ts"
-                                                       : "$Number$.m4s";
+  switch (config.format) {
+    case LiveConfig::OutputFormat::TS:
+      return "$Number$.ts";
+    case LiveConfig::OutputFormat::TTML:
+      return "$Number$.ttml";
+    case LiveConfig::OutputFormat::VTTMP4:
+    case LiveConfig::OutputFormat::TTMLMP4:
+    case LiveConfig::OutputFormat::FMP4:
+      return "$Number$.m4s";
+  }
 }
 
 std::string getStreamSelector(const LiveConfig& config) {
-  return LiveConfig::TrackType::VIDEO == config.track_type ? "video" : "audio";
+  switch (config.track_type) {
+    case LiveConfig::TrackType::VIDEO:
+      return "video";
+    case LiveConfig::TrackType::AUDIO:
+      return "audio";
+    case LiveConfig::TrackType::TEXT:
+      return "text";
+  }
 }
 
 StreamDescriptors setupStreamDescriptors(
@@ -61,10 +76,25 @@ StreamDescriptors setupStreamDescriptors(
 
   desc.stream_selector = getStreamSelector(config);
 
-  if (LiveConfig::OutputFormat::FMP4 == config.format) {
-    // init segment
-    desc.output =
-        File::MakeCallbackFileName(init_cb_params, INIT_SEGMENT_FNAME);
+  switch (config.format) {
+    case LiveConfig::OutputFormat::VTTMP4:
+      desc.output_format = "vtt+mp4";
+      desc.output =
+          File::MakeCallbackFileName(init_cb_params, INIT_SEGMENT_FNAME);
+      break;
+    case LiveConfig::OutputFormat::TTMLMP4:
+      desc.output_format = "ttml+mp4";
+      desc.output =
+          File::MakeCallbackFileName(init_cb_params, INIT_SEGMENT_FNAME);
+      break;
+    case LiveConfig::OutputFormat::FMP4:
+      // init segment
+      desc.output =
+          File::MakeCallbackFileName(init_cb_params, INIT_SEGMENT_FNAME);
+      break;
+    case LiveConfig::OutputFormat::TS:
+    case LiveConfig::OutputFormat::TTML:
+      break;
   }
 
   desc.segment_template =
@@ -353,6 +383,48 @@ Status LivePackager::Package(const Segment& init_segment,
     return status;
   }
 
+  return packager.Run();
+}
+
+Status LivePackager::PackageTimedText(const Segment& in,
+                                      FullSegmentBuffer& out) {
+  SegmentDataReader reader(in);
+  shaka::BufferCallbackParams callback_params;
+  callback_params.read_func = [&reader](const std::string& name, void* buffer,
+                                        uint64_t size) {
+    return reader.Read(buffer, size);
+  };
+
+  callback_params.write_func = [&out](const std::string& name, const void* data,
+                                      uint64_t size) {
+    out.AppendData(reinterpret_cast<const uint8_t*>(data), size);
+    return size;
+  };
+
+  shaka::BufferCallbackParams init_callback_params;
+  init_callback_params.write_func = [&out](const std::string& name,
+                                           const void* data, uint64_t size) {
+    if (out.InitSegmentSize() == 0) {
+      out.SetInitSegment(reinterpret_cast<const uint8_t*>(data), size);
+    }
+    return size;
+  };
+
+  shaka::PackagingParams packaging_params;
+  packaging_params.chunking_params.segment_duration_in_seconds =
+      DEFAULT_SEGMENT_DURATION;
+
+  packaging_params.mp4_output_params.include_pssh_in_stream = false;
+
+  StreamDescriptors descriptors =
+      setupStreamDescriptors(config_, callback_params, init_callback_params);
+
+  shaka::Packager packager;
+  shaka::Status status = packager.Initialize(packaging_params, descriptors);
+
+  if (status != Status::OK) {
+    return status;
+  }
   return packager.Run();
 }
 
