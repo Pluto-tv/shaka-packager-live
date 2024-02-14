@@ -52,6 +52,9 @@ std::string getSegmentTemplate(const LiveConfig& config) {
     case LiveConfig::OutputFormat::TTMLMP4:
     case LiveConfig::OutputFormat::FMP4:
       return "$Number$.m4s";
+    default:
+      LOG(ERROR) << "Unrecognized output format: " << &config.format;
+      return "unknown";
   }
 }
 
@@ -63,6 +66,9 @@ std::string getStreamSelector(const LiveConfig& config) {
       return "audio";
     case LiveConfig::TrackType::TEXT:
       return "text";
+    default:
+      LOG(ERROR) << "Unrecognized track type: " << &config.track_type;
+      return "unknown";
   }
 }
 
