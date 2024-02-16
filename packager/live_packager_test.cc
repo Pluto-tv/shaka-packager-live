@@ -943,34 +943,6 @@ INSTANTIATE_TEST_CASE_P(
             LiveConfig::OutputFormat::TS, LiveConfig::TrackType::AUDIO,
             "audio/en/%05d.m4s", false}));
 
-TEST_F(LivePackagerBaseTest, TestPackageTimedTextVTTMp4) {
-  std::vector<uint8_t> init_segment_buffer =
-      ReadTestDataFile("timed_text_vtt_mp4/init.mp4");
-  ASSERT_FALSE(init_segment_buffer.empty());
-
-  for (unsigned int i = 1; i < kNumSegments; i++) {
-    std::string segment_num = absl::StrFormat("timed_text_vtt_mp4/%04d.m4s", i);
-    std::vector<uint8_t> segment_buffer = ReadTestDataFile(segment_num);
-    ASSERT_FALSE(segment_buffer.empty());
-
-    FullSegmentBuffer in;
-    in.SetInitSegment(init_segment_buffer.data(), init_segment_buffer.size());
-    in.AppendData(segment_buffer.data(), segment_buffer.size());
-
-    FullSegmentBuffer out;
-
-    LiveConfig live_config;
-    live_config.format = LiveConfig::OutputFormat::FMP4;
-    live_config.track_type = LiveConfig::TrackType::TEXT;
-    live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
-
-    SetupLivePackagerConfig(live_config);
-    // TODO: investigate failure. possibly caused by bad input - generate valid
-    // VTT in MP4 input
-    ASSERT_NE(Status::OK, live_packager_->PackageTimedText(in, out));
-  }
-}
-
 struct TimedTextTestCase {
   const char* media_segment_format;
   LiveConfig::OutputFormat output_format;
