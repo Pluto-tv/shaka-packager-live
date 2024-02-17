@@ -42,6 +42,12 @@ constexpr double DEFAULT_SEGMENT_DURATION = 5.0;
 const std::string INPUT_FNAME = "memory://input_file";
 const std::string INIT_SEGMENT_FNAME = "init.mp4";
 
+template <typename Enumeration>
+auto enum_as_integer(Enumeration const value) ->
+    typename std::underlying_type<Enumeration>::type {
+  return static_cast<typename std::underlying_type<Enumeration>::type>(value);
+}
+
 std::string getSegmentTemplate(const LiveConfig& config) {
   switch (config.format) {
     case LiveConfig::OutputFormat::TS:
@@ -49,11 +55,14 @@ std::string getSegmentTemplate(const LiveConfig& config) {
     case LiveConfig::OutputFormat::TTML:
       return "$Number$.ttml";
     case LiveConfig::OutputFormat::VTTMP4:
+      FALLTHROUGH_INTENDED;
     case LiveConfig::OutputFormat::TTMLMP4:
+      FALLTHROUGH_INTENDED;
     case LiveConfig::OutputFormat::FMP4:
       return "$Number$.m4s";
     default:
-      LOG(ERROR) << "Unrecognized output format: " << &config.format;
+      LOG(ERROR) << "Unrecognized output format: "
+                 << enum_as_integer(config.format);
       return "unknown";
   }
 }
@@ -67,7 +76,8 @@ std::string getStreamSelector(const LiveConfig& config) {
     case LiveConfig::TrackType::TEXT:
       return "text";
     default:
-      LOG(ERROR) << "Unrecognized track type: " << &config.track_type;
+      LOG(ERROR) << "Unrecognized track type: "
+                 << enum_as_integer(config.track_type);
       return "unknown";
   }
 }
@@ -98,8 +108,7 @@ StreamDescriptors setupStreamDescriptors(
       desc.output =
           File::MakeCallbackFileName(init_cb_params, INIT_SEGMENT_FNAME);
       break;
-    case LiveConfig::OutputFormat::TS:
-    case LiveConfig::OutputFormat::TTML:
+    default:
       break;
   }
 
