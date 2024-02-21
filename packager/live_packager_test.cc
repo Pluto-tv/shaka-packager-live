@@ -945,7 +945,9 @@ INSTANTIATE_TEST_CASE_P(
 
 struct TimedTextTestCase {
   const char* media_segment_format;
+  LiveConfig::TrackType track_type;
   LiveConfig::OutputFormat output_format;
+  Status expected_status;
 };
 
 class TimedTextParameterizedTest
@@ -956,7 +958,7 @@ class TimedTextParameterizedTest
 
     LiveConfig live_config;
     live_config.format = GetParam().output_format;
-    live_config.track_type = LiveConfig::TrackType::TEXT;
+    live_config.track_type = GetParam().track_type;
     live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
     SetupLivePackagerConfig(live_config);
   }
@@ -977,23 +979,52 @@ TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
     SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
     FullSegmentBuffer out;
 
-    ASSERT_EQ(Status::OK, live_packager_->PackageTimedText(media_seg, out));
-    ASSERT_GT(out.SegmentSize(), 0);
+    ASSERT_EQ(GetParam().expected_status,
+              live_packager_->PackageTimedText(media_seg, out));
+    if (GetParam().expected_status == Status::OK) {
+      ASSERT_GT(out.SegmentSize(), 0);
+    }
   }
 }
 
-INSTANTIATE_TEST_CASE_P(LivePackagerTimedText,
-                        TimedTextParameterizedTest,
-                        ::testing::Values(
-                            // VTT in text --> VTT in MP4
-                            TimedTextTestCase{"timed_text_vtt/%04d.vtt",
-                                              LiveConfig::OutputFormat::VTTMP4},
-                            // VTT in text --> TTML in Text
-                            TimedTextTestCase{"timed_text_vtt/%04d.vtt",
-                                              LiveConfig::OutputFormat::TTML},
-                            // VTT in text --> TTML in MP4
-                            TimedTextTestCase{
-                                "timed_text_vtt/%04d.vtt",
-                                LiveConfig::OutputFormat::TTMLMP4}));
+INSTANTIATE_TEST_CASE_P(
+    LivePackagerTimedText,
+    TimedTextParameterizedTest,
+    ::testing::Values(
+        // VTT in text --> VTT in MP4
+        TimedTextTestCase{
+            "timed_text_vtt/%04d.vtt",
+            LiveConfig::TrackType::TEXT,
+            LiveConfig::OutputFormat::VTTMP4,
+            Status::OK,
+        },
+        // VTT in text --> TTML in Text
+        TimedTextTestCase{
+            "timed_text_vtt/%04d.vtt",
+            LiveConfig::TrackType::TEXT,
+            LiveConfig::OutputFormat::TTML,
+            Status::OK,
+        },
+        // VTT in text --> TTML in MP4
+        TimedTextTestCase{
+            "timed_text_vtt/%04d.vtt",
+            LiveConfig::TrackType::TEXT,
+            LiveConfig::OutputFormat::TTMLMP4,
+            Status::OK,
+        },
+        // Invalid track type of audio
+        TimedTextTestCase{
+            "timed_text_vtt/%04d.vtt",
+            LiveConfig::TrackType::AUDIO,
+            LiveConfig::OutputFormat::TTMLMP4,
+            Status(error::INVALID_ARGUMENT, "Stream not available"),
+        },
+        // Invalid track type of video
+        TimedTextTestCase{
+            "timed_text_vtt/%04d.vtt",
+            LiveConfig::TrackType::VIDEO,
+            LiveConfig::OutputFormat::TTMLMP4,
+            Status(error::INVALID_ARGUMENT, "Stream not available"),
+        }));
 
 }  // namespace shaka
