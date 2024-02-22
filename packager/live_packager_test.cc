@@ -292,7 +292,9 @@ void CheckVideoInitSegment(const FullSegmentBuffer& buffer,
   }
 }
 
-void CheckSegment(const LiveConfig& config, const FullSegmentBuffer& buffer) {
+void CheckSegment(const LiveConfig& config,
+                  const FullSegmentBuffer& buffer,
+                  const uint32_t expected_timescale) {
   bool err(true);
   size_t bytes_to_read(buffer.SegmentSize());
   const uint8_t* data(buffer.SegmentData());
@@ -315,7 +317,7 @@ void CheckSegment(const LiveConfig& config, const FullSegmentBuffer& buffer) {
     EXPECT_FALSE(err);
 
     media::mp4::SegmentIndex expected;
-    expected.timescale = 10000000;
+    expected.timescale = expected_timescale;
     SegmentIndexBoxChecker checker(expected);
     checker.Check(reader.get());
 
@@ -800,7 +802,7 @@ TEST_F(LivePackagerBaseTest, CustomMoofSequenceNumber) {
     ASSERT_EQ(Status::OK, packager.Package(init_seg, media_seg, out));
     ASSERT_GT(out.SegmentSize(), 0);
 
-    CheckSegment(live_config, out);
+    CheckSegment(live_config, out, 10000000);
   }
 }
 
@@ -952,17 +954,7 @@ struct TimedTextTestCase {
 
 class TimedTextParameterizedTest
     : public LivePackagerBaseTest,
-      public ::testing::WithParamInterface<TimedTextTestCase> {
-  void SetUp() override {
-    LivePackagerBaseTest::SetUp();
-
-    LiveConfig live_config;
-    live_config.format = GetParam().output_format;
-    live_config.track_type = GetParam().track_type;
-    live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
-    SetupLivePackagerConfig(live_config);
-  }
-};
+      public ::testing::WithParamInterface<TimedTextTestCase> {};
 
 TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
   for (unsigned int i = 0; i < kNumSegments; i++) {
@@ -979,10 +971,20 @@ TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
     SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
     FullSegmentBuffer out;
 
+    LiveConfig live_config;
+    live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
+    live_config.format = GetParam().output_format;
+    live_config.track_type = GetParam().track_type;
+    live_config.segment_number = i + 1;
+    SetupLivePackagerConfig(live_config);
     ASSERT_EQ(GetParam().expected_status,
               live_packager_->PackageTimedText(media_seg, out));
     if (GetParam().expected_status == Status::OK) {
       ASSERT_GT(out.SegmentSize(), 0);
+      if (live_config.format == LiveConfig::OutputFormat::VTTMP4 ||
+          live_config.format == LiveConfig::OutputFormat::TTMLMP4) {
+        CheckSegment(live_config, out, 1000);
+      }
     }
   }
 }
@@ -1026,5 +1028,4 @@ INSTANTIATE_TEST_CASE_P(
             LiveConfig::OutputFormat::TTMLMP4,
             Status(error::INVALID_ARGUMENT, "Stream not available"),
         }));
-
 }  // namespace shaka

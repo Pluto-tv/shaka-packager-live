@@ -428,6 +428,7 @@ Status LivePackager::PackageTimedText(const Segment& in,
   shaka::PackagingParams packaging_params;
   packaging_params.chunking_params.segment_duration_in_seconds =
       DEFAULT_SEGMENT_DURATION;
+  packaging_params.mp4_output_params.sequence_number = config_.segment_number;
 
   packaging_params.mp4_output_params.include_pssh_in_stream = false;
 
