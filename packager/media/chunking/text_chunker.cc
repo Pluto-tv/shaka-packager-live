@@ -16,8 +16,10 @@ namespace {
 const size_t kStreamIndex = 0;
 }  // namespace
 
-TextChunker::TextChunker(double segment_duration_in_seconds)
-    : segment_duration_in_seconds_(segment_duration_in_seconds){};
+TextChunker::TextChunker(double segment_duration_in_seconds,
+                         int64_t timed_text_decode_time)
+    : segment_duration_in_seconds_(segment_duration_in_seconds),
+      segment_start_(timed_text_decode_time){};
 
 Status TextChunker::Process(std::unique_ptr<StreamData> data) {
   switch (data->stream_data_type) {

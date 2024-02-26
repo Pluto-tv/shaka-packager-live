@@ -20,7 +20,8 @@ namespace media {
 // is when a cue event is seen.
 class TextChunker : public MediaHandler {
  public:
-  explicit TextChunker(double segment_duration_in_seconds);
+  explicit TextChunker(double segment_duration_in_seconds,
+                       int64_t timed_text_decode_time = -1);
 
  private:
   TextChunker(const TextChunker&) = delete;
