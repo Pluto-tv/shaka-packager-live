@@ -358,9 +358,10 @@ Status ValidateParams(const PackagingParams& packaging_params,
       !packaging_params.mpd_params.mpd_output.empty() &&
       !packaging_params.mp4_output_params.generate_sidx_in_media_segments &&
       !packaging_params.mpd_params.use_segment_list) {
-    return Status(error::UNIMPLEMENTED,
-                  "--generate_sidx_in_media_segments is required for DASH "
-                  "on-demand profile (not using segment_template or segment list).");
+    return Status(
+        error::UNIMPLEMENTED,
+        "--generate_sidx_in_media_segments is required for DASH "
+        "on-demand profile (not using segment_template or segment list).");
   }
 
   if (packaging_params.chunking_params.low_latency_dash_mode &&
@@ -528,7 +529,8 @@ std::unique_ptr<MediaHandler> CreateTextChunker(
   const float segment_length_in_seconds =
       chunking_params.segment_duration_in_seconds;
   return std::unique_ptr<MediaHandler>(new TextChunker(
-      segment_length_in_seconds, chunking_params.timed_text_decode_time));
+      segment_length_in_seconds, chunking_params.timed_text_decode_time,
+      chunking_params.adjust_sample_boundaries));
 }
 
 Status CreateTtmlJobs(

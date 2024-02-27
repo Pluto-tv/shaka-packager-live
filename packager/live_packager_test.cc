@@ -950,6 +950,40 @@ INSTANTIATE_TEST_CASE_P(
             LiveConfig::OutputFormat::TS, LiveConfig::TrackType::AUDIO,
             "audio/en/%05d.m4s", false}));
 
+TEST_F(LivePackagerBaseTest, TestPackageTimedTextHybrikComp) {
+  for (unsigned int i = 1; i < kNumSegments; i++) {
+    std::string segment_num =
+        absl::StrFormat("hybrik_comp/text_in/en.m3u8_%010d.vtt", i);
+    std::vector<uint8_t> segment_buffer = ReadTestDataFile(segment_num);
+    ASSERT_FALSE(segment_buffer.empty());
+
+    SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+
+    FullSegmentBuffer out;
+
+    LiveConfig live_config;
+    live_config.format = LiveConfig::OutputFormat::VTTMP4;
+    live_config.track_type = LiveConfig::TrackType::TEXT;
+    live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
+    live_config.segment_number = i + 1;
+    live_config.timed_text_decode_time = (i * 5000);
+
+    SetupLivePackagerConfig(live_config);
+    ASSERT_EQ(Status::OK, live_packager_->PackageTimedText(media_seg, out));
+    ASSERT_GT(out.SegmentSize(), 0);
+
+    CheckSegment(live_config, out, 1000, true);
+
+    std::vector<uint8_t> exp_seg_buf = ReadTestDataFile(
+        absl::StrFormat("hybrik_comp/expected/%05d.m4s", i + 1));
+    ASSERT_FALSE(exp_seg_buf.empty());
+
+    std::vector<uint8_t> buffer(out.SegmentData(),
+                                out.SegmentData() + out.SegmentSize());
+    ASSERT_EQ(exp_seg_buf, buffer);
+  }
+}
+
 struct TimedTextTestCase {
   const char* media_segment_format;
   LiveConfig::TrackType track_type;

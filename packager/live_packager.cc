@@ -431,7 +431,7 @@ Status LivePackager::PackageTimedText(const Segment& in,
   packaging_params.chunking_params.timed_text_decode_time =
       config_.timed_text_decode_time;
   packaging_params.mp4_output_params.sequence_number = config_.segment_number;
-
+  packaging_params.chunking_params.adjust_sample_boundaries = true;
   packaging_params.mp4_output_params.include_pssh_in_stream = false;
 
   StreamDescriptors descriptors =
