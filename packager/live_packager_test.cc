@@ -951,7 +951,7 @@ INSTANTIATE_TEST_CASE_P(
             "audio/en/%05d.m4s", false}));
 
 TEST_F(LivePackagerBaseTest, TestPackageTimedTextHybrikComp) {
-  for (unsigned int i = 1; i < kNumSegments; i++) {
+  for (unsigned int i = 0; i < kNumSegments; i++) {
     std::string segment_num =
         absl::StrFormat("hybrik_comp/text_in/en.m3u8_%010d.vtt", i);
     std::vector<uint8_t> segment_buffer = ReadTestDataFile(segment_num);

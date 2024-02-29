@@ -190,7 +190,8 @@ void ParseSettings(const std::string& id,
 
 }  // namespace
 
-WebVttParser::WebVttParser() {}
+WebVttParser::WebVttParser(bool webvtt_header_only_output_segment)
+    : webvtt_header_only_output_segment_(webvtt_header_only_output_segment) {}
 
 void WebVttParser::Init(const InitCB& init_cb,
                         const NewMediaSampleCB& new_media_sample_cb,
@@ -207,7 +208,21 @@ void WebVttParser::Init(const InitCB& init_cb,
 
 bool WebVttParser::Flush() {
   reader_.Flush();
-  return Parse();
+  const bool isOK = Parse();
+  // Handle case when Parser was initialized but stream information not filled
+  // This happens when we parse an empty webvtt file (only contains a header)
+  if (initialized_ && !stream_info_dispatched_) {
+    if (webvtt_header_only_output_segment_) {
+      // This is a workaround in the case of input VTT and output VTT (or TTML)
+      // in MP4 where we need to generate and output MP4 segment.
+      std::vector<std::string> block;
+      block.emplace_back(R"(00:00:00.000 --> 00:00:00.001)");
+      ParseCue("", block.data(), block.size());
+    } else {
+      DispatchTextStreamInfo();
+    }
+  }
+  return isOK;
 }
 
 bool WebVttParser::Parse(const uint8_t* buf, int size) {

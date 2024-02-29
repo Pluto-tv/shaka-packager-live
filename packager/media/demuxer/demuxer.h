@@ -79,6 +79,11 @@ class Demuxer : public OriginHandler {
     cts_offset_adjustment_ = cts_offset_adjustment;
   }
 
+  void set_webvtt_header_only_output_segment(
+      bool webvtt_header_only_output_segment) {
+    webvtt_header_only_output_segment_ = webvtt_header_only_output_segment;
+  }
+
  protected:
   /// @name MediaHandler implementation overrides.
   /// @{
@@ -153,6 +158,9 @@ class Demuxer : public OriginHandler {
   bool dump_stream_info_ = false;
   // flag used to adjust negative CTS offset values to correct PTS < DTS
   bool cts_offset_adjustment_ = false;
+  // flag used as a workaround to generate output segment in the case of input
+  // WEBVTT with header only
+  bool webvtt_header_only_output_segment_ = false;
   Status init_event_status_;
 };
 

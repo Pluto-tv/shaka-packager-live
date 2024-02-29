@@ -464,6 +464,8 @@ Status CreateDemuxer(const StreamDescriptor& stream,
   std::shared_ptr<Demuxer> demuxer = std::make_shared<Demuxer>(stream.input);
   demuxer->set_dump_stream_info(packaging_params.test_params.dump_stream_info);
   demuxer->set_cts_offset_adjustment(packaging_params.cts_offset_adjustment);
+  demuxer->set_webvtt_header_only_output_segment(
+      packaging_params.webvtt_header_only_output_segment);
 
   if (packaging_params.decryption_params.key_provider != KeyProvider::kNone) {
     std::unique_ptr<KeySource> decryption_key_source(

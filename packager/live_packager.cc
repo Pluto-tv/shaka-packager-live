@@ -433,6 +433,7 @@ Status LivePackager::PackageTimedText(const Segment& in,
   packaging_params.mp4_output_params.sequence_number = config_.segment_number;
   packaging_params.chunking_params.adjust_sample_boundaries = true;
   packaging_params.mp4_output_params.include_pssh_in_stream = false;
+  packaging_params.webvtt_header_only_output_segment = true;
 
   StreamDescriptors descriptors =
       setupStreamDescriptors(config_, callback_params, init_callback_params);
