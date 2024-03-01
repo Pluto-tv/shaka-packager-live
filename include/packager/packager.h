@@ -82,8 +82,8 @@ struct PackagingParams {
   /// Flag used to adjust negative CTS offset values to correct PTS < DTS
   bool cts_offset_adjustment = false;
 
-  /// Flag used as a workaround to produce output segments when the input is a
-  /// header only VTT file
+  /// Flag used as a workaround in the case of header only input WEBVTT and the
+  /// need to produce an output segment
   bool webvtt_header_only_output_segment = false;
 };
 

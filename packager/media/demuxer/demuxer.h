@@ -158,8 +158,8 @@ class Demuxer : public OriginHandler {
   bool dump_stream_info_ = false;
   // flag used to adjust negative CTS offset values to correct PTS < DTS
   bool cts_offset_adjustment_ = false;
-  // flag used as a workaround to generate output segment in the case of input
-  // WEBVTT with header only
+  // flag used as a workaround in the case of header only input WEBVTT and the
+  // need to produce an output segment
   bool webvtt_header_only_output_segment_ = false;
   Status init_event_status_;
 };

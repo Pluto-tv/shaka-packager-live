@@ -104,9 +104,6 @@ struct LiveConfig {
   /// Used for timed text packaging to set the fragment decode time when the
   /// output format is either VTT in MP4 or TTML in MP4.
   int64_t timed_text_decode_time = -1;
-
-  /// Timed Text time scale used for packaging VTT in MP4 or TTML in MP4.
-  uint32_t timed_text_timescale = 10000000;
 };
 
 class LivePackager {

@@ -213,8 +213,8 @@ bool WebVttParser::Flush() {
   // This happens when we parse an empty webvtt file (only contains a header)
   if (initialized_ && !stream_info_dispatched_) {
     if (webvtt_header_only_output_segment_) {
-      // This is a workaround in the case of input VTT and output VTT (or TTML)
-      // in MP4 where we need to generate and output MP4 segment.
+      // This is a workaround in the case of header only input WEBVTT and the
+      // need to produce an output segment
       std::vector<std::string> block;
       block.emplace_back(R"(00:00:00.000 --> 00:00:00.001)");
       ParseCue("", block.data(), block.size());
