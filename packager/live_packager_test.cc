@@ -1041,7 +1041,7 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::Values(
         // VTT in text --> VTT in MP4
         TimedTextTestCase{
-            "timed_text_vtt/%04d.vtt",
+            "hybrik_comp/text_in/en.m3u8_%010d.vtt",
             LiveConfig::TrackType::TEXT,
             LiveConfig::OutputFormat::VTTMP4,
             Status::OK,
@@ -1049,7 +1049,7 @@ INSTANTIATE_TEST_CASE_P(
         },
         // VTT in text --> TTML in Text
         TimedTextTestCase{
-            "timed_text_vtt/%04d.vtt",
+            "hybrik_comp/text_in/en.m3u8_%010d.vtt",
             LiveConfig::TrackType::TEXT,
             LiveConfig::OutputFormat::TTML,
             Status::OK,
@@ -1057,7 +1057,7 @@ INSTANTIATE_TEST_CASE_P(
         },
         // VTT in text --> TTML in MP4
         TimedTextTestCase{
-            "timed_text_vtt/%04d.vtt",
+            "hybrik_comp/text_in/en.m3u8_%010d.vtt",
             LiveConfig::TrackType::TEXT,
             LiveConfig::OutputFormat::TTMLMP4,
             Status::OK,
@@ -1065,7 +1065,7 @@ INSTANTIATE_TEST_CASE_P(
         },
         // Invalid track type of audio
         TimedTextTestCase{
-            "timed_text_vtt/%04d.vtt",
+            "hybrik_comp/text_in/en.m3u8_%010d.vtt",
             LiveConfig::TrackType::AUDIO,
             LiveConfig::OutputFormat::TTMLMP4,
             Status(error::INVALID_ARGUMENT, "Stream not available"),
@@ -1073,7 +1073,7 @@ INSTANTIATE_TEST_CASE_P(
         },
         // Invalid track type of video
         TimedTextTestCase{
-            "timed_text_vtt/%04d.vtt",
+            "hybrik_comp/text_in/en.m3u8_%010d.vtt",
             LiveConfig::TrackType::VIDEO,
             LiveConfig::OutputFormat::TTMLMP4,
             Status(error::INVALID_ARGUMENT, "Stream not available"),
