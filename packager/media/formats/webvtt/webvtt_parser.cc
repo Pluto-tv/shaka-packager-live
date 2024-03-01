@@ -212,14 +212,13 @@ bool WebVttParser::Flush() {
   // Handle case when Parser was initialized but stream information not filled
   // This happens when we parse an empty webvtt file (only contains a header)
   if (initialized_ && !stream_info_dispatched_) {
+    DispatchTextStreamInfo();
     if (webvtt_header_only_output_segment_) {
       // This is a workaround in the case of header only input WEBVTT and the
       // need to produce an output segment
-      std::vector<std::string> block;
-      block.emplace_back(R"(00:00:00.000 --> 00:00:00.001)");
-      ParseCue("", block.data(), block.size());
-    } else {
-      DispatchTextStreamInfo();
+      const auto sample = std::make_shared<TextSample>("", 0, 1, TextSettings{},
+                                                       TextFragment{});
+      return new_text_sample_cb_(kStreamIndex, sample);
     }
   }
   return isOK;
