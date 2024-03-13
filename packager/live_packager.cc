@@ -17,6 +17,7 @@
 #include <packager/file.h>
 
 #include <packager/live_packager.h>
+#include <packager/live_packager_export.h>
 #include <packager/macros/compiler.h>
 #include <packager/macros/status.h>
 #include <packager/media/base/aes_encryptor.h>
@@ -647,3 +648,62 @@ Status GeneratePSSHData(const PSSHGeneratorInput& in, PSSHData* out) {
   return Status::OK;
 }
 }  // namespace shaka
+
+struct LivePackager_instance_s {
+  std::unique_ptr<shaka::LivePackager> inner;
+};
+
+LivePackager_t livepackager_new(LivePackagerConfig_t cfg) {
+  return new LivePackager_instance_s{std::make_unique<shaka::LivePackager>(shaka::LiveConfig{
+    .format = shaka::LiveConfig::OutputFormat(cfg.format),
+    .track_type = shaka::LiveConfig::TrackType(cfg.track_type),
+    .iv=std::vector(cfg.iv, cfg.iv+sizeof(cfg.iv)),
+    .key=std::vector(cfg.key, cfg.key+sizeof(cfg.key)),
+    .key_id=std::vector(cfg.key_id, cfg.key_id+sizeof(cfg.key_id)),
+    .protection_scheme=shaka::LiveConfig::EncryptionScheme(cfg.protection_scheme),
+    .segment_number = cfg.segment_number,
+    .m2ts_offset_ms = cfg.m2ts_offset_ms,
+    .timed_text_decode_time = cfg.timed_text_decode_time,
+  })};
+}
+
+void livepackager_free(LivePackager_t lp) {
+  delete lp;
+}
+
+size_t livepackager_package_init(LivePackager_t lp, uint8_t* init, size_t init_len, uint8_t* dest) {
+  shaka::SegmentData input(init, init_len);
+  shaka::FullSegmentBuffer output;
+  shaka::Status status = lp->inner->PackageInit(input, output);
+  if (!status.ok()) {
+    return -1;
+  }
+
+  std::memcpy(dest, output.InitSegmentData(), output.InitSegmentSize());
+  return output.InitSegmentSize();
+}
+
+size_t livepackager_package(LivePackager_t lp, uint8_t* init, size_t init_len, uint8_t* seg, size_t seg_len, uint8_t* dest) {
+  shaka::SegmentData input_init(init, init_len);
+  shaka::SegmentData input_seg(seg, seg_len);
+  shaka::FullSegmentBuffer output;
+  shaka::Status status = lp->inner->Package(input_init, input_seg, output);
+  if (!status.ok()) {
+    return -1;
+  }
+
+  std::memcpy(dest, output.SegmentData(), output.SegmentSize());
+  return output.SegmentSize();
+}
+
+size_t livepackager_package_timedtext(LivePackager_t lp, uint8_t* seg, size_t seg_len, uint8_t* dest) {
+  shaka::SegmentData input_seg(seg, seg_len);
+  shaka::FullSegmentBuffer output;
+  shaka::Status status = lp->inner->PackageTimedText(input_seg, output);
+  if (!status.ok()) {
+    return -1;
+  }
+
+  std::memcpy(dest, output.SegmentData(), output.SegmentSize());
+  return output.SegmentSize();
+}

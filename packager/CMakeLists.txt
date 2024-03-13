@@ -9,6 +9,8 @@
 # Include a module to define standard install directories.
 include(GNUInstallDirs)
 
+set(BUILD_SHARED_LIBS ON)
+
 # Build static libs by default, or shared if BUILD_SHARED_LIBS is on.
 if(BUILD_SHARED_LIBS)
   add_definitions(-DSHARED_LIBRARY_BUILD)
@@ -92,6 +94,7 @@ set(libpackager_sources
   live_packager.cc
   ../include/packager/packager.h
   ../include/packager/live_packager.h
+  ../include/packager/live_packager_export.h
 )
 
 set(libpackager_deps
