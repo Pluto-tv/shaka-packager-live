@@ -90,7 +90,7 @@ jobs:
           path: build/packager/libpackager.dylib
 
   update_release:
-    needs: [build_linux]
+    needs: [build_linux, build_macos_arm64]
     name: Update release
     runs-on: ubuntu-latest
     steps:
