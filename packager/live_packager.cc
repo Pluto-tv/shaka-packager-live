@@ -181,7 +181,7 @@ class SegmentManager {
   virtual int64_t OnSegmentWrite(const std::string& name,
                                  const void* buffer,
                                  uint64_t size,
-                                 FullSegmentBuffer& out);
+                                 SegmentBuffer& out);
 
   virtual Status InitializeEncryption(const LiveConfig& config,
                                       EncryptionParams& encryption_params);
@@ -202,7 +202,7 @@ class Aes128EncryptedSegmentManager : public SegmentManager {
   int64_t OnSegmentWrite(const std::string& name,
                          const void* buffer,
                          uint64_t size,
-                         FullSegmentBuffer& out) override;
+                         SegmentBuffer& out) override;
 
   Status InitializeEncryption(const LiveConfig& config,
                               EncryptionParams& encryption_params) override;
@@ -224,6 +224,18 @@ const uint8_t* SegmentData::Data() const {
 
 size_t SegmentData::Size() const {
   return size_;
+}
+
+void SegmentBuffer::AppendData(const uint8_t* data, size_t size) {
+  std::copy(data, data + size, std::back_inserter(buffer_));
+}
+
+size_t SegmentBuffer::Size() const {
+  return buffer_.size();
+}
+
+const uint8_t* SegmentBuffer::Data() const {
+  return buffer_.data();
 }
 
 void FullSegmentBuffer::SetInitSegment(const uint8_t* data, size_t size) {
@@ -280,7 +292,7 @@ LivePackager::LivePackager(const LiveConfig& config)
 LivePackager::~LivePackager() = default;
 
 Status LivePackager::PackageInit(const Segment& init_segment,
-                                 FullSegmentBuffer& output) {
+                                 SegmentBuffer& output) {
   SegmentDataReader reader(init_segment);
 
   shaka::BufferCallbackParams callback_params;
@@ -289,18 +301,18 @@ Status LivePackager::PackageInit(const Segment& init_segment,
     return reader.Read(buffer, size);
   };
 
-  callback_params.write_func = [&output](const std::string& name,
+  callback_params.write_func = [](const std::string& name,
                                          const void* data, uint64_t size) {
-    output.AppendData(reinterpret_cast<const uint8_t*>(data), size);
+    // output.AppendData(reinterpret_cast<const uint8_t*>(data), size);
     return size;
   };
 
   shaka::BufferCallbackParams init_callback_params;
   init_callback_params.write_func = [&output](const std::string& name,
                                               const void* data, uint64_t size) {
-    if (output.InitSegmentSize() == 0) {
+    if (output.Size() == 0) {
       LOG(INFO) << "init segment callback, name: " << name << " size: " << size;
-      output.SetInitSegment(reinterpret_cast<const uint8_t*>(data), size);
+      output.AppendData(reinterpret_cast<const uint8_t*>(data), size);
     }
     return size;
   };
@@ -340,7 +352,7 @@ Status LivePackager::PackageInit(const Segment& init_segment,
 
 Status LivePackager::Package(const Segment& init_segment,
                              const Segment& media_segment,
-                             FullSegmentBuffer& out) {
+                             SegmentBuffer& out) {
   MultiSegmentDataReader reader(init_segment, media_segment);
   shaka::BufferCallbackParams callback_params;
   callback_params.read_func = [&reader](const std::string& name, void* buffer,
@@ -354,7 +366,7 @@ Status LivePackager::Package(const Segment& init_segment,
   };
 
   shaka::BufferCallbackParams init_callback_params;
-  init_callback_params.write_func = [&out](const std::string& name,
+  init_callback_params.write_func = [](const std::string& name,
                                            const void* data, uint64_t size) {
     // For live packaging it is observed that the init segment callback is
     // invoked more than once. The initial callback does not contain the MEHD
@@ -362,9 +374,9 @@ Status LivePackager::Package(const Segment& init_segment,
     // If an MP4 file is created in real-time, such as used in live-streaming,
     // it is not likely that the fragment_duration is known in advance and this
     // box may be omitted.
-    if (out.InitSegmentSize() == 0) {
-      out.SetInitSegment(reinterpret_cast<const uint8_t*>(data), size);
-    }
+    //if (out.InitSegmentSize() == 0) {
+    //  out.SetInitSegment(reinterpret_cast<const uint8_t*>(data), size);
+    //}
     return size;
   };
 
@@ -403,7 +415,7 @@ Status LivePackager::Package(const Segment& init_segment,
 }
 
 Status LivePackager::PackageTimedText(const Segment& in,
-                                      FullSegmentBuffer& out) {
+                                      SegmentBuffer& out) {
   SegmentDataReader reader(in);
   shaka::BufferCallbackParams callback_params;
   callback_params.read_func = [&reader](const std::string& name, void* buffer,
@@ -418,11 +430,11 @@ Status LivePackager::PackageTimedText(const Segment& in,
   };
 
   shaka::BufferCallbackParams init_callback_params;
-  init_callback_params.write_func = [&out](const std::string& name,
+  init_callback_params.write_func = [](const std::string& name,
                                            const void* data, uint64_t size) {
-    if (out.InitSegmentSize() == 0) {
-      out.SetInitSegment(reinterpret_cast<const uint8_t*>(data), size);
-    }
+    //if (out.InitSegmentSize() == 0) {
+    //  out.SetInitSegment(reinterpret_cast<const uint8_t*>(data), size);
+    //}
     return size;
   };
 
@@ -453,7 +465,7 @@ SegmentManager::SegmentManager() = default;
 int64_t SegmentManager::OnSegmentWrite(const std::string& name,
                                        const void* buffer,
                                        uint64_t size,
-                                       FullSegmentBuffer& out) {
+                                       SegmentBuffer& out) {
   out.AppendData(reinterpret_cast<const uint8_t*>(buffer), size);
   return size;
 }
@@ -506,7 +518,7 @@ Aes128EncryptedSegmentManager::~Aes128EncryptedSegmentManager() = default;
 int64_t Aes128EncryptedSegmentManager::OnSegmentWrite(const std::string& name,
                                                       const void* buffer,
                                                       uint64_t size,
-                                                      FullSegmentBuffer& out) {
+                                                      SegmentBuffer& out) {
   //  if (!encryptor_->InitializeWithIv(key_, iv_)) {
   //    LOG(WARNING) << "failed to initialize encryptor with key and iv";
   //    // Negative size will trigger a status error within the packager
@@ -671,39 +683,38 @@ void livepackager_free(LivePackager_t lp) {
   delete lp;
 }
 
-size_t livepackager_package_init(LivePackager_t lp, uint8_t* init, size_t init_len, uint8_t* dest) {
+struct LivePackager_buffer_s {
+  std::unique_ptr<shaka::SegmentBuffer> inner;
+};
+
+LivePackagerBuffer_t livepackager_buf_new() {
+  return new LivePackager_buffer_s{std::make_unique<shaka::SegmentBuffer>()};
+}
+
+void livepackager_buf_free(LivePackagerBuffer_t buf) {
+  delete buf;
+}
+
+const uint8_t* livepackager_buf_data(LivePackagerBuffer_t buf) {
+  return buf->inner->Data();
+}
+
+size_t livepackager_buf_size(LivePackagerBuffer_t buf) {
+  return buf->inner->Size();
+}
+
+bool livepackager_package_init(LivePackager_t lp, uint8_t* init, size_t init_len, LivePackagerBuffer_t dest) {
   shaka::SegmentData input(init, init_len);
-  shaka::FullSegmentBuffer output;
-  shaka::Status status = lp->inner->PackageInit(input, output);
-  if (!status.ok()) {
-    return -1;
-  }
-
-  std::memcpy(dest, output.InitSegmentData(), output.InitSegmentSize());
-  return output.InitSegmentSize();
+  return lp->inner->PackageInit(input, *dest->inner).ok();
 }
 
-size_t livepackager_package(LivePackager_t lp, uint8_t* init, size_t init_len, uint8_t* seg, size_t seg_len, uint8_t* dest) {
+bool livepackager_package(LivePackager_t lp, uint8_t* init, size_t init_len, uint8_t* media, size_t media_len, LivePackagerBuffer_t dest) {
   shaka::SegmentData input_init(init, init_len);
-  shaka::SegmentData input_seg(seg, seg_len);
-  shaka::FullSegmentBuffer output;
-  shaka::Status status = lp->inner->Package(input_init, input_seg, output);
-  if (!status.ok()) {
-    return -1;
-  }
-
-  std::memcpy(dest, output.SegmentData(), output.SegmentSize());
-  return output.SegmentSize();
+  shaka::SegmentData input_media(media, media_len);
+  return lp->inner->Package(input_init, input_media, *dest->inner).ok();
 }
 
-size_t livepackager_package_timedtext(LivePackager_t lp, uint8_t* seg, size_t seg_len, uint8_t* dest) {
+bool livepackager_package_timedtext(LivePackager_t lp, uint8_t* seg, size_t seg_len, LivePackagerBuffer_t dest) {
   shaka::SegmentData input_seg(seg, seg_len);
-  shaka::FullSegmentBuffer output;
-  shaka::Status status = lp->inner->PackageTimedText(input_seg, output);
-  if (!status.ok()) {
-    return -1;
-  }
-
-  std::memcpy(dest, output.SegmentData(), output.SegmentSize());
-  return output.SegmentSize();
+  return lp->inner->PackageTimedText(input_seg, *dest->inner).ok();
 }

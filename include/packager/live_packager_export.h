@@ -10,6 +10,7 @@ extern "C"
 {
 #endif
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef enum OutputFormat {
@@ -50,14 +51,24 @@ typedef struct LivePackagerConfig {
     int64_t timed_text_decode_time;
 } LivePackagerConfig_t;
 
+
+typedef struct LivePackager_buffer_s* LivePackagerBuffer_t;
+
+LivePackagerBuffer_t livepackager_buf_new();
+void livepackager_buf_free(LivePackagerBuffer_t buf);
+
+const uint8_t* livepackager_buf_data(LivePackagerBuffer_t buf);
+size_t livepackager_buf_size(LivePackagerBuffer_t buf);
+
+
 typedef struct LivePackager_instance_s* LivePackager_t;
 
 LivePackager_t livepackager_new(LivePackagerConfig_t cfg);
 void livepackager_free(LivePackager_t lp);
 
-size_t livepackager_package_init(LivePackager_t lp, uint8_t* init, size_t init_len, uint8_t* dest);
-size_t livepackager_package(LivePackager_t lp, uint8_t* init, size_t init_len, uint8_t* seg, size_t seg_len, uint8_t* dest);
-size_t livepackager_package_timedtext(LivePackager_t lp, uint8_t* seg, size_t seg_len, uint8_t* dest);
+bool livepackager_package_init(LivePackager_t lp, uint8_t* init, size_t init_len, LivePackagerBuffer_t dest);
+bool livepackager_package(LivePackager_t lp, uint8_t* init, size_t init_len, uint8_t* media, size_t media_len, LivePackagerBuffer_t dest);
+bool livepackager_package_timedtext(LivePackager_t lp, uint8_t* seg, size_t seg_len, LivePackagerBuffer_t dest);
 
 #ifdef __cplusplus
 }
