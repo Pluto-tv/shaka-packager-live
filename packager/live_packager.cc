@@ -669,6 +669,9 @@ LivePackager_t livepackager_new(LivePackagerConfig_t cfg) {
   shaka::LiveConfig converted{
     .format = shaka::LiveConfig::OutputFormat(cfg.format),
     .track_type = shaka::LiveConfig::TrackType(cfg.track_type),
+    .iv={},
+    .key={},
+    .key_id={},
     .protection_scheme=shaka::LiveConfig::EncryptionScheme(cfg.protection_scheme),
     .segment_number = cfg.segment_number,
     .m2ts_offset_ms = cfg.m2ts_offset_ms,
