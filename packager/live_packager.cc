@@ -666,17 +666,22 @@ struct LivePackager_instance_s {
 };
 
 LivePackager_t livepackager_new(LivePackagerConfig_t cfg) {
-  return new LivePackager_instance_s{std::make_unique<shaka::LivePackager>(shaka::LiveConfig{
+  shaka::LiveConfig converted{
     .format = shaka::LiveConfig::OutputFormat(cfg.format),
     .track_type = shaka::LiveConfig::TrackType(cfg.track_type),
-    .iv=std::vector(cfg.iv, cfg.iv+sizeof(cfg.iv)),
-    .key=std::vector(cfg.key, cfg.key+sizeof(cfg.key)),
-    .key_id=std::vector(cfg.key_id, cfg.key_id+sizeof(cfg.key_id)),
     .protection_scheme=shaka::LiveConfig::EncryptionScheme(cfg.protection_scheme),
     .segment_number = cfg.segment_number,
     .m2ts_offset_ms = cfg.m2ts_offset_ms,
     .timed_text_decode_time = cfg.timed_text_decode_time,
-  })};
+  };
+
+  if (cfg.protection_scheme != ENCRYPTION_SCHEME_NONE) {
+    converted.iv=std::vector(cfg.iv, cfg.iv+cfg.iv_size);
+    converted.key=std::vector(cfg.key, cfg.key+KEY_SIZE);
+    converted.key_id=std::vector(cfg.key_id, cfg.key_id+KEY_ID_SIZE);
+  }
+
+  return new LivePackager_instance_s{std::make_unique<shaka::LivePackager>(converted)};
 }
 
 void livepackager_free(LivePackager_t lp) {

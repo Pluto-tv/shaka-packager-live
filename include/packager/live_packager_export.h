@@ -35,15 +35,19 @@ typedef enum EncryptionScheme {
     ENCRYPTION_SCHEME_CENC,
 } EncryptionScheme_t;
 
-#define KEY_IV_LEN 16
+enum KeySize {
+  KEY_SIZE = 16,
+  KEY_ID_SIZE = 16,
+};
 
 typedef struct LivePackagerConfig {
     OutputFormat_t format;
     TrackType_t track_type;
 
-    uint8_t iv    [KEY_IV_LEN];
-    uint8_t key   [KEY_IV_LEN];
-    uint8_t key_id[KEY_IV_LEN];
+    size_t iv_size;
+    uint8_t* iv;
+    uint8_t key[KEY_SIZE];
+    uint8_t key_id[KEY_ID_SIZE];
     EncryptionScheme_t protection_scheme;
 
     uint32_t segment_number;
