@@ -96,12 +96,12 @@ bool ParseAndCheckType(media::mp4::Box& box, media::mp4::BoxReader* reader) {
   return box.BoxType() == reader->type();
 }
 
-bool FormatWithIndex(const char *fmt, int i, std::string &out) {
-    std::vector<absl::FormatArg> format_args;
-    format_args.emplace_back(i);
-    absl::UntypedFormatSpec format(fmt);
+bool FormatWithIndex(const char* fmt, int i, std::string& out) {
+  std::vector<absl::FormatArg> format_args;
+  format_args.emplace_back(i);
+  absl::UntypedFormatSpec format(fmt);
 
-    return absl::FormatUntyped(&out, format, format_args);
+  return absl::FormatUntyped(&out, format, format_args);
 }
 
 struct SegmentIndexBoxChecker {
@@ -314,7 +314,9 @@ void CheckVideoInitSegment(const FullSegmentBuffer& buffer,
   }
 }
 
-void CheckTextInitSegment(const FullSegmentBuffer& buffer, media::FourCC handler, media::FourCC format) {
+void CheckTextInitSegment(const FullSegmentBuffer& buffer,
+                          media::FourCC handler,
+                          media::FourCC format) {
   bool err(true);
   size_t bytes_to_read(buffer.InitSegmentSize());
   const uint8_t* data(buffer.InitSegmentData());
@@ -938,10 +940,11 @@ TEST_P(LivePackagerEncryptionTest, VerifyWithEncryption) {
   live_packager_->PackageInit(init_seg, actual_buf);
 
   for (unsigned int i = 0; i < GetParam().num_segments; i++) {
-    std::string format_output;
-    ASSERT_TRUE(FormatWithIndex(GetParam().media_segment_format, i, format_output));
+    std::string input_fname;
+    ASSERT_TRUE(
+        FormatWithIndex(GetParam().media_segment_format, i, input_fname));
 
-    std::vector<uint8_t> segment_buffer = ReadTestDataFile(format_output);
+    std::vector<uint8_t> segment_buffer = ReadTestDataFile(input_fname);
     ASSERT_FALSE(segment_buffer.empty());
 
     FullSegmentBuffer out;
@@ -1022,12 +1025,12 @@ class TimedTextParameterizedTest
       public ::testing::WithParamInterface<TimedTextTestCase> {};
 
 TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
-
   for (unsigned int i = 0; i < kNumSegments; i++) {
-    std::string format_output;
-    ASSERT_TRUE(FormatWithIndex(GetParam().media_segment_format, i, format_output));
+    std::string input_fname;
+    ASSERT_TRUE(
+        FormatWithIndex(GetParam().media_segment_format, i, input_fname));
 
-    std::vector<uint8_t> segment_buffer = ReadTestDataFile(format_output);
+    std::vector<uint8_t> segment_buffer = ReadTestDataFile(input_fname);
     ASSERT_FALSE(segment_buffer.empty());
 
     SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
@@ -1053,19 +1056,20 @@ TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
           live_config.format == LiveConfig::OutputFormat::TTMLMP4) {
         CheckSegment(live_config, out, 1000, true);
 
-        if(i == 0) {
+        if (i == 0) {
           CheckTextInitSegment(out, GetParam().handler_type, GetParam().format);
-        } 
-        {
-          std::string format_output;
-          ASSERT_TRUE(FormatWithIndex(GetParam().expected_segment_format, i + 1, format_output));
-
-          std::vector<uint8_t> expected_buf(ReadTestDataFile(format_output));
-          ASSERT_FALSE(segment_buffer.empty());
-
-          std::vector<uint8_t> actual_buf(out.SegmentData(), out.SegmentData() + out.SegmentSize());
-          ASSERT_EQ(expected_buf, actual_buf);
         }
+
+        std::string expected_fname;
+        ASSERT_TRUE(FormatWithIndex(GetParam().expected_segment_format, i + 1,
+                                    expected_fname));
+
+        std::vector<uint8_t> expected_buf(ReadTestDataFile(expected_fname));
+        ASSERT_FALSE(segment_buffer.empty());
+
+        std::vector<uint8_t> actual_buf(
+            out.SegmentData(), out.SegmentData() + out.SegmentSize());
+        ASSERT_EQ(expected_buf, actual_buf);
       }
     }
   }
