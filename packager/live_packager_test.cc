@@ -48,7 +48,8 @@ const uint8_t kIv[]{
     0x08, 0x09, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
 };
 
-const int kNumSegments = 10;
+constexpr int kNumSegments = 10;
+constexpr unsigned kSegmentDurationMs = 5000;
 
 std::filesystem::path GetTestDataFilePath(const std::string& name) {
   auto data_dir = std::filesystem::u8path(TEST_DATA_DIR);
@@ -172,6 +173,19 @@ struct MovieBoxChecker {
         EXPECT_EQ(exp_entry.width, act_entry.width);
         EXPECT_EQ(exp_entry.height, act_entry.height);
       }
+
+      const auto& exp_text_entries =
+          exp_track.media.information.sample_table.description.text_entries;
+      const auto& act_text_entries =
+          act_track.media.information.sample_table.description.text_entries;
+
+      EXPECT_EQ(exp_text_entries.size(), act_text_entries.size());
+      for (unsigned j(0); j < exp_text_entries.size(); ++j) {
+        const auto& exp_entry = exp_text_entries[j];
+        const auto& act_entry = act_text_entries[j];
+
+        EXPECT_EQ(exp_entry.BoxType(), act_entry.BoxType());
+      }
     }
   }
 
@@ -282,6 +296,44 @@ void CheckVideoInitSegment(const FullSegmentBuffer& buffer,
     media::mp4::Track track;
     track.media.handler.handler_type = media::FourCC::FOURCC_vide;
     track.media.information.sample_table.description.video_entries.push_back(
+        entry);
+
+    media::mp4::Movie expected;
+    expected.tracks.push_back(track);
+
+    MovieBoxChecker checker(expected);
+    checker.Check(reader.get());
+  }
+}
+
+void CheckTextInitSegment(const FullSegmentBuffer& buffer, media::FourCC handler, media::FourCC format) {
+  bool err(true);
+  size_t bytes_to_read(buffer.InitSegmentSize());
+  const uint8_t* data(buffer.InitSegmentData());
+
+  {
+    std::unique_ptr<media::mp4::BoxReader> reader(
+        media::mp4::BoxReader::ReadBox(data, bytes_to_read, &err));
+    EXPECT_FALSE(err);
+
+    FileTypeBoxChecker checker;
+    checker.Check(reader.get());
+
+    data += reader->size();
+    bytes_to_read -= reader->size();
+  }
+
+  {
+    std::unique_ptr<media::mp4::BoxReader> reader(
+        media::mp4::BoxReader::ReadBox(data, bytes_to_read, &err));
+    EXPECT_FALSE(err);
+
+    media::mp4::TextSampleEntry entry;
+    entry.format = format;
+
+    media::mp4::Track track;
+    track.media.handler.handler_type = handler;
+    track.media.information.sample_table.description.text_entries.push_back(
         entry);
 
     media::mp4::Movie expected;
@@ -966,11 +1018,15 @@ TEST_F(LivePackagerBaseTest, TestPackageTimedTextHybrikComp) {
     live_config.track_type = LiveConfig::TrackType::TEXT;
     live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
     live_config.segment_number = i + 1;
-    live_config.timed_text_decode_time = (i * 5000);
+    live_config.timed_text_decode_time = (i * kSegmentDurationMs);
 
     SetupLivePackagerConfig(live_config);
     ASSERT_EQ(Status::OK, live_packager_->PackageTimedText(media_seg, out));
     ASSERT_GT(out.SegmentSize(), 0);
+
+    if (i == 0) {
+      CheckTextInitSegment(out, media::FourCC::FOURCC_text, media::FourCC::FOURCC_wvtt);
+    }
 
     CheckSegment(live_config, out, 1000, true);
 
@@ -986,8 +1042,11 @@ TEST_F(LivePackagerBaseTest, TestPackageTimedTextHybrikComp) {
 
 struct TimedTextTestCase {
   const char* media_segment_format;
+  const char* expected_segment_format;
   LiveConfig::TrackType track_type;
   LiveConfig::OutputFormat output_format;
+  media::FourCC handler_type;
+  media::FourCC format;
   Status expected_status;
   int64_t start_decode_time;
 };
@@ -997,6 +1056,7 @@ class TimedTextParameterizedTest
       public ::testing::WithParamInterface<TimedTextTestCase> {};
 
 TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
+
   for (unsigned int i = 0; i < kNumSegments; i++) {
     std::string format_output;
 
@@ -1019,7 +1079,7 @@ TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
         live_config.format == LiveConfig::OutputFormat::TTMLMP4) {
       live_config.segment_number = i + 1;
       live_config.timed_text_decode_time =
-          GetParam().start_decode_time + (i * 5000);
+          GetParam().start_decode_time + (i * kSegmentDurationMs);
     }
 
     SetupLivePackagerConfig(live_config);
@@ -1030,6 +1090,22 @@ TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
       if (live_config.format == LiveConfig::OutputFormat::VTTMP4 ||
           live_config.format == LiveConfig::OutputFormat::TTMLMP4) {
         CheckSegment(live_config, out, 1000, true);
+
+        if(i == 0) {
+          CheckTextInitSegment(out, GetParam().handler_type, GetParam().format);
+        } 
+        {
+          absl::UntypedFormatSpec format(GetParam().expected_segment_format);
+          std::string format_output;
+          std::vector<absl::FormatArg> format_args;
+          format_args.emplace_back(i + 1);
+          ASSERT_TRUE(absl::FormatUntyped(&format_output, format, format_args));
+
+          std::vector<uint8_t> expected_buf(ReadTestDataFile(format_output));
+          ASSERT_FALSE(segment_buffer.empty());
+          std::vector<uint8_t> actual_buf(out.SegmentData(), out.SegmentData() + out.SegmentSize());
+          ASSERT_EQ(expected_buf, actual_buf);
+        }
       }
     }
   }
@@ -1042,40 +1118,55 @@ INSTANTIATE_TEST_CASE_P(
         // VTT in text --> VTT in MP4
         TimedTextTestCase{
             "timed_text/input/en.m3u8_%010d.vtt",
+            "timed_text/expected/vtt/%05d.m4s",
             LiveConfig::TrackType::TEXT,
             LiveConfig::OutputFormat::VTTMP4,
+            media::FourCC::FOURCC_text,
+            media::FourCC::FOURCC_wvtt,
             Status::OK,
-            16000,
+            0,
         },
         // VTT in text --> TTML in Text
         TimedTextTestCase{
             "timed_text/input/en.m3u8_%010d.vtt",
+            "",
             LiveConfig::TrackType::TEXT,
             LiveConfig::OutputFormat::TTML,
+            media::FourCC::FOURCC_NULL,
+            media::FourCC::FOURCC_NULL,
             Status::OK,
             0,
         },
         // VTT in text --> TTML in MP4
         TimedTextTestCase{
             "timed_text/input/en.m3u8_%010d.vtt",
+            "timed_text/expected/ttml/%05d.m4s",
             LiveConfig::TrackType::TEXT,
             LiveConfig::OutputFormat::TTMLMP4,
+            media::FourCC::FOURCC_subt,
+            media::FourCC::FOURCC_stpp,
             Status::OK,
             16000,
         },
         // Invalid track type of audio
         TimedTextTestCase{
             "timed_text/input/en.m3u8_%010d.vtt",
+            "",
             LiveConfig::TrackType::AUDIO,
             LiveConfig::OutputFormat::TTMLMP4,
+            media::FourCC::FOURCC_NULL,
+            media::FourCC::FOURCC_NULL,
             Status(error::INVALID_ARGUMENT, "Stream not available"),
             0,
         },
         // Invalid track type of video
         TimedTextTestCase{
             "timed_text/input/en.m3u8_%010d.vtt",
+            "",
             LiveConfig::TrackType::VIDEO,
             LiveConfig::OutputFormat::TTMLMP4,
+            media::FourCC::FOURCC_NULL,
+            media::FourCC::FOURCC_NULL,
             Status(error::INVALID_ARGUMENT, "Stream not available"),
             0,
         }));
