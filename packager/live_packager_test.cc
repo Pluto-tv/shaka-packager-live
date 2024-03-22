@@ -96,6 +96,14 @@ bool ParseAndCheckType(media::mp4::Box& box, media::mp4::BoxReader* reader) {
   return box.BoxType() == reader->type();
 }
 
+bool FormatWithIndex(const char *fmt, int i, std::string &out) {
+    std::vector<absl::FormatArg> format_args;
+    format_args.emplace_back(i);
+    absl::UntypedFormatSpec format(fmt);
+
+    return absl::FormatUntyped(&out, format, format_args);
+}
+
 struct SegmentIndexBoxChecker {
   SegmentIndexBoxChecker(media::mp4::SegmentIndex box)
       : sidx_(std::move(box)) {}
@@ -931,12 +939,8 @@ TEST_P(LivePackagerEncryptionTest, VerifyWithEncryption) {
 
   for (unsigned int i = 0; i < GetParam().num_segments; i++) {
     std::string format_output;
+    ASSERT_TRUE(FormatWithIndex(GetParam().media_segment_format, i, format_output));
 
-    std::vector<absl::FormatArg> format_args;
-    format_args.emplace_back(i);
-    absl::UntypedFormatSpec format(GetParam().media_segment_format);
-
-    ASSERT_TRUE(absl::FormatUntyped(&format_output, format, format_args));
     std::vector<uint8_t> segment_buffer = ReadTestDataFile(format_output);
     ASSERT_FALSE(segment_buffer.empty());
 
@@ -1002,44 +1006,6 @@ INSTANTIATE_TEST_CASE_P(
             LiveConfig::OutputFormat::TS, LiveConfig::TrackType::AUDIO,
             "audio/en/%05d.m4s", false}));
 
-TEST_F(LivePackagerBaseTest, TestPackageTimedTextHybrikComp) {
-  for (unsigned int i = 0; i < kNumSegments; i++) {
-    std::string segment_num =
-        absl::StrFormat("timed_text/input/en.m3u8_%010d.vtt", i);
-    std::vector<uint8_t> segment_buffer = ReadTestDataFile(segment_num);
-    ASSERT_FALSE(segment_buffer.empty());
-
-    SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
-
-    FullSegmentBuffer out;
-
-    LiveConfig live_config;
-    live_config.format = LiveConfig::OutputFormat::VTTMP4;
-    live_config.track_type = LiveConfig::TrackType::TEXT;
-    live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
-    live_config.segment_number = i + 1;
-    live_config.timed_text_decode_time = (i * kSegmentDurationMs);
-
-    SetupLivePackagerConfig(live_config);
-    ASSERT_EQ(Status::OK, live_packager_->PackageTimedText(media_seg, out));
-    ASSERT_GT(out.SegmentSize(), 0);
-
-    if (i == 0) {
-      CheckTextInitSegment(out, media::FourCC::FOURCC_text, media::FourCC::FOURCC_wvtt);
-    }
-
-    CheckSegment(live_config, out, 1000, true);
-
-    std::vector<uint8_t> exp_seg_buf = ReadTestDataFile(
-        absl::StrFormat("timed_text/expected/%05d.m4s", i + 1));
-    ASSERT_FALSE(exp_seg_buf.empty());
-
-    std::vector<uint8_t> buffer(out.SegmentData(),
-                                out.SegmentData() + out.SegmentSize());
-    ASSERT_EQ(exp_seg_buf, buffer);
-  }
-}
-
 struct TimedTextTestCase {
   const char* media_segment_format;
   const char* expected_segment_format;
@@ -1059,12 +1025,8 @@ TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
 
   for (unsigned int i = 0; i < kNumSegments; i++) {
     std::string format_output;
+    ASSERT_TRUE(FormatWithIndex(GetParam().media_segment_format, i, format_output));
 
-    std::vector<absl::FormatArg> format_args;
-    format_args.emplace_back(i);
-    absl::UntypedFormatSpec format(GetParam().media_segment_format);
-
-    ASSERT_TRUE(absl::FormatUntyped(&format_output, format, format_args));
     std::vector<uint8_t> segment_buffer = ReadTestDataFile(format_output);
     ASSERT_FALSE(segment_buffer.empty());
 
@@ -1095,14 +1057,12 @@ TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
           CheckTextInitSegment(out, GetParam().handler_type, GetParam().format);
         } 
         {
-          absl::UntypedFormatSpec format(GetParam().expected_segment_format);
           std::string format_output;
-          std::vector<absl::FormatArg> format_args;
-          format_args.emplace_back(i + 1);
-          ASSERT_TRUE(absl::FormatUntyped(&format_output, format, format_args));
+          ASSERT_TRUE(FormatWithIndex(GetParam().expected_segment_format, i + 1, format_output));
 
           std::vector<uint8_t> expected_buf(ReadTestDataFile(format_output));
           ASSERT_FALSE(segment_buffer.empty());
+
           std::vector<uint8_t> actual_buf(out.SegmentData(), out.SegmentData() + out.SegmentSize());
           ASSERT_EQ(expected_buf, actual_buf);
         }
