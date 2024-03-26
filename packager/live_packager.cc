@@ -13,6 +13,7 @@
 
 #include <absl/log/globals.h>
 #include <absl/log/log.h>
+#include <absl/strings/escaping.h>
 #include <packager/chunking_params.h>
 #include <packager/file.h>
 
@@ -378,6 +379,12 @@ Status LivePackager::Package(const Segment& init_segment,
   packaging_params.enable_null_ts_packet_stuffing = true;
   packaging_params.cts_offset_adjustment =
       config_.format == LiveConfig::OutputFormat::TS;
+
+  if (config_.decryption_keys) {
+    DecryptionParams& decryption_params = packaging_params.decryption_params;
+    decryption_params.key_provider = KeyProvider::kRawKey;
+    decryption_params.raw_key = *config_.decryption_keys;
+  }
 
   EncryptionParams& encryption_params = packaging_params.encryption_params;
   // As a side effect of InitializeEncryption, encryption_params will be

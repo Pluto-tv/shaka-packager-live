@@ -7,6 +7,7 @@
 #ifndef PACKAGER_LIVE_PACKAGER_H_
 #define PACKAGER_LIVE_PACKAGER_H_
 
+#include <packager/crypto_params.h>
 #include <packager/packager.h>
 
 namespace shaka {
@@ -104,6 +105,8 @@ struct LiveConfig {
   /// Used for timed text packaging to set the fragment decode time when the
   /// output format is either VTT in MP4 or TTML in MP4.
   int64_t timed_text_decode_time = -1;
+
+  RawKeyParams* decryption_keys = nullptr;
 };
 
 class LivePackager {

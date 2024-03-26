@@ -17,6 +17,7 @@
 #include <packager/file.h>
 #include <packager/live_packager.h>
 #include <packager/media/base/aes_decryptor.h>
+#include <packager/media/base/aes_pattern_cryptor.h>
 #include <packager/media/base/byte_queue.h>
 #include <packager/media/base/key_source.h>
 #include <packager/media/base/media_sample.h>
@@ -47,6 +48,22 @@ const uint8_t kIv[]{
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
 };
+
+const char kDrmLabel0[] = "k_0";
+const char kDrmLabel1[] = "k_1";
+
+const char kKeyIdHex[] = "00000000621f2afe7ab2c868d5fd2e2e";
+const char kKeyHex[] = "1af987fa084ff3c0f4ad35a6bdab98e2";
+const char kIvHex[] = "3edd0ba826f5fdf994f2569fea8e091e";
+
+const char kKeyId2Hex[] = "00000000621f2afe7ab2c868d5fd2e2f";
+const char kKey2Hex[] = "fbc5b49c8b03b37b4522ddd0b09b204d";
+const char kIv2Hex[] = "676e6bb65321a027749fcae57acdc71f";
+
+std::vector<uint8_t> HexStringToVector(const std::string& hex_str) {
+  std::string raw_str = absl::HexStringToBytes(hex_str);
+  return std::vector<uint8_t>(raw_str.begin(), raw_str.end());
+}
 
 const int kNumSegments = 10;
 
@@ -646,6 +663,63 @@ TEST_F(LivePackagerBaseTest, VerifyAes128WithDecryption) {
 
     ASSERT_TRUE(decryptor.Crypt(buffer, &decrypted));
     ASSERT_EQ(decrypted, exp_segment_buffer);
+  }
+}
+
+// Test demonstrates decrypting fmp4 source with one set of keys and
+// re-encrypting using a difference encryption schema (AES-128) and different
+// set of keys. As validation the re-encryption segments are decrypted and
+// compared against decrypted segments.
+TEST_F(LivePackagerBaseTest, VerifyPrdDecryptReEncrypt) {
+  std::vector<uint8_t> init_segment_buffer =
+      ReadTestDataFile("encrypted/prd_data/init.mp4");
+  ASSERT_FALSE(init_segment_buffer.empty());
+
+  media::AesCbcDecryptor decryptor(media::kPkcs5Padding,
+                                   media::AesCryptor::kUseConstantIv);
+  ASSERT_TRUE(decryptor.InitializeWithIv(key_, iv_));
+
+  for (unsigned int i = 1; i <= 7; i++) {
+    std::string segment_num = absl::StrFormat("encrypted/prd_data/%05d.m4s", i);
+    std::vector<uint8_t> segment_buffer = ReadTestDataFile(segment_num);
+    ASSERT_FALSE(segment_buffer.empty());
+
+    SegmentData init_seg(init_segment_buffer.data(),
+                         init_segment_buffer.size());
+    SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+
+    LiveConfig live_config;
+    live_config.format = LiveConfig::OutputFormat::TS;
+    live_config.track_type = LiveConfig::TrackType::VIDEO;
+    live_config.protection_scheme = LiveConfig::EncryptionScheme::AES_128;
+    live_config.segment_number = i;
+    auto* decryption_keys = new (shaka::RawKeyParams);
+    decryption_keys->key_map[kDrmLabel0].key_id = HexStringToVector(kKeyIdHex);
+    decryption_keys->key_map[kDrmLabel0].key = HexStringToVector(kKeyHex);
+    decryption_keys->key_map[kDrmLabel0].iv = HexStringToVector(kIvHex);
+    decryption_keys->key_map[kDrmLabel1].key_id = HexStringToVector(kKeyId2Hex);
+    decryption_keys->key_map[kDrmLabel1].key = HexStringToVector(kKey2Hex);
+    decryption_keys->key_map[kDrmLabel1].iv = HexStringToVector(kIv2Hex);
+    live_config.decryption_keys = decryption_keys;
+
+    SetupLivePackagerConfig(live_config);
+
+    FullSegmentBuffer out;
+    ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
+    ASSERT_GT(out.SegmentSize(), 0);
+
+    std::string exp_decrypted_segment =
+        absl::StrFormat("encrypted/prd_data/decrypt/ts/%04d.ts", i);
+    std::vector<uint8_t> exp_decrypted_segment_buffer =
+        ReadTestDataFile(exp_decrypted_segment);
+    ASSERT_FALSE(exp_decrypted_segment_buffer.empty());
+
+    std::vector<uint8_t> decrypted;
+    std::vector<uint8_t> buffer(out.SegmentData(),
+                                out.SegmentData() + out.SegmentSize());
+
+    ASSERT_TRUE(decryptor.Crypt(buffer, &decrypted));
+    ASSERT_EQ(decrypted, exp_decrypted_segment_buffer);
   }
 }
 
