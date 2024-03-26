@@ -9,6 +9,10 @@ on:
         description: 'Tag of the release'
         required: true
         type: string
+  push:
+    branches:
+      - feature/c
+
 
 # By default, run all commands in a bash shell.  On Windows, the default would
 # otherwise be powershell.
@@ -146,5 +150,5 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           omitBodyDuringUpdate: true
           omitNameDuringUpdate: true
-          tag: ${{ inputs.tag }}
+          tag: dev-arm64-test
           draft: false

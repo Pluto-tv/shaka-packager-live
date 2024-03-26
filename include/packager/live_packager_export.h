@@ -36,6 +36,7 @@ typedef enum EncryptionScheme {
 } EncryptionScheme_t;
 
 enum KeySize {
+  IV_MAX_SIZE = 16,
   KEY_SIZE = 16,
   KEY_ID_SIZE = 16,
 };
@@ -45,13 +46,25 @@ typedef struct LivePackagerConfig {
     TrackType_t track_type;
 
     size_t iv_size;
-    uint8_t* iv;
+    uint8_t iv[IV_MAX_SIZE];
     uint8_t key[KEY_SIZE];
     uint8_t key_id[KEY_ID_SIZE];
     EncryptionScheme_t protection_scheme;
 
+  /// User-specified segment number.
+  /// For FMP4 output:
+  ///   It can be used to set the moof header sequence number if > 0.
+  /// For M2TS output:
+  ///   It is be used to set the continuity counter.
     uint32_t segment_number;
+
+  /// The offset to be applied to transport stream (e.g. MPEG2-TS, HLS packed
+  /// audio) timestamps to compensate for possible negative timestamps in the
+  /// input.
     int32_t m2ts_offset_ms;
+
+  /// Used for timed text packaging to set the fragment decode time when the
+  /// output format is either VTT in MP4 or TTML in MP4.
     int64_t timed_text_decode_time;
 } LivePackagerConfig_t;
 
