@@ -251,11 +251,11 @@ class MP4MediaParserTest {
   std::vector<std::shared_ptr<media::MediaSample>> samples_;
 };
 
-void CheckVideoInitSegment(const FullSegmentBuffer& buffer,
+void CheckVideoInitSegment(const SegmentBuffer& buffer,
                            media::FourCC format) {
   bool err(true);
-  size_t bytes_to_read(buffer.InitSegmentSize());
-  const uint8_t* data(buffer.InitSegmentData());
+  size_t bytes_to_read(buffer.Size());
+  const uint8_t* data(buffer.Data());
 
   {
     std::unique_ptr<media::mp4::BoxReader> reader(
@@ -293,12 +293,12 @@ void CheckVideoInitSegment(const FullSegmentBuffer& buffer,
 }
 
 void CheckSegment(const LiveConfig& config,
-                  const FullSegmentBuffer& buffer,
+                  const SegmentBuffer& buffer,
                   const uint32_t expected_timescale,
                   const bool check_decode_time) {
   bool err(true);
-  size_t bytes_to_read(buffer.SegmentSize());
-  const uint8_t* data(buffer.SegmentData());
+  size_t bytes_to_read(buffer.Size());
+  const uint8_t* data(buffer.Data());
 
   {
     std::unique_ptr<media::mp4::BoxReader> reader(
@@ -547,7 +547,7 @@ TEST_F(LivePackagerBaseTest, InitSegmentOnly) {
   FullSegmentBuffer in;
   in.SetInitSegment(init_segment_buffer.data(), init_segment_buffer.size());
 
-  FullSegmentBuffer out;
+  SegmentBuffer out;
 
   LiveConfig live_config;
   live_config.format = LiveConfig::OutputFormat::FMP4;
@@ -555,8 +555,7 @@ TEST_F(LivePackagerBaseTest, InitSegmentOnly) {
   SetupLivePackagerConfig(live_config);
 
   ASSERT_EQ(Status::OK, live_packager_->PackageInit(in, out));
-  ASSERT_GT(out.InitSegmentSize(), 0);
-  ASSERT_EQ(out.SegmentSize(), 0);
+  ASSERT_GT(out.Size(), 0);
 
   CheckVideoInitSegment(out, media::FourCC::FOURCC_avc1);
 }
@@ -568,7 +567,7 @@ TEST_F(LivePackagerBaseTest, InitSegmentOnlyWithCBCS) {
   FullSegmentBuffer in;
   in.SetInitSegment(init_segment_buffer.data(), init_segment_buffer.size());
 
-  FullSegmentBuffer out;
+  SegmentBuffer out;
 
   LiveConfig live_config;
   live_config.format = LiveConfig::OutputFormat::FMP4;
@@ -577,8 +576,7 @@ TEST_F(LivePackagerBaseTest, InitSegmentOnlyWithCBCS) {
   SetupLivePackagerConfig(live_config);
 
   ASSERT_EQ(Status::OK, live_packager_->PackageInit(in, out));
-  ASSERT_GT(out.InitSegmentSize(), 0);
-  ASSERT_EQ(out.SegmentSize(), 0);
+  ASSERT_GT(out.Size(), 0);
 
   CheckVideoInitSegment(out, media::FourCC::FOURCC_encv);
 }
@@ -590,7 +588,7 @@ TEST_F(LivePackagerBaseTest, InitSegmentOnlyWithCENC) {
   FullSegmentBuffer in;
   in.SetInitSegment(init_segment_buffer.data(), init_segment_buffer.size());
 
-  FullSegmentBuffer out;
+  SegmentBuffer out;
 
   LiveConfig live_config;
   live_config.format = LiveConfig::OutputFormat::FMP4;
@@ -599,8 +597,7 @@ TEST_F(LivePackagerBaseTest, InitSegmentOnlyWithCENC) {
   SetupLivePackagerConfig(live_config);
 
   ASSERT_EQ(Status::OK, live_packager_->PackageInit(in, out));
-  ASSERT_GT(out.InitSegmentSize(), 0);
-  ASSERT_EQ(out.SegmentSize(), 0);
+  ASSERT_GT(out.Size(), 0);
 
   CheckVideoInitSegment(out, media::FourCC::FOURCC_encv);
 }
@@ -623,7 +620,7 @@ TEST_F(LivePackagerBaseTest, VerifyAes128WithDecryption) {
                          init_segment_buffer.size());
     SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
 
-    FullSegmentBuffer out;
+    SegmentBuffer out;
 
     LiveConfig live_config;
     live_config.format = LiveConfig::OutputFormat::TS;
@@ -633,7 +630,7 @@ TEST_F(LivePackagerBaseTest, VerifyAes128WithDecryption) {
 
     SetupLivePackagerConfig(live_config);
     ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
-    ASSERT_GT(out.SegmentSize(), 0);
+    ASSERT_GT(out.Size(), 0);
 
     std::string exp_segment_num =
         absl::StrFormat("expected/stuffing_ts/%04d.ts", i + 1);
@@ -641,8 +638,8 @@ TEST_F(LivePackagerBaseTest, VerifyAes128WithDecryption) {
     ASSERT_FALSE(exp_segment_buffer.empty());
 
     std::vector<uint8_t> decrypted;
-    std::vector<uint8_t> buffer(out.SegmentData(),
-                                out.SegmentData() + out.SegmentSize());
+    std::vector<uint8_t> buffer(out.Data(),
+                                out.Data() + out.Size());
 
     ASSERT_TRUE(decryptor.Crypt(buffer, &decrypted));
     ASSERT_EQ(decrypted, exp_segment_buffer);
@@ -666,7 +663,7 @@ TEST_F(LivePackagerBaseTest, EncryptionFailure) {
                          init_segment_buffer.size());
     SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
 
-    FullSegmentBuffer out;
+    SegmentBuffer out;
 
     LiveConfig live_config;
     live_config.format = LiveConfig::OutputFormat::TS;
@@ -696,7 +693,7 @@ TEST_F(LivePackagerBaseTest, CheckContinutityCounter) {
                          init_segment_buffer.size());
     SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
 
-    FullSegmentBuffer out;
+    SegmentBuffer out;
 
     LiveConfig live_config;
     live_config.format = LiveConfig::OutputFormat::TS;
@@ -706,9 +703,9 @@ TEST_F(LivePackagerBaseTest, CheckContinutityCounter) {
 
     SetupLivePackagerConfig(live_config);
     ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
-    ASSERT_GT(out.SegmentSize(), 0);
+    ASSERT_GT(out.Size(), 0);
 
-    ts_byte_queue.Push(out.SegmentData(), static_cast<int>(out.SegmentSize()));
+    ts_byte_queue.Push(out.Data(), static_cast<int>(out.Size()));
     while (true) {
       const uint8_t* ts_buffer;
       int ts_buffer_size;
@@ -764,7 +761,7 @@ TEST_F(LivePackagerMp2tTest, Mp2TSNegativeCTS) {
                          init_segment_buffer.size());
     SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
 
-    FullSegmentBuffer out;
+    SegmentBuffer out;
 
     LiveConfig live_config;
     live_config.format = LiveConfig::OutputFormat::TS;
@@ -774,8 +771,8 @@ TEST_F(LivePackagerMp2tTest, Mp2TSNegativeCTS) {
 
     SetupLivePackagerConfig(live_config);
     ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
-    ASSERT_GT(out.SegmentSize(), 0);
-    actual_buf.AppendData(out.SegmentData(), out.SegmentSize());
+    ASSERT_GT(out.Size(), 0);
+    actual_buf.AppendData(out.Data(), out.Size());
   }
 
   ASSERT_TRUE(
@@ -801,11 +798,11 @@ TEST_F(LivePackagerBaseTest, CustomMoofSequenceNumber) {
                          init_segment_buffer.size());
     SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
 
-    FullSegmentBuffer out;
+    SegmentBuffer out;
     LivePackager packager(live_config);
 
     ASSERT_EQ(Status::OK, packager.Package(init_seg, media_seg, out));
-    ASSERT_GT(out.SegmentSize(), 0);
+    ASSERT_GT(out.Size(), 0);
 
     CheckSegment(live_config, out, 10000000, false);
   }
@@ -874,7 +871,7 @@ TEST_P(LivePackagerEncryptionTest, VerifyWithEncryption) {
 
   SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
 
-  FullSegmentBuffer actual_buf;
+  SegmentBuffer actual_buf;
   live_packager_->PackageInit(init_seg, actual_buf);
 
   for (unsigned int i = 0; i < GetParam().num_segments; i++) {
@@ -888,12 +885,12 @@ TEST_P(LivePackagerEncryptionTest, VerifyWithEncryption) {
     std::vector<uint8_t> segment_buffer = ReadTestDataFile(format_output);
     ASSERT_FALSE(segment_buffer.empty());
 
-    FullSegmentBuffer out;
+    SegmentBuffer out;
     SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
     ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
-    ASSERT_GT(out.SegmentSize(), 0);
+    ASSERT_GT(out.Size(), 0);
 
-    actual_buf.AppendData(out.SegmentData(), out.SegmentSize());
+    actual_buf.AppendData(out.Data(), out.Size());
   }
 
   if (GetParam().compare_samples) {
@@ -959,7 +956,7 @@ TEST_F(LivePackagerBaseTest, TestPackageTimedTextHybrikComp) {
 
     SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
 
-    FullSegmentBuffer out;
+    SegmentBuffer out;
 
     LiveConfig live_config;
     live_config.format = LiveConfig::OutputFormat::VTTMP4;
@@ -970,7 +967,7 @@ TEST_F(LivePackagerBaseTest, TestPackageTimedTextHybrikComp) {
 
     SetupLivePackagerConfig(live_config);
     ASSERT_EQ(Status::OK, live_packager_->PackageTimedText(media_seg, out));
-    ASSERT_GT(out.SegmentSize(), 0);
+    ASSERT_GT(out.Size(), 0);
 
     CheckSegment(live_config, out, 1000, true);
 
@@ -978,8 +975,8 @@ TEST_F(LivePackagerBaseTest, TestPackageTimedTextHybrikComp) {
         absl::StrFormat("timed_text/expected/%05d.m4s", i + 1));
     ASSERT_FALSE(exp_seg_buf.empty());
 
-    std::vector<uint8_t> buffer(out.SegmentData(),
-                                out.SegmentData() + out.SegmentSize());
+    std::vector<uint8_t> buffer(out.Data(),
+                                out.Data() + out.Size());
     ASSERT_EQ(exp_seg_buf, buffer);
   }
 }
@@ -1009,7 +1006,7 @@ TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
     ASSERT_FALSE(segment_buffer.empty());
 
     SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
-    FullSegmentBuffer out;
+    SegmentBuffer out;
 
     LiveConfig live_config;
     live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
@@ -1026,7 +1023,7 @@ TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
     ASSERT_EQ(GetParam().expected_status,
               live_packager_->PackageTimedText(media_seg, out));
     if (GetParam().expected_status == Status::OK) {
-      ASSERT_GT(out.SegmentSize(), 0);
+      ASSERT_GT(out.Size(), 0);
       if (live_config.format == LiveConfig::OutputFormat::VTTMP4 ||
           live_config.format == LiveConfig::OutputFormat::TTMLMP4) {
         CheckSegment(live_config, out, 1000, true);
