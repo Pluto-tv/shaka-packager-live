@@ -1,6 +1,8 @@
 #include <packager/live_packager.h>
 #include <packager/live_packager_export.h>
 
+#include <memory>
+
 struct LivePackager_instance_s {
   std::unique_ptr<shaka::LivePackager> inner;
 };
@@ -73,10 +75,32 @@ bool livepackager_package(LivePackager_t lp,
   return lp->inner->Package(input_init, input_media, *dest->inner).ok();
 }
 
+bool livepackager_package_timedtext_init(LivePackager_t lp,
+                                         uint8_t* seg,
+                                         size_t seg_len,
+                                         LivePackagerBuffer_t dest) {
+  shaka::SegmentData input_seg(seg, seg_len);
+  shaka::FullSegmentBuffer out;
+  if (!lp->inner->PackageTimedText(input_seg, out).ok()) {
+    return false;
+  }
+
+  dest->inner = std::make_unique<shaka::SegmentBuffer>(out.InitSegmentData(),
+                                                       out.InitSegmentSize());
+  return true;
+}
+
 bool livepackager_package_timedtext(LivePackager_t lp,
                                     uint8_t* seg,
                                     size_t seg_len,
                                     LivePackagerBuffer_t dest) {
   shaka::SegmentData input_seg(seg, seg_len);
-  return lp->inner->PackageTimedText(input_seg, *dest->inner).ok();
+  shaka::FullSegmentBuffer out;
+  if (!lp->inner->PackageTimedText(input_seg, out).ok()) {
+    return false;
+  }
+
+  dest->inner = std::make_unique<shaka::SegmentBuffer>(out.SegmentData(),
+                                                       out.SegmentSize());
+  return true;
 }

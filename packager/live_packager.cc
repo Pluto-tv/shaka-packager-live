@@ -226,6 +226,9 @@ size_t SegmentData::Size() const {
   return size_;
 }
 
+SegmentBuffer::SegmentBuffer(const uint8_t* data, size_t size)
+    : buffer_(data, data + size) {}
+
 void SegmentBuffer::AppendData(const uint8_t* data, size_t size) {
   std::copy(data, data + size, std::back_inserter(buffer_));
 }
@@ -414,7 +417,8 @@ Status LivePackager::Package(const Segment& init_segment,
   return packager.Run();
 }
 
-Status LivePackager::PackageTimedText(const Segment& in, SegmentBuffer& out) {
+Status LivePackager::PackageTimedText(const Segment& in,
+                                      FullSegmentBuffer& out) {
   SegmentDataReader reader(in);
   shaka::BufferCallbackParams callback_params;
   callback_params.read_func = [&reader](const std::string& name, void* buffer,
@@ -429,11 +433,11 @@ Status LivePackager::PackageTimedText(const Segment& in, SegmentBuffer& out) {
   };
 
   shaka::BufferCallbackParams init_callback_params;
-  init_callback_params.write_func = [](const std::string& name,
-                                       const void* data, uint64_t size) {
-    // if (out.InitSegmentSize() == 0) {
-    //   out.SetInitSegment(reinterpret_cast<const uint8_t*>(data), size);
-    // }
+  init_callback_params.write_func = [&out](const std::string& name,
+                                           const void* data, uint64_t size) {
+    if (out.InitSegmentSize() == 0) {
+      out.SetInitSegment(reinterpret_cast<const uint8_t*>(data), size);
+    }
     return size;
   };
 
