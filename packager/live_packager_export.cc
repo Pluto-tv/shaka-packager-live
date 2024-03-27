@@ -21,8 +21,8 @@ LivePackager_t livepackager_new(LivePackagerConfig_t cfg) {
 
   if (cfg.protection_scheme != ENCRYPTION_SCHEME_NONE) {
     converted.iv = std::vector(cfg.iv, cfg.iv + cfg.iv_size);
-    converted.key = std::vector(cfg.key, cfg.key + kKeySize);
-    converted.key_id = std::vector(cfg.key_id, cfg.key_id + kKeyIdSize);
+    converted.key = std::vector(cfg.key, cfg.key + KEY_SIZE);
+    converted.key_id = std::vector(cfg.key_id, cfg.key_id + KEY_ID_SIZE);
   }
 
   return new (std::nothrow)
