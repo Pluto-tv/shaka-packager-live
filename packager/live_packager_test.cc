@@ -314,45 +314,46 @@ void CheckVideoInitSegment(const SegmentBuffer& buffer,
   }
 }
 
-void CheckTextInitSegment(const FullSegmentBuffer& buffer,
-                          media::FourCC handler,
-                          media::FourCC format) {
-  bool err(true);
-  size_t bytes_to_read(buffer.InitSegmentSize());
-  const uint8_t* data(buffer.InitSegmentData());
-
-  {
-    std::unique_ptr<media::mp4::BoxReader> reader(
-        media::mp4::BoxReader::ReadBox(data, bytes_to_read, &err));
-    EXPECT_FALSE(err);
-
-    FileTypeBoxChecker checker;
-    checker.Check(reader.get());
-
-    data += reader->size();
-    bytes_to_read -= reader->size();
-  }
-
-  {
-    std::unique_ptr<media::mp4::BoxReader> reader(
-        media::mp4::BoxReader::ReadBox(data, bytes_to_read, &err));
-    EXPECT_FALSE(err);
-
-    media::mp4::TextSampleEntry entry;
-    entry.format = format;
-
-    media::mp4::Track track;
-    track.media.handler.handler_type = handler;
-    track.media.information.sample_table.description.text_entries.push_back(
-        entry);
-
-    media::mp4::Movie expected;
-    expected.tracks.push_back(track);
-
-    MovieBoxChecker checker(expected);
-    checker.Check(reader.get());
-  }
-}
+// TODO(sasha): must be used when PackageTimedTextInit is added.
+// void CheckTextInitSegment(const FullSegmentBuffer& buffer,
+//                           media::FourCC handler,
+//                           media::FourCC format) {
+//   bool err(true);
+//   size_t bytes_to_read(buffer.InitSegmentSize());
+//   const uint8_t* data(buffer.InitSegmentData());
+//
+//   {
+//     std::unique_ptr<media::mp4::BoxReader> reader(
+//         media::mp4::BoxReader::ReadBox(data, bytes_to_read, &err));
+//     EXPECT_FALSE(err);
+//
+//     FileTypeBoxChecker checker;
+//     checker.Check(reader.get());
+//
+//     data += reader->size();
+//     bytes_to_read -= reader->size();
+//   }
+//
+//   {
+//     std::unique_ptr<media::mp4::BoxReader> reader(
+//         media::mp4::BoxReader::ReadBox(data, bytes_to_read, &err));
+//     EXPECT_FALSE(err);
+//
+//     media::mp4::TextSampleEntry entry;
+//     entry.format = format;
+//
+//     media::mp4::Track track;
+//     track.media.handler.handler_type = handler;
+//     track.media.information.sample_table.description.text_entries.push_back(
+//         entry);
+//
+//     media::mp4::Movie expected;
+//     expected.tracks.push_back(track);
+//
+//     MovieBoxChecker checker(expected);
+//     checker.Check(reader.get());
+//   }
+// }
 
 void CheckSegment(const LiveConfig& config,
                   const SegmentBuffer& buffer,
