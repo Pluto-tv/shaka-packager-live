@@ -25,8 +25,8 @@ LivePackager_t livepackager_new(LivePackagerConfig_t cfg) {
     converted.key_id = std::vector(cfg.key_id, cfg.key_id + kKeyIdSize);
   }
 
-  return new LivePackager_instance_s{
-      std::make_unique<shaka::LivePackager>(converted)};
+  return new (std::nothrow)
+      LivePackager_instance_s{std::make_unique<shaka::LivePackager>(converted)};
 }
 
 void livepackager_free(LivePackager_t lp) {
@@ -38,7 +38,8 @@ struct LivePackager_buffer_s {
 };
 
 LivePackagerBuffer_t livepackager_buf_new() {
-  return new LivePackager_buffer_s{std::make_unique<shaka::SegmentBuffer>()};
+  return new (std::nothrow)
+      LivePackager_buffer_s{std::make_unique<shaka::SegmentBuffer>()};
 }
 
 void livepackager_buf_free(LivePackagerBuffer_t buf) {
