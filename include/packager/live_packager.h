@@ -33,7 +33,7 @@ class SegmentData final : public Segment {
 };
 
 class SegmentBuffer final : public Segment {
-public:
+ public:
   SegmentBuffer() = default;
   ~SegmentBuffer() = default;
 
@@ -42,7 +42,7 @@ public:
   virtual const uint8_t* Data() const override;
   virtual size_t Size() const override;
 
-private:
+ private:
   std::vector<uint8_t> buffer_;
 };
 
@@ -140,8 +140,7 @@ class LivePackager {
                  const Segment& media_segment,
                  SegmentBuffer& output);
 
-  Status PackageTimedText(const Segment& media_segment,
-                          SegmentBuffer& output);
+  Status PackageTimedText(const Segment& media_segment, SegmentBuffer& output);
 
   LivePackager(const LivePackager&) = delete;
   LivePackager& operator=(const LivePackager&) = delete;
