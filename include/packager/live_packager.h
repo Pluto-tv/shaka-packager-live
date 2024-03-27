@@ -141,7 +141,8 @@ class LivePackager {
                  const Segment& media_segment,
                  SegmentBuffer& output);
 
-  Status PackageTimedText(const Segment& media_segment, FullSegmentBuffer& output);
+  Status PackageTimedText(const Segment& media_segment,
+                          FullSegmentBuffer& output);
 
   LivePackager(const LivePackager&) = delete;
   LivePackager& operator=(const LivePackager&) = delete;
