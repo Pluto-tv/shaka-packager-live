@@ -301,8 +301,8 @@ Status LivePackager::PackageInit(const Segment& init_segment,
     return reader.Read(buffer, size);
   };
 
-  callback_params.write_func = [](const std::string& name,
-                                         const void* data, uint64_t size) {
+  callback_params.write_func = [](const std::string& name, const void* data,
+                                  uint64_t size) {
     // output.AppendData(reinterpret_cast<const uint8_t*>(data), size);
     return size;
   };
@@ -367,14 +367,14 @@ Status LivePackager::Package(const Segment& init_segment,
 
   shaka::BufferCallbackParams init_callback_params;
   init_callback_params.write_func = [](const std::string& name,
-                                           const void* data, uint64_t size) {
+                                       const void* data, uint64_t size) {
     // For live packaging it is observed that the init segment callback is
     // invoked more than once. The initial callback does not contain the MEHD
     // box data and furthermore does not contain fragment duration.
     // If an MP4 file is created in real-time, such as used in live-streaming,
     // it is not likely that the fragment_duration is known in advance and this
     // box may be omitted.
-    //if (out.InitSegmentSize() == 0) {
+    // if (out.InitSegmentSize() == 0) {
     //  out.SetInitSegment(reinterpret_cast<const uint8_t*>(data), size);
     //}
     return size;
@@ -414,8 +414,7 @@ Status LivePackager::Package(const Segment& init_segment,
   return packager.Run();
 }
 
-Status LivePackager::PackageTimedText(const Segment& in,
-                                      SegmentBuffer& out) {
+Status LivePackager::PackageTimedText(const Segment& in, SegmentBuffer& out) {
   SegmentDataReader reader(in);
   shaka::BufferCallbackParams callback_params;
   callback_params.read_func = [&reader](const std::string& name, void* buffer,
@@ -431,10 +430,10 @@ Status LivePackager::PackageTimedText(const Segment& in,
 
   shaka::BufferCallbackParams init_callback_params;
   init_callback_params.write_func = [](const std::string& name,
-                                           const void* data, uint64_t size) {
-    //if (out.InitSegmentSize() == 0) {
-    //  out.SetInitSegment(reinterpret_cast<const uint8_t*>(data), size);
-    //}
+                                       const void* data, uint64_t size) {
+    // if (out.InitSegmentSize() == 0) {
+    //   out.SetInitSegment(reinterpret_cast<const uint8_t*>(data), size);
+    // }
     return size;
   };
 

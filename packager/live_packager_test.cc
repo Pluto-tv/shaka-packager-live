@@ -273,8 +273,7 @@ class MP4MediaParserTest {
   std::vector<std::shared_ptr<media::MediaSample>> samples_;
 };
 
-void CheckVideoInitSegment(const SegmentBuffer& buffer,
-                           media::FourCC format) {
+void CheckVideoInitSegment(const SegmentBuffer& buffer, media::FourCC format) {
   bool err(true);
   size_t bytes_to_read(buffer.Size());
   const uint8_t* data(buffer.Data());
@@ -701,8 +700,7 @@ TEST_F(LivePackagerBaseTest, VerifyAes128WithDecryption) {
     ASSERT_FALSE(exp_segment_buffer.empty());
 
     std::vector<uint8_t> decrypted;
-    std::vector<uint8_t> buffer(out.Data(),
-                                out.Data() + out.Size());
+    std::vector<uint8_t> buffer(out.Data(), out.Data() + out.Size());
 
     ASSERT_TRUE(decryptor.Crypt(buffer, &decrypted));
     ASSERT_EQ(decrypted, exp_segment_buffer);
@@ -1056,8 +1054,9 @@ TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
 
         // TODO(sasha): must be checked separately when PackageTimedTextInit is
         //              added.
-        //if (i == 0) {
-        //  CheckTextInitSegment(out, GetParam().handler_type, GetParam().format);
+        // if (i == 0) {
+        //  CheckTextInitSegment(out, GetParam().handler_type,
+        //  GetParam().format);
         //}
 
         std::string expected_fname;
@@ -1067,8 +1066,7 @@ TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
         std::vector<uint8_t> expected_buf(ReadTestDataFile(expected_fname));
         ASSERT_FALSE(expected_buf.empty());
 
-        std::vector<uint8_t> actual_buf(out.Data(),
-                                        out.Data() + out.Size());
+        std::vector<uint8_t> actual_buf(out.Data(), out.Data() + out.Size());
         ASSERT_EQ(expected_buf, actual_buf);
       }
     }
