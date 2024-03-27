@@ -35,20 +35,18 @@ typedef enum EncryptionScheme {
     ENCRYPTION_SCHEME_CENC,
 } EncryptionScheme_t;
 
-enum KeySize {
-  IV_MAX_SIZE = 16,
-  KEY_SIZE = 16,
-  KEY_ID_SIZE = 16,
-};
+static const size_t kIvMaxSize = 16;
+static const size_t kKeySize = 16;
+static const size_t kKeyIdSize = 16;
 
 typedef struct LivePackagerConfig {
     OutputFormat_t format;
     TrackType_t track_type;
 
     size_t iv_size;
-    uint8_t iv[IV_MAX_SIZE];
-    uint8_t key[KEY_SIZE];
-    uint8_t key_id[KEY_ID_SIZE];
+    uint8_t iv[kIvMaxSize];
+    uint8_t key[kKeySize];
+    uint8_t key_id[kKeyIdSize];
     EncryptionScheme_t protection_scheme;
 
   /// User-specified segment number.
