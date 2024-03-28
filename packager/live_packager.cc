@@ -226,9 +226,6 @@ size_t SegmentData::Size() const {
   return size_;
 }
 
-SegmentBuffer::SegmentBuffer(const uint8_t* data, size_t size)
-    : buffer_(data, data + size) {}
-
 void SegmentBuffer::AppendData(const uint8_t* data, size_t size) {
   std::copy(data, data + size, std::back_inserter(buffer_));
 }
@@ -306,13 +303,19 @@ Status LivePackager::PackageInit(const Segment& init_segment,
 
   callback_params.write_func = [](const std::string& name, const void* data,
                                   uint64_t size) {
-    // output.AppendData(reinterpret_cast<const uint8_t*>(data), size);
+    // skip writing any media segment data
     return size;
   };
 
   shaka::BufferCallbackParams init_callback_params;
   init_callback_params.write_func = [&output](const std::string& name,
                                               const void* data, uint64_t size) {
+    // For live packaging it is observed that the init segment callback is
+    // invoked more than once. The initial callback does not contain the MEHD
+    // box data and furthermore does not contain fragment duration.
+    // If an MP4 file is created in real-time, such as used in live-streaming,
+    // it is not likely that the fragment_duration is known in advance and this
+    // box may be omitted.
     if (output.Size() == 0) {
       LOG(INFO) << "init segment callback, name: " << name << " size: " << size;
       output.AppendData(reinterpret_cast<const uint8_t*>(data), size);
@@ -371,15 +374,7 @@ Status LivePackager::Package(const Segment& init_segment,
   shaka::BufferCallbackParams init_callback_params;
   init_callback_params.write_func = [](const std::string& name,
                                        const void* data, uint64_t size) {
-    // For live packaging it is observed that the init segment callback is
-    // invoked more than once. The initial callback does not contain the MEHD
-    // box data and furthermore does not contain fragment duration.
-    // If an MP4 file is created in real-time, such as used in live-streaming,
-    // it is not likely that the fragment_duration is known in advance and this
-    // box may be omitted.
-    // if (out.InitSegmentSize() == 0) {
-    //  out.SetInitSegment(reinterpret_cast<const uint8_t*>(data), size);
-    //}
+    // skip writing any init segment data
     return size;
   };
 

@@ -79,24 +79,24 @@ LivePackager_t livepackager_new(LivePackagerConfig_t cfg);
 void livepackager_free(LivePackager_t lp);
 
 bool livepackager_package_init(LivePackager_t lp,
-                               uint8_t* init,
+                               const uint8_t* init,
                                size_t init_len,
                                LivePackagerBuffer_t dest);
 
 bool livepackager_package(LivePackager_t lp,
-                          uint8_t* init,
+                          const uint8_t* init,
                           size_t init_len,
-                          uint8_t* media,
+                          const uint8_t* media,
                           size_t media_len,
                           LivePackagerBuffer_t dest);
 
 bool livepackager_package_timedtext_init(LivePackager_t lp,
-                                         uint8_t* seg,
+                                         const uint8_t* seg,
                                          size_t seg_len,
                                          LivePackagerBuffer_t dest);
 
 bool livepackager_package_timedtext(LivePackager_t lp,
-                                    uint8_t* seg,
+                                    const uint8_t* seg,
                                     size_t seg_len,
                                     LivePackagerBuffer_t dest);
 

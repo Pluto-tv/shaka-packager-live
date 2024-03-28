@@ -35,7 +35,6 @@ class SegmentData final : public Segment {
 class SegmentBuffer final : public Segment {
  public:
   SegmentBuffer() = default;
-  SegmentBuffer(const uint8_t* data, size_t size);
   ~SegmentBuffer() = default;
 
   void AppendData(const uint8_t* data, size_t size);

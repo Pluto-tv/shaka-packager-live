@@ -57,7 +57,7 @@ size_t livepackager_buf_size(LivePackagerBuffer_t buf) {
 }
 
 bool livepackager_package_init(LivePackager_t lp,
-                               uint8_t* init,
+                               const uint8_t* init,
                                size_t init_len,
                                LivePackagerBuffer_t dest) {
   shaka::SegmentData input(init, init_len);
@@ -65,9 +65,9 @@ bool livepackager_package_init(LivePackager_t lp,
 }
 
 bool livepackager_package(LivePackager_t lp,
-                          uint8_t* init,
+                          const uint8_t* init,
                           size_t init_len,
-                          uint8_t* media,
+                          const uint8_t* media,
                           size_t media_len,
                           LivePackagerBuffer_t dest) {
   shaka::SegmentData input_init(init, init_len);
@@ -76,7 +76,7 @@ bool livepackager_package(LivePackager_t lp,
 }
 
 bool livepackager_package_timedtext_init(LivePackager_t lp,
-                                         uint8_t* seg,
+                                         const uint8_t* seg,
                                          size_t seg_len,
                                          LivePackagerBuffer_t dest) {
   shaka::SegmentData input_seg(seg, seg_len);
@@ -85,13 +85,12 @@ bool livepackager_package_timedtext_init(LivePackager_t lp,
     return false;
   }
 
-  dest->inner = std::make_unique<shaka::SegmentBuffer>(out.InitSegmentData(),
-                                                       out.InitSegmentSize());
+  dest->inner->AppendData(out.InitSegmentData(), out.InitSegmentSize());
   return true;
 }
 
 bool livepackager_package_timedtext(LivePackager_t lp,
-                                    uint8_t* seg,
+                                    const uint8_t* seg,
                                     size_t seg_len,
                                     LivePackagerBuffer_t dest) {
   shaka::SegmentData input_seg(seg, seg_len);
@@ -100,7 +99,6 @@ bool livepackager_package_timedtext(LivePackager_t lp,
     return false;
   }
 
-  dest->inner = std::make_unique<shaka::SegmentBuffer>(out.SegmentData(),
-                                                       out.SegmentSize());
+  dest->inner->AppendData(out.SegmentData(), out.SegmentSize());
   return true;
 }
