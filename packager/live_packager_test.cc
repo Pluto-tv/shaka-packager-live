@@ -1049,7 +1049,8 @@ TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
       ASSERT_GT(out.SegmentSize(), 0);
       if (live_config.format == LiveConfig::OutputFormat::VTTMP4 ||
           live_config.format == LiveConfig::OutputFormat::TTMLMP4) {
-        SegmentBuffer seg(out.SegmentData(), out.SegmentSize());
+        SegmentBuffer seg;
+        seg.AppendData(out.SegmentData(), out.SegmentSize());
         CheckSegment(live_config, seg, 1000, true);
 
         if (i == 0) {
