@@ -19,6 +19,10 @@ LivePackager_t livepackager_new(LivePackagerConfig_t cfg) {
       .segment_number = cfg.segment_number,
       .m2ts_offset_ms = cfg.m2ts_offset_ms,
       .timed_text_decode_time = cfg.timed_text_decode_time,
+      .decryption_key =
+          std::vector(cfg.decryption_key, cfg.decryption_key + KEY_SIZE),
+      .decryption_key_id = std::vector(cfg.decryption_key_id,
+                                       cfg.decryption_key_id + KEY_ID_SIZE),
   };
 
   if (cfg.protection_scheme != ENCRYPTION_SCHEME_NONE) {

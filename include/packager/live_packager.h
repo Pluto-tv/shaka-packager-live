@@ -121,7 +121,7 @@ struct LiveConfig {
 
   /// Decryption parameters
   std::vector<uint8_t> decryption_key;
-  std::vector<uint8_t> decryption_id;
+  std::vector<uint8_t> decryption_key_id;
 };
 
 class LivePackager {
