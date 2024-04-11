@@ -1083,9 +1083,7 @@ class LivePackagerTestReEncrypt
     : public LivePackagerBaseTest,
       public ::testing::WithParamInterface<LivePackagerReEncryptCase> {
  public:
-  void SetUp() override {
-    LivePackagerBaseTest::SetUp();
-  }
+  void SetUp() override { LivePackagerBaseTest::SetUp(); }
 
  protected:
   static std::vector<uint8_t> ReadExpectedData() {

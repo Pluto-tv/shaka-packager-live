@@ -106,7 +106,6 @@ struct LiveConfig {
   /// output format is either VTT in MP4 or TTML in MP4.
   int64_t timed_text_decode_time = -1;
 
-
   /// Decryption parameters
   std::vector<uint8_t> decryption_key;
   std::vector<uint8_t> decryption_id;
