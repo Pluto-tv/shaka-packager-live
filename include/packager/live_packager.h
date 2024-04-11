@@ -7,7 +7,6 @@
 #ifndef PACKAGER_LIVE_PACKAGER_H_
 #define PACKAGER_LIVE_PACKAGER_H_
 
-#include <packager/crypto_params.h>
 #include <packager/packager.h>
 
 namespace shaka {
