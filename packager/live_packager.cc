@@ -380,10 +380,12 @@ Status LivePackager::Package(const Segment& init_segment,
   packaging_params.cts_offset_adjustment =
       config_.format == LiveConfig::OutputFormat::TS;
 
-  if (config_.decryption_keys) {
+  if (!config_.decryption_key.empty() && !config_.decryption_id.empty()) {
     DecryptionParams& decryption_params = packaging_params.decryption_params;
     decryption_params.key_provider = KeyProvider::kRawKey;
-    decryption_params.raw_key = *config_.decryption_keys;
+    RawKeyParams::KeyInfo& key_info = decryption_params.raw_key.key_map[""];
+    key_info.key = config_.decryption_key;
+    key_info.key_id = config_.decryption_id;
   }
 
   EncryptionParams& encryption_params = packaging_params.encryption_params;

@@ -49,16 +49,8 @@ const uint8_t kIv[]{
     0x08, 0x09, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
 };
 
-const char kDrmLabel0[] = "k_0";
-const char kDrmLabel1[] = "k_1";
-
 const char kKeyIdHex[] = "00000000621f2afe7ab2c868d5fd2e2e";
 const char kKeyHex[] = "1af987fa084ff3c0f4ad35a6bdab98e2";
-const char kIvHex[] = "3edd0ba826f5fdf994f2569fea8e091e";
-
-const char kKeyId2Hex[] = "00000000621f2afe7ab2c868d5fd2e2f";
-const char kKey2Hex[] = "fbc5b49c8b03b37b4522ddd0b09b204d";
-const char kIv2Hex[] = "676e6bb65321a027749fcae57acdc71f";
 
 std::vector<uint8_t> HexStringToVector(const std::string& hex_str) {
   std::string raw_str = absl::HexStringToBytes(hex_str);
@@ -66,7 +58,6 @@ std::vector<uint8_t> HexStringToVector(const std::string& hex_str) {
 }
 
 const int kNumSegments = 10;
-constexpr int kNumSegments = 10;
 constexpr unsigned kSegmentDurationMs = 5000;
 
 std::filesystem::path GetTestDataFilePath(const std::string& name) {
@@ -756,14 +747,8 @@ TEST_F(LivePackagerBaseTest, VerifyPrdDecryptReEncrypt) {
     live_config.track_type = LiveConfig::TrackType::VIDEO;
     live_config.protection_scheme = LiveConfig::EncryptionScheme::AES_128;
     live_config.segment_number = i;
-    auto* decryption_keys = new (shaka::RawKeyParams);
-    decryption_keys->key_map[kDrmLabel0].key_id = HexStringToVector(kKeyIdHex);
-    decryption_keys->key_map[kDrmLabel0].key = HexStringToVector(kKeyHex);
-    decryption_keys->key_map[kDrmLabel0].iv = HexStringToVector(kIvHex);
-    decryption_keys->key_map[kDrmLabel1].key_id = HexStringToVector(kKeyId2Hex);
-    decryption_keys->key_map[kDrmLabel1].key = HexStringToVector(kKey2Hex);
-    decryption_keys->key_map[kDrmLabel1].iv = HexStringToVector(kIv2Hex);
-    live_config.decryption_keys = decryption_keys;
+    live_config.decryption_key = HexStringToVector(kKeyHex);
+    live_config.decryption_id = HexStringToVector(kKeyIdHex);
 
     SetupLivePackagerConfig(live_config);
 
@@ -1083,6 +1068,125 @@ INSTANTIATE_TEST_CASE_P(
             5, "audio/en/init.mp4", LiveConfig::EncryptionScheme::SAMPLE_AES,
             LiveConfig::OutputFormat::TS, LiveConfig::TrackType::AUDIO,
             "audio/en/%05d.m4s", false}));
+
+struct LivePackagerReEncryptCase {
+  unsigned int num_segments;
+  std::string init_segment_name;
+  LiveConfig::EncryptionScheme encryption_scheme;
+  LiveConfig::OutputFormat output_format;
+  LiveConfig::TrackType track_type;
+  const char* media_segment_format;
+  bool compare_samples;
+};
+
+class LivePackagerTestReEncrypt
+    : public LivePackagerBaseTest,
+      public ::testing::WithParamInterface<LivePackagerReEncryptCase> {
+ public:
+  void SetUp() override {
+    LivePackagerBaseTest::SetUp();
+  }
+
+ protected:
+  static std::vector<uint8_t> ReadExpectedData() {
+    std::vector<uint8_t> buf =
+        ReadTestDataFile("encrypted/prd_data/decrypt/fmp4/init.mp4");
+    for (unsigned int i = 0; i < GetParam().num_segments; i++) {
+      auto seg_buf = ReadTestDataFile(
+          absl::StrFormat("encrypted/prd_data/decrypt/fmp4/%05d.m4s", i + 1));
+      buf.insert(buf.end(), seg_buf.begin(), seg_buf.end());
+    }
+
+    return buf;
+  }
+
+  static std::unique_ptr<media::KeySource> MakeKeySource() {
+    RawKeyParams raw_key;
+    RawKeyParams::KeyInfo& key_info = raw_key.key_map[""];
+    key_info.key = {std::begin(kKey), std::end(kKey)};
+    key_info.key_id = {std::begin(kKeyId), std::end(kKeyId)};
+    key_info.iv = {std::begin(kIv), std::end(kIv)};
+
+    return media::RawKeySource::Create(raw_key);
+  }
+
+  std::unique_ptr<media::KeySource> key_source_ = MakeKeySource();
+  std::unique_ptr<MP4MediaParserTest> parser_noenc_ =
+      std::make_unique<MP4MediaParserTest>(nullptr);
+  std::unique_ptr<MP4MediaParserTest> parser_enc_ =
+      std::make_unique<MP4MediaParserTest>(key_source_.get());
+};
+
+TEST_P(LivePackagerTestReEncrypt, VerifyReEncryption) {
+  std::vector<uint8_t> init_segment_buffer =
+      ReadTestDataFile(GetParam().init_segment_name);
+  ASSERT_FALSE(init_segment_buffer.empty());
+
+  SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
+
+  FullSegmentBuffer actual_buf;
+
+  for (unsigned int i = 0; i < GetParam().num_segments; i++) {
+    std::string input_fname;
+    ASSERT_TRUE(
+        FormatWithIndex(GetParam().media_segment_format, i + 1, input_fname));
+
+    std::vector<uint8_t> segment_buffer = ReadTestDataFile(input_fname);
+    ASSERT_FALSE(segment_buffer.empty());
+
+    FullSegmentBuffer out;
+    LiveConfig live_config;
+    live_config.segment_number = i;
+    live_config.format = GetParam().output_format;
+    live_config.track_type = GetParam().track_type;
+    live_config.protection_scheme = GetParam().encryption_scheme;
+
+    live_config.decryption_key = HexStringToVector(kKeyHex);
+    live_config.decryption_id = HexStringToVector(kKeyIdHex);
+
+    SetupLivePackagerConfig(live_config);
+
+    SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+    ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
+    ASSERT_GT(out.SegmentSize(), 0);
+
+    if (i == 0) {
+      actual_buf.AppendData(out.InitSegmentData(), out.InitSegmentSize());
+    }
+    actual_buf.AppendData(out.SegmentData(), out.SegmentSize());
+  }
+
+  auto expected_buf = ReadExpectedData();
+  CHECK(parser_noenc_->Parse(expected_buf.data(), expected_buf.size()));
+  auto& expected_samples = parser_noenc_->GetSamples();
+
+  CHECK(parser_enc_->Parse(actual_buf.Data(), actual_buf.Size()));
+  auto& actual_samples = parser_enc_->GetSamples();
+
+  CHECK_EQ(expected_samples.size(), actual_samples.size());
+  CHECK(std::equal(
+      expected_samples.begin(), expected_samples.end(), actual_samples.begin(),
+      actual_samples.end(), [](const auto& s1, const auto& s2) {
+        return s1->data_size() == s2->data_size() &&
+               0 == memcmp(s1->data(), s2->data(), s1->data_size());
+      }));
+}
+
+INSTANTIATE_TEST_CASE_P(
+    LivePackagerReEncryptTypes,
+    LivePackagerTestReEncrypt,
+    ::testing::Values(
+        // Verify decrypt FMP4 and re-encrypt to FMP4 with CENC encryption.
+        LivePackagerReEncryptCase{
+            7, "encrypted/prd_data/init.mp4",
+            LiveConfig::EncryptionScheme::CENC, LiveConfig::OutputFormat::FMP4,
+            LiveConfig::TrackType::VIDEO, "encrypted/prd_data/%05d.m4s", true},
+        // Verify decrypt FMP4 and re-encrypt to FMP4 with CBCS encryption.
+        LivePackagerReEncryptCase{7, "encrypted/prd_data/init.mp4",
+                                  LiveConfig::EncryptionScheme::CBCS,
+                                  LiveConfig::OutputFormat::FMP4,
+                                  LiveConfig::TrackType::VIDEO,
+                                  "encrypted/prd_data/%05d.m4s", true}));
 
 struct TimedTextTestCase {
   const char* media_segment_format;
