@@ -35,6 +35,7 @@
 #include <packager/media/demuxer/demuxer.h>
 #include <packager/media/event/muxer_listener_factory.h>
 #include <packager/media/event/vod_media_info_dump_muxer_listener.h>
+#include <packager/media/formats/mp4/dash_event_message_handler.h>
 #include <packager/media/formats/ttml/ttml_to_mp4_handler.h>
 #include <packager/media/formats/webvtt/text_padder.h>
 #include <packager/media/formats/webvtt/webvtt_to_mp4_handler.h>
@@ -687,10 +688,15 @@ Status CreateAudioVideoJobs(
       RETURN_IF_ERROR(demuxer->SetHandler(stream.stream_selector, handlers[0]));
     }
 
+    std::shared_ptr<mp4::DashEventMessageHandler> dash_event_message_handler =
+        std::make_shared<mp4::DashEventMessageHandler>();
+
+    demuxer->SetDashEventMessageHandler(dash_event_message_handler);
+
     // Create the muxer (output) for this track.
     const auto output_format = GetOutputFormat(stream);
-    std::shared_ptr<Muxer> muxer =
-        muxer_factory->CreateMuxer(output_format, stream);
+    std::shared_ptr<Muxer> muxer = muxer_factory->CreateMuxer(
+        output_format, stream, dash_event_message_handler);
     if (!muxer) {
       return Status(error::INVALID_ARGUMENT, "Failed to create muxer for " +
                                                  stream.input + ":" +

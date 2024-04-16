@@ -267,6 +267,12 @@ class MP4MediaParserTest {
     return false;
   }
 
+  bool NewDashEventMessage(
+      std::shared_ptr<media::mp4::DASHEventMessageBox> info) {
+    emsg_samples_.push_back(std::move(info));
+    return true;
+  }
+
   void InitializeParser(media::KeySource* decryption_key_source) {
     parser_->Init(
         std::bind(&MP4MediaParserTest::InitF, this, std::placeholders::_1),
@@ -274,12 +280,15 @@ class MP4MediaParserTest {
                   std::placeholders::_2),
         std::bind(&MP4MediaParserTest::NewTextSampleF, this,
                   std::placeholders::_1, std::placeholders::_2),
+        std::bind(&MP4MediaParserTest::NewDashEventMessage, this,
+                  std::placeholders::_1),
         decryption_key_source);
   }
 
   std::unique_ptr<media::mp4::MP4MediaParser> parser_ =
       std::make_unique<media::mp4::MP4MediaParser>();
   std::vector<std::shared_ptr<media::MediaSample>> samples_;
+  std::vector<std::shared_ptr<media::mp4::DASHEventMessageBox>> emsg_samples_;
 };
 
 void CheckVideoInitSegment(const SegmentBuffer& buffer, media::FourCC format) {
@@ -599,6 +608,11 @@ class LivePackagerMp2tTest : public LivePackagerBaseTest {
     return false;
   }
 
+  bool OnDashEventMessageEvent(
+      std::shared_ptr<media::mp4::DASHEventMessageBox> emsg_box_info) {
+    return true;
+  }
+
   void InitializeParser() {
     parser_->Init(
         std::bind(&LivePackagerMp2tTest::OnInit, this, std::placeholders::_1),
@@ -606,6 +620,8 @@ class LivePackagerMp2tTest : public LivePackagerBaseTest {
                   std::placeholders::_1, std::placeholders::_2),
         std::bind(&LivePackagerMp2tTest::OnNewTextSample, this,
                   std::placeholders::_1, std::placeholders::_2),
+        std::bind(&LivePackagerMp2tTest::OnDashEventMessageEvent, this,
+                  std::placeholders::_1),
         NULL);
   }
 };
@@ -1137,7 +1153,7 @@ TEST_P(LivePackagerTestReEncrypt, VerifyReEncryption) {
 
     SegmentBuffer out;
     LiveConfig live_config;
-    live_config.segment_number = i;
+    live_config.segment_number = i + 1;
     live_config.format = GetParam().output_format;
     live_config.track_type = GetParam().track_type;
     live_config.protection_scheme = GetParam().encryption_scheme;

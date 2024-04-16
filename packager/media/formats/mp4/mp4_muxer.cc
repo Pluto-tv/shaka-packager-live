@@ -39,9 +39,7 @@ namespace {
 
 // Sets the range start and end value from offset and size.
 // |start| and |end| are for byte-range-spec specified in RFC2616.
-void SetStartAndEndFromOffsetAndSize(size_t offset,
-                                     size_t size,
-                                     Range* range) {
+void SetStartAndEndFromOffsetAndSize(size_t offset, size_t size, Range* range) {
   DCHECK(range);
   range->start = static_cast<uint32_t>(offset);
   // Note that ranges are inclusive. So we need - 1.
@@ -160,7 +158,9 @@ int16_t GetRollDistance(uint64_t seek_preroll_ns, uint32_t sampling_frequency) {
 
 }  // namespace
 
-MP4Muxer::MP4Muxer(const MuxerOptions& options) : Muxer(options) {}
+MP4Muxer::MP4Muxer(const MuxerOptions& options,
+                   std::shared_ptr<mp4::DashEventMessageHandler> dash_handler)
+    : Muxer(options), dash_handler_(std::move(dash_handler)) {}
 MP4Muxer::~MP4Muxer() {}
 
 Status MP4Muxer::InitializeMuxer() {
@@ -271,8 +271,8 @@ Status MP4Muxer::DelayInitializeMuxer() {
             static_cast<const AudioStreamInfo*>(stream), &trak);
         break;
       case kStreamText:
-        generate_trak_result = GenerateTextTrak(
-            static_cast<const TextStreamInfo*>(stream), &trak);
+        generate_trak_result =
+            GenerateTextTrak(static_cast<const TextStreamInfo*>(stream), &trak);
         break;
       default:
         NOTIMPLEMENTED() << "Not implemented for stream type: "
@@ -310,8 +310,8 @@ Status MP4Muxer::DelayInitializeMuxer() {
     segmenter_.reset(new LowLatencySegmentSegmenter(options(), std::move(ftyp),
                                                     std::move(moov)));
   } else {
-    segmenter_.reset(
-        new MultiSegmentSegmenter(options(), std::move(ftyp), std::move(moov)));
+    segmenter_.reset(new MultiSegmentSegmenter(
+        options(), std::move(ftyp), std::move(moov), std::move(dash_handler_)));
   }
 
   const Status segmenter_initialized =
@@ -476,7 +476,7 @@ bool MP4Muxer::GenerateAudioTrak(const AudioStreamInfo* audio_info,
   AudioSampleEntry audio;
   audio.format =
       CodecToFourCC(audio_info->codec(), H26xStreamFormat::kUnSpecified);
-  switch(audio_info->codec()){
+  switch (audio_info->codec()) {
     case kCodecAAC: {
       DecoderConfigDescriptor* decoder_config =
           audio.esds.es_descriptor.mutable_decoder_config_descriptor();
@@ -546,10 +546,10 @@ bool MP4Muxer::GenerateAudioTrak(const AudioStreamInfo* audio_info,
     audio.channelcount = 2;
     audio.samplesize = 16;
   } else if (audio_info->codec() == kCodecAC4) {
-    //ETSI TS 103 190-2, E.4.5 channelcount should be set to the total number of
-    //audio outputchannels of the default audio presentation of that track
+    // ETSI TS 103 190-2, E.4.5 channelcount should be set to the total number
+    // of audio outputchannels of the default audio presentation of that track
     audio.channelcount = audio_info->num_channels();
-    //ETSI TS 103 190-2, E.4.6 samplesize shall be set to 16.
+    // ETSI TS 103 190-2, E.4.6 samplesize shall be set to 16.
     audio.samplesize = 16;
   } else {
     audio.channelcount = audio_info->num_channels();
@@ -586,8 +586,7 @@ bool MP4Muxer::GenerateAudioTrak(const AudioStreamInfo* audio_info,
   return true;
 }
 
-bool MP4Muxer::GenerateTextTrak(const TextStreamInfo* text_info,
-                                Track* trak) {
+bool MP4Muxer::GenerateTextTrak(const TextStreamInfo* text_info, Track* trak) {
   InitializeTrak(text_info, trak);
 
   if (text_info->codec_string() == "wvtt") {

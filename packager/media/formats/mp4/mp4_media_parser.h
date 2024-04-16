@@ -36,6 +36,7 @@ class MP4MediaParser : public MediaParser {
   void Init(const InitCB& init_cb,
             const NewMediaSampleCB& new_media_sample_cb,
             const NewTextSampleCB& new_text_sample_cb,
+            const DASHEventMessageBoxCB& event_message_cb,
             KeySource* decryption_key_source) override;
   [[nodiscard]] bool Flush() override;
   [[nodiscard]] bool Parse(const uint8_t* buf, int size) override;
@@ -60,6 +61,7 @@ class MP4MediaParser : public MediaParser {
   bool ParseBox(bool* err);
   bool ParseMoov(mp4::BoxReader* reader);
   bool ParseMoof(mp4::BoxReader* reader);
+  bool ParseEmsg(mp4::BoxReader* reader);
 
   bool FetchKeysIfNecessary(
       const std::vector<ProtectionSystemSpecificHeader>& headers);
@@ -83,6 +85,7 @@ class MP4MediaParser : public MediaParser {
   State state_;
   InitCB init_cb_;
   NewMediaSampleCB new_sample_cb_;
+  DASHEventMessageBoxCB event_message_cb_;
   KeySource* decryption_key_source_;
   std::unique_ptr<DecryptorSource> decryptor_source_;
 

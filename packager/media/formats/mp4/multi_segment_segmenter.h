@@ -9,6 +9,7 @@
 
 #include <packager/macros/classes.h>
 #include <packager/media/formats/mp4/segmenter.h>
+#include "dash_event_message_handler.h"
 
 namespace shaka {
 namespace media {
@@ -25,7 +26,8 @@ class MultiSegmentSegmenter : public Segmenter {
  public:
   MultiSegmentSegmenter(const MuxerOptions& options,
                         std::unique_ptr<FileType> ftyp,
-                        std::unique_ptr<Movie> moov);
+                        std::unique_ptr<Movie> moov,
+                        std::shared_ptr<mp4::DashEventMessageHandler> handler);
   ~MultiSegmentSegmenter() override;
 
   /// @name Segmenter implementation overrides.
@@ -47,6 +49,7 @@ class MultiSegmentSegmenter : public Segmenter {
 
   std::unique_ptr<SegmentType> styp_;
   uint32_t num_segments_;
+  std::shared_ptr<mp4::DashEventMessageHandler> handler_;
 
   DISALLOW_COPY_AND_ASSIGN(MultiSegmentSegmenter);
 };

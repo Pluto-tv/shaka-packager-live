@@ -27,6 +27,7 @@ class WebVttParser : public MediaParser {
   void Init(const InitCB& init_cb,
             const NewMediaSampleCB& new_media_sample_cb,
             const NewTextSampleCB& new_text_sample_cb,
+            const DASHEventMessageBoxCB& event_message_cb,
             KeySource* decryption_key_source) override;
   bool Flush() override;
   bool Parse(const uint8_t* buf, int size) override;

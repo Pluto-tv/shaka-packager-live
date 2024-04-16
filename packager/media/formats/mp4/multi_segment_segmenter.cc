@@ -22,17 +22,21 @@
 #include <packager/media/event/muxer_listener.h>
 #include <packager/media/formats/mp4/box_definitions.h>
 #include <packager/media/formats/mp4/key_frame_info.h>
+#include "dash_event_message_handler.h"
 
 namespace shaka {
 namespace media {
 namespace mp4 {
 
-MultiSegmentSegmenter::MultiSegmentSegmenter(const MuxerOptions& options,
-                                             std::unique_ptr<FileType> ftyp,
-                                             std::unique_ptr<Movie> moov)
+MultiSegmentSegmenter::MultiSegmentSegmenter(
+    const MuxerOptions& options,
+    std::unique_ptr<FileType> ftyp,
+    std::unique_ptr<Movie> moov,
+    std::shared_ptr<mp4::DashEventMessageHandler> handler)
     : Segmenter(options, std::move(ftyp), std::move(moov)),
       styp_(new SegmentType),
-      num_segments_(0) {
+      num_segments_(0),
+      handler_(std::move(handler)) {
   // Use the same brands for styp as ftyp.
   styp_->major_brand = Segmenter::ftyp()->major_brand;
   styp_->compatible_brands = Segmenter::ftyp()->compatible_brands;
@@ -126,6 +130,8 @@ Status MultiSegmentSegmenter::WriteSegment() {
 
   if (options().mp4_params.generate_sidx_in_media_segments)
     sidx()->Write(buffer.get());
+
+  handler_->FlushEventMessages(buffer.get());
 
   const size_t segment_header_size = buffer->Size();
   const size_t segment_size = segment_header_size + fragment_buffer()->Size();

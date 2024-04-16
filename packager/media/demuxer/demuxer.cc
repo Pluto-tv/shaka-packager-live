@@ -73,7 +73,7 @@ bool GetStreamIndex(const std::string& stream_label, size_t* stream_index) {
   return true;
 }
 
-}
+}  // namespace
 
 namespace shaka {
 namespace media {
@@ -139,10 +139,14 @@ Status Demuxer::SetHandler(const std::string& stream_label,
                            std::shared_ptr<MediaHandler> handler) {
   size_t stream_index = kInvalidStreamIndex;
   if (!GetStreamIndex(stream_label, &stream_index)) {
-    return Status(error::INVALID_ARGUMENT,
-                  "Invalid stream: " + stream_label);
+    return Status(error::INVALID_ARGUMENT, "Invalid stream: " + stream_label);
   }
   return MediaHandler::SetHandler(stream_index, std::move(handler));
+}
+
+void Demuxer::SetDashEventMessageHandler(
+    const std::shared_ptr<mp4::DashEventMessageHandler>& handler) {
+  dash_event_handler_ = handler;
 }
 
 void Demuxer::SetLanguageOverride(const std::string& stream_label,
@@ -226,6 +230,8 @@ Status Demuxer::InitializeParser() {
                 std::placeholders::_2),
       std::bind(&Demuxer::NewTextSampleEvent, this, std::placeholders::_1,
                 std::placeholders::_2),
+      std::bind(&Demuxer::NewDashEventMessageEvent, this,
+                std::placeholders::_1),
       key_source_.get());
 
   // Handle trailing 'moov'.
@@ -235,7 +241,8 @@ Status Demuxer::InitializeParser() {
     // descriptor |media_file_| instead of opening the same file again.
     static_cast<mp4::MP4MediaParser*>(parser_.get())->LoadMoov(file_name_);
   }
-  if (!parser_->Parse(buffer_.get(), bytes_read) || (eof && !parser_->Flush())) {
+  if (!parser_->Parse(buffer_.get(), bytes_read) ||
+      (eof && !parser_->Flush())) {
     return Status(error::PARSER_FAILURE,
                   "Cannot parse media file " + file_name_);
   }
@@ -258,9 +265,8 @@ void Demuxer::ParserInitEvent(
   bool audio_handler_set =
       output_handlers().find(kBaseAudioOutputStreamIndex) !=
       output_handlers().end();
-  bool text_handler_set =
-      output_handlers().find(kBaseTextOutputStreamIndex) !=
-      output_handlers().end();
+  bool text_handler_set = output_handlers().find(kBaseTextOutputStreamIndex) !=
+                          output_handlers().end();
   for (const std::shared_ptr<StreamInfo>& stream_info : stream_infos) {
     size_t stream_index = base_stream_index;
     if (video_handler_set && stream_info->stream_type() == kStreamVideo) {
@@ -351,6 +357,16 @@ bool Demuxer::NewTextSampleEvent(uint32_t track_id,
     queued_text_samples_.pop_front();
   }
   return PushTextSample(track_id, sample);
+}
+
+bool Demuxer::NewDashEventMessageEvent(
+    std::shared_ptr<mp4::DASHEventMessageBox> emsg_box_info) {
+  if (dash_event_handler_) {
+    LOG(WARNING) << "handling DASH Event Message Data... ID: "
+                 << emsg_box_info->GetID();
+    dash_event_handler_->OnDashEvent(std::move(emsg_box_info));
+  }
+  return true;
 }
 
 bool Demuxer::PushMediaSample(uint32_t track_id,

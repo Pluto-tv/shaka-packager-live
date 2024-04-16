@@ -189,15 +189,18 @@ MP4MediaParser::~MP4MediaParser() {}
 void MP4MediaParser::Init(const InitCB& init_cb,
                           const NewMediaSampleCB& new_media_sample_cb,
                           const NewTextSampleCB& new_text_sample_cb,
+                          const DASHEventMessageBoxCB& event_message_cb,
                           KeySource* decryption_key_source) {
   DCHECK_EQ(state_, kWaitingForInit);
   DCHECK(init_cb_ == nullptr);
   DCHECK(init_cb != nullptr);
   DCHECK(new_media_sample_cb != nullptr);
+  DCHECK(event_message_cb != nullptr);
 
   ChangeState(kParsingBoxes);
   init_cb_ = init_cb;
   new_sample_cb_ = new_media_sample_cb;
+  event_message_cb_ = event_message_cb;
   decryption_key_source_ = decryption_key_source;
   if (decryption_key_source)
     decryptor_source_.reset(new DecryptorSource(decryption_key_source));
@@ -361,6 +364,8 @@ bool MP4MediaParser::ParseBox(bool* err) {
 
   if (reader->type() == FOURCC_moov) {
     *err = !ParseMoov(reader.get());
+  } else if (reader->type() == FOURCC_emsg) {
+    *err = !ParseEmsg(reader.get());
   } else if (reader->type() == FOURCC_moof) {
     moof_head_ = queue_.head();
     *err = !ParseMoof(reader.get());
@@ -376,6 +381,15 @@ bool MP4MediaParser::ParseBox(bool* err) {
 
   queue_.Pop(static_cast<int>(reader->size()));
   return !(*err);
+}
+
+bool MP4MediaParser::ParseEmsg(BoxReader* reader) {
+  auto emsg = std::make_shared<DASHEventMessageBox>();
+  RCHECK(emsg->Parse(reader));
+  LOG(WARNING) << "EMSG IDS ID: " << emsg->GetID() << " message size "
+               << emsg->message_data.size();
+  event_message_cb_(emsg);
+  return true;
 }
 
 bool MP4MediaParser::ParseMoov(BoxReader* reader) {
@@ -399,8 +413,7 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
     } else if (moov_->extends.header.fragment_duration > 0) {
       DCHECK(moov_->header.timescale != 0);
       duration = Rescale(moov_->extends.header.fragment_duration,
-                         moov_->header.timescale,
-                         timescale);
+                         moov_->header.timescale, timescale);
     } else if (moov_->header.duration > 0 &&
                moov_->header.duration != std::numeric_limits<uint64_t>::max()) {
       DCHECK(moov_->header.timescale != 0);

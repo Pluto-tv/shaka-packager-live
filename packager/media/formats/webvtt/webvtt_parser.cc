@@ -196,6 +196,7 @@ WebVttParser::WebVttParser(bool webvtt_header_only_output_segment)
 void WebVttParser::Init(const InitCB& init_cb,
                         const NewMediaSampleCB& new_media_sample_cb,
                         const NewTextSampleCB& new_text_sample_cb,
+                        const DASHEventMessageBoxCB& event_message_cb,
                         KeySource* decryption_key_source) {
   DCHECK(init_cb_ == nullptr);
   DCHECK(init_cb != nullptr);
