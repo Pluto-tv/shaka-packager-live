@@ -13,7 +13,6 @@
 
 #include <absl/log/globals.h>
 #include <absl/log/log.h>
-#include <absl/strings/escaping.h>
 #include <packager/chunking_params.h>
 #include <packager/file.h>
 
