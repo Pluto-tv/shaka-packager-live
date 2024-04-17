@@ -65,6 +65,7 @@ typedef struct LivePackagerConfig {
   int64_t timed_text_decode_time;
 
   /// Decryption parameters
+  bool enable_decryption;
   uint8_t decryption_key[KEY_SIZE];
   uint8_t decryption_key_id[KEY_ID_SIZE];
 } LivePackagerConfig_t;
