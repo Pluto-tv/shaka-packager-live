@@ -29,13 +29,12 @@ LivePackager_t livepackager_new(LivePackagerConfig_t cfg) {
     converted.key_id = std::vector(cfg.key_id, cfg.key_id + KEY_ID_SIZE);
   }
 
-  //  if (cfg.enable_decryption) {
-  //    converted.decryption_key =
-  //        std::vector(cfg.decryption_key, cfg.decryption_key + KEY_SIZE);
-  //    converted.decryption_key_id =
-  //        std::vector(cfg.decryption_key_id, cfg.decryption_key_id +
-  //        KEY_ID_SIZE);
-  //  }
+  if (cfg.enable_decryption) {
+    converted.decryption_key =
+        std::vector(cfg.decryption_key, cfg.decryption_key + KEY_SIZE);
+    converted.decryption_key_id =
+        std::vector(cfg.decryption_key_id, cfg.decryption_key_id + KEY_ID_SIZE);
+  }
 
   return new (std::nothrow)
       LivePackager_instance_s{std::make_unique<shaka::LivePackager>(converted)};
