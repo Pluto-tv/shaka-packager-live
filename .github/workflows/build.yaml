@@ -50,7 +50,7 @@ jobs:
       INCLUDE: ${{ steps.configure.outputs.INCLUDE }}
       OS: ${{ steps.configure.outputs.OS }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
         with:
           ref: ${{ inputs.ref }}
 
@@ -98,7 +98,7 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           ref: ${{ inputs.ref }}
           submodules: recursive
@@ -117,28 +117,6 @@ jobs:
         # NOTE: GitHub Action VMs do not install ninja by default.
         run: |
           brew install ninja
-
-      - name: Check Mac CPU architecture
-        if: runner.os == 'macOS'
-        # In case we get confused about GitHub's mac VM image labels,
-        # explicitly check that the CPU type matches our expectations.
-        run: |
-          if [[ "${{matrix.target_arch}}" == "arm64" ]]; then
-            CORRECT_LABEL="arm64"
-          else
-            CORRECT_LABEL="x86_64"
-          fi
-
-          LABEL=$(uname -m)
-          echo "Hardware label: \"$LABEL\""
-
-          if [[ "$LABEL" != "$CORRECT_LABEL" ]]; then
-            echo "Wrong hardware label \"$LABEL\", expecting \"$CORRECT_LABEL\"."
-            echo "Full uname string: $(uname -a)"
-            echo "Full sysctl CPU info:"
-            sysctl machdep.cpu
-            exit 1
-          fi
 
       - name: Generate build files
         run: |
