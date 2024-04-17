@@ -50,7 +50,7 @@ jobs:
       INCLUDE: ${{ steps.configure.outputs.INCLUDE }}
       OS: ${{ steps.configure.outputs.OS }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
 
@@ -98,7 +98,7 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
           submodules: recursive
@@ -116,7 +116,7 @@ jobs:
         if: runner.os == 'macOS'
         # NOTE: GitHub Action VMs do not install ninja by default.
         run: |
-          brew install ninja
+          brew install ninja@1.11
 
       - name: Check Mac CPU architecture
         if: runner.os == 'macOS'
