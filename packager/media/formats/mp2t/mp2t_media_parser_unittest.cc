@@ -57,8 +57,8 @@ class Mp2tMediaParserTest : public testing::Test {
     const uint8_t* start = data;
     const uint8_t* end = data + length;
     while (start < end) {
-      size_t append_size = std::min(piece_size,
-                                    static_cast<size_t>(end - start));
+      size_t append_size =
+          std::min(piece_size, static_cast<size_t>(end - start));
       if (!AppendData(start, append_size))
         return false;
       start += append_size;
@@ -110,6 +110,11 @@ class Mp2tMediaParserTest : public testing::Test {
     return false;
   }
 
+  bool OnNewDashEventMessage(
+      std::shared_ptr<mp4::DASHEventMessageBox> emsg_box) {
+    return true;
+  }
+
   void InitializeParser() {
     parser_->Init(
         std::bind(&Mp2tMediaParserTest::OnInit, this, std::placeholders::_1),
@@ -117,6 +122,8 @@ class Mp2tMediaParserTest : public testing::Test {
                   std::placeholders::_1, std::placeholders::_2),
         std::bind(&Mp2tMediaParserTest::OnNewTextSample, this,
                   std::placeholders::_1, std::placeholders::_2),
+        std::bind(&Mp2tMediaParserTest::OnNewDashEventMessage, this,
+                  std::placeholders::_1),
         NULL);
   }
 

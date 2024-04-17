@@ -13,8 +13,8 @@
 
 #include <packager/macros/classes.h>
 #include <packager/media/base/container_names.h>
-#include <packager/media/origin/origin_handler.h>
 #include <packager/media/formats/mp4/dash_event_message_handler.h>
+#include <packager/media/origin/origin_handler.h>
 #include <packager/status.h>
 
 namespace shaka {
@@ -64,7 +64,8 @@ class Demuxer : public OriginHandler {
   Status SetHandler(const std::string& stream_label,
                     std::shared_ptr<MediaHandler> handler);
 
-  void SetDashEventMessageHandler(const std::shared_ptr<mp4::DashEventMessageHandler>& handler);
+  void SetDashEventMessageHandler(
+      const std::shared_ptr<mp4::DashEventMessageHandler>& handler);
 
   /// Override the language in the specified stream. If the specified stream is
   /// a video stream or invalid, this function is a no-op.
@@ -131,7 +132,8 @@ class Demuxer : public OriginHandler {
                            std::shared_ptr<MediaSample> sample);
   bool NewTextSampleEvent(uint32_t track_id,
                           std::shared_ptr<TextSample> sample);
-  bool NewDashEventMessageEvent(std::shared_ptr<mp4::DASHEventMessageBox> emsg_box_info);
+  bool NewDashEventMessageEvent(
+      std::shared_ptr<mp4::DASHEventMessageBox> emsg_box_info);
   bool PushMediaSample(uint32_t track_id, std::shared_ptr<MediaSample> sample);
   bool PushTextSample(uint32_t track_id, std::shared_ptr<TextSample> sample);
 

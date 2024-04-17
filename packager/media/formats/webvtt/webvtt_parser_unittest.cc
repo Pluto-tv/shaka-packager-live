@@ -55,6 +55,8 @@ class WebVttParserTest : public testing::Test {
                   std::placeholders::_1, std::placeholders::_2),
         std::bind(&WebVttParserTest::NewTextSampleCB, this,
                   std::placeholders::_1, std::placeholders::_2),
+        std::bind(&WebVttParserTest::OnNewDashEventMessage, this,
+                  std::placeholders::_1),
         nullptr);
   }
 
@@ -71,6 +73,11 @@ class WebVttParserTest : public testing::Test {
   bool NewTextSampleCB(uint32_t stream_id, std::shared_ptr<TextSample> sample) {
     EXPECT_EQ(stream_id, kStreamId);
     samples_.emplace_back(std::move(sample));
+    return true;
+  }
+
+  bool OnNewDashEventMessage(
+      std::shared_ptr<mp4::DASHEventMessageBox> emsg_box) {
     return true;
   }
 

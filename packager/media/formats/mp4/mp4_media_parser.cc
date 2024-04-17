@@ -263,7 +263,7 @@ bool MP4MediaParser::LoadMoov(const std::string& file_path) {
   }
   if (!file->Seek(0)) {
     LOG(WARNING) << "Filesystem does not support seeking on file '" << file_path
-               << "'";
+                 << "'";
     return false;
   }
 
@@ -318,7 +318,7 @@ bool MP4MediaParser::LoadMoov(const std::string& file_path) {
       }
       queue_.Reset();  // So that we don't need to adjust data offsets.
       mdat_tail_ = 0;  // So it will skip boxes until mdat.
-      break;  // Done.
+      break;           // Done.
     }
     file_position += box_size;
     if (!file->Seek(file_position)) {
@@ -384,11 +384,11 @@ bool MP4MediaParser::ParseBox(bool* err) {
 }
 
 bool MP4MediaParser::ParseEmsg(BoxReader* reader) {
-  auto emsg = std::make_shared<DASHEventMessageBox>();
-  RCHECK(emsg->Parse(reader));
-  LOG(WARNING) << "EMSG IDS ID: " << emsg->GetID() << " message size "
-               << emsg->message_data.size();
-  event_message_cb_(emsg);
+  if (event_message_cb_) {
+    auto emsg_box = std::make_shared<DASHEventMessageBox>();
+    RCHECK(emsg_box->Parse(reader));
+    event_message_cb_(emsg_box);
+  }
   return true;
 }
 
@@ -853,8 +853,8 @@ bool MP4MediaParser::EnqueueSample(bool* err) {
   queue_.PeekAt(sample_offset, &buf, &buf_size);
   if (buf_size < runs_->sample_size()) {
     if (sample_offset < queue_.head()) {
-      LOG(ERROR) << "Incorrect sample offset " << sample_offset
-                 << " < " << queue_.head();
+      LOG(ERROR) << "Incorrect sample offset " << sample_offset << " < "
+                 << queue_.head();
       *err = true;
     }
     return false;
@@ -904,10 +904,8 @@ bool MP4MediaParser::EnqueueSample(bool* err) {
   stream_sample->set_duration(runs_->duration());
 
   DVLOG(3) << "Pushing frame: "
-           << ", key=" << runs_->is_keyframe()
-           << ", dur=" << runs_->duration()
-           << ", dts=" << runs_->dts()
-           << ", cts=" << runs_->cts()
+           << ", key=" << runs_->is_keyframe() << ", dur=" << runs_->duration()
+           << ", dts=" << runs_->dts() << ", cts=" << runs_->cts()
            << ", size=" << runs_->sample_size();
 
   if (!new_sample_cb_(runs_->track_id(), stream_sample)) {

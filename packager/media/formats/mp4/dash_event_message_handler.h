@@ -12,12 +12,13 @@ namespace shaka {
 namespace media {
 namespace mp4 {
 
-//struct DashEventMessageCallbackParams {
-//  std::function<void(std::shared_ptr<mp4::DASHEventMessageBox> emsg_box_info)>
-//      read_func;
+// struct DashEventMessageCallbackParams {
+//   std::function<void(std::shared_ptr<mp4::DASHEventMessageBox>
+//   emsg_box_info)>
+//       read_func;
 //
-//  std::function<void(BufferWriter* writer)> write_func;
-//};
+//   std::function<void(BufferWriter* writer)> write_func;
+// };
 
 class DashEventMessageHandler {
  public:

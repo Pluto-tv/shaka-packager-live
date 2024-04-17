@@ -13,7 +13,8 @@ namespace shaka {
 namespace media {
 namespace mp4 {
 
-MP4InitMuxer::MP4InitMuxer(const MuxerOptions& options) : MP4Muxer(options, nullptr) {}
+MP4InitMuxer::MP4InitMuxer(const MuxerOptions& options)
+    : MP4Muxer(options, nullptr) {}
 
 MP4InitMuxer::~MP4InitMuxer() {}
 

@@ -220,6 +220,11 @@ class MP4MediaParserTest {
     return samples_;
   }
 
+  const std::vector<std::shared_ptr<media::mp4::DASHEventMessageBox>>&
+  GetEmsgSamples() {
+    return emsg_samples_;
+  }
+
   bool Parse(const uint8_t* buf, size_t len) {
     // Use a memoryfile so we can read inputs directly without going to disk
     const std::string input_fname = "memory://file1";
@@ -1171,17 +1176,26 @@ TEST_P(LivePackagerTestReEncrypt, VerifyReEncryption) {
   auto expected_buf = ReadExpectedData();
   CHECK(parser_noenc_->Parse(expected_buf.data(), expected_buf.size()));
   auto& expected_samples = parser_noenc_->GetSamples();
+  auto& expected_emsg_samples = parser_noenc_->GetEmsgSamples();
 
   CHECK(parser_enc_->Parse(actual_buf.Data(), actual_buf.Size()));
   auto& actual_samples = parser_enc_->GetSamples();
+  auto& actual_emsg_samples = parser_enc_->GetEmsgSamples();
 
   CHECK_EQ(expected_samples.size(), actual_samples.size());
+  CHECK_EQ(expected_emsg_samples.size(), actual_emsg_samples.size());
   CHECK(std::equal(
       expected_samples.begin(), expected_samples.end(), actual_samples.begin(),
       actual_samples.end(), [](const auto& s1, const auto& s2) {
         return s1->data_size() == s2->data_size() &&
                0 == memcmp(s1->data(), s2->data(), s1->data_size());
       }));
+
+  CHECK(std::equal(expected_emsg_samples.begin(), expected_emsg_samples.end(),
+                   actual_emsg_samples.begin(), actual_emsg_samples.end(),
+                   [](const auto& s1, const auto& s2) {
+                     return s1->GetID() == s2->GetID();
+                   }));
 }
 
 INSTANTIATE_TEST_CASE_P(

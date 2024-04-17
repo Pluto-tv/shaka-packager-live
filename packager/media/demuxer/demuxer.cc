@@ -362,8 +362,6 @@ bool Demuxer::NewTextSampleEvent(uint32_t track_id,
 bool Demuxer::NewDashEventMessageEvent(
     std::shared_ptr<mp4::DASHEventMessageBox> emsg_box_info) {
   if (dash_event_handler_) {
-    LOG(WARNING) << "handling DASH Event Message Data... ID: "
-                 << emsg_box_info->GetID();
     dash_event_handler_->OnDashEvent(std::move(emsg_box_info));
   }
   return true;

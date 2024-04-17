@@ -250,7 +250,7 @@ struct ID3v2 : FullBox {
 struct DASHEventMessageBox : FullBox {
   DECLARE_BOX_METHODS(DASHEventMessageBox);
 
-  [[nodiscard]] inline uint32_t GetID() const { return id; }
+  inline uint32_t GetID() const { return id; }
 
   std::string scheme_id_uri;
   std::string value;

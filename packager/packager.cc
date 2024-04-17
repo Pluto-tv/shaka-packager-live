@@ -459,9 +459,14 @@ bool StreamInfoToTextMediaInfo(const StreamDescriptor& stream_descriptor,
 /// Create a new demuxer handler for the given stream. If a demuxer cannot be
 /// created, an error will be returned. If a demuxer can be created, this
 /// |new_demuxer| will be set and Status::OK will be returned.
-Status CreateDemuxer(const StreamDescriptor& stream,
-                     const PackagingParams& packaging_params,
-                     std::shared_ptr<Demuxer>* new_demuxer) {
+Status CreateDemuxer(
+    const StreamDescriptor& stream,
+    const PackagingParams& packaging_params,
+    std::shared_ptr<Demuxer>* new_demuxer,
+    std::shared_ptr<mp4::DashEventMessageHandler>* new_emsg_handler) {
+  std::shared_ptr<mp4::DashEventMessageHandler> emsg_handler =
+      std::make_shared<mp4::DashEventMessageHandler>();
+
   std::shared_ptr<Demuxer> demuxer = std::make_shared<Demuxer>(stream.input);
   demuxer->set_dump_stream_info(packaging_params.test_params.dump_stream_info);
   demuxer->set_cts_offset_adjustment(packaging_params.cts_offset_adjustment);
@@ -480,6 +485,7 @@ Status CreateDemuxer(const StreamDescriptor& stream,
   }
 
   *new_demuxer = std::move(demuxer);
+  *new_emsg_handler = std::move(emsg_handler);
   return Status::OK;
 }
 
@@ -615,6 +621,8 @@ Status CreateAudioVideoJobs(
   // order.
   std::map<std::string, std::shared_ptr<Demuxer>> sources;
   std::map<std::string, std::shared_ptr<MediaHandler>> cue_aligners;
+  std::map<std::string, std::shared_ptr<mp4::DashEventMessageHandler>>
+      emsg_handlers;
 
   for (const StreamDescriptor& stream : streams) {
     bool seen_input_before = sources.find(stream.input) != sources.end();
@@ -622,8 +630,9 @@ Status CreateAudioVideoJobs(
       continue;
     }
 
-    RETURN_IF_ERROR(
-        CreateDemuxer(stream, packaging_params, &sources[stream.input]));
+    RETURN_IF_ERROR(CreateDemuxer(stream, packaging_params,
+                                  &sources[stream.input],
+                                  &emsg_handlers[stream.input]));
     cue_aligners[stream.input] =
         sync_points ? std::make_shared<CueAlignmentHandler>(sync_points)
                     : nullptr;
@@ -644,6 +653,7 @@ Status CreateAudioVideoJobs(
     // Get the demuxer for this stream.
     auto& demuxer = sources[stream.input];
     auto& cue_aligner = cue_aligners[stream.input];
+    auto& emsg_handler = emsg_handlers[stream.input];
 
     const bool new_input_file = stream.input != previous_input;
     const bool new_stream =
@@ -688,15 +698,12 @@ Status CreateAudioVideoJobs(
       RETURN_IF_ERROR(demuxer->SetHandler(stream.stream_selector, handlers[0]));
     }
 
-    std::shared_ptr<mp4::DashEventMessageHandler> dash_event_message_handler =
-        std::make_shared<mp4::DashEventMessageHandler>();
-
-    demuxer->SetDashEventMessageHandler(dash_event_message_handler);
+    demuxer->SetDashEventMessageHandler(emsg_handler);
 
     // Create the muxer (output) for this track.
     const auto output_format = GetOutputFormat(stream);
-    std::shared_ptr<Muxer> muxer = muxer_factory->CreateMuxer(
-        output_format, stream, dash_event_message_handler);
+    std::shared_ptr<Muxer> muxer =
+        muxer_factory->CreateMuxer(output_format, stream, emsg_handler);
     if (!muxer) {
       return Status(error::INVALID_ARGUMENT, "Failed to create muxer for " +
                                                  stream.input + ":" +
