@@ -116,7 +116,7 @@ jobs:
         if: runner.os == 'macOS'
         # NOTE: GitHub Action VMs do not install ninja by default.
         run: |
-          brew install ninja@1.11
+          brew tap homebrew/core --force && cd "$(brew --repo homebrew/core)" && git checkout 442f9cc511ce6dfe75b96b2c83749d90dde914d2 && HOMEBREW_NO_AUTO_UPDATE=1 brew install ninja
 
       - name: Check Mac CPU architecture
         if: runner.os == 'macOS'
