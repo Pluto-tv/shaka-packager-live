@@ -71,7 +71,6 @@ class MediaParser {
   virtual void Init(const InitCB& init_cb,
                     const NewMediaSampleCB& new_media_sample_cb,
                     const NewTextSampleCB& new_text_sample_cb,
-                    const DASHEventMessageBoxCB& event_message_cb,
                     KeySource* decryption_key_source) = 0;
 
   /// Flush data currently in the parser and put the parser in a state where it

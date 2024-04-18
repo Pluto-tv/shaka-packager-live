@@ -35,7 +35,7 @@ class MP4Muxer : public Muxer {
  public:
   /// Create a MP4Muxer object from MuxerOptions.
   explicit MP4Muxer(const MuxerOptions& options,
-                    std::shared_ptr<mp4::DashEventMessageHandler> dash_handler);
+                    std::shared_ptr<mp4::DashEventMessageHandler> emsg_handler);
   ~MP4Muxer() override;
 
  protected:
@@ -78,7 +78,7 @@ class MP4Muxer : public Muxer {
 
   std::unique_ptr<Segmenter> segmenter_;
 
-  std::shared_ptr<mp4::DashEventMessageHandler> dash_handler_;
+  std::shared_ptr<mp4::DashEventMessageHandler> emsg_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(MP4Muxer);
 };

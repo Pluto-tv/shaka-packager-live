@@ -110,11 +110,6 @@ class Mp2tMediaParserTest : public testing::Test {
     return false;
   }
 
-  bool OnNewDashEventMessage(
-      std::shared_ptr<mp4::DASHEventMessageBox> emsg_box) {
-    return true;
-  }
-
   void InitializeParser() {
     parser_->Init(
         std::bind(&Mp2tMediaParserTest::OnInit, this, std::placeholders::_1),
@@ -122,8 +117,6 @@ class Mp2tMediaParserTest : public testing::Test {
                   std::placeholders::_1, std::placeholders::_2),
         std::bind(&Mp2tMediaParserTest::OnNewTextSample, this,
                   std::placeholders::_1, std::placeholders::_2),
-        std::bind(&Mp2tMediaParserTest::OnNewDashEventMessage, this,
-                  std::placeholders::_1),
         NULL);
   }
 

@@ -143,11 +143,6 @@ class WvmMediaParserTest : public testing::Test {
     return false;
   }
 
-  bool OnNewDashEventMessage(
-      std::shared_ptr<mp4::DASHEventMessageBox> emsg_box) {
-    return true;
-  }
-
   void InitializeParser() {
     parser_->Init(
         std::bind(&WvmMediaParserTest::OnInit, this, std::placeholders::_1),
@@ -155,8 +150,6 @@ class WvmMediaParserTest : public testing::Test {
                   std::placeholders::_2),
         std::bind(&WvmMediaParserTest::OnNewTextSample, this,
                   std::placeholders::_1, std::placeholders::_2),
-        std::bind(&WvmMediaParserTest::OnNewDashEventMessage, this,
-                  std::placeholders::_1),
         key_source_.get());
   }
 

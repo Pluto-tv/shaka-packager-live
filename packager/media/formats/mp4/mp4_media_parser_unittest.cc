@@ -96,11 +96,6 @@ class MP4MediaParserTest : public testing::Test {
     return false;
   }
 
-  bool OnNewDashEventMessage(
-      std::shared_ptr<mp4::DASHEventMessageBox> emsg_box) {
-    return true;
-  }
-
   void InitializeParser(KeySource* decryption_key_source) {
     parser_->Init(
         std::bind(&MP4MediaParserTest::InitF, this, std::placeholders::_1),
@@ -108,8 +103,6 @@ class MP4MediaParserTest : public testing::Test {
                   std::placeholders::_2),
         std::bind(&MP4MediaParserTest::NewTextSampleF, this,
                   std::placeholders::_1, std::placeholders::_2),
-        std::bind(&MP4MediaParserTest::OnNewDashEventMessage, this,
-                  std::placeholders::_1),
         decryption_key_source);
   }
 

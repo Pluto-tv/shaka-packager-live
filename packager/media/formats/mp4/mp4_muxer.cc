@@ -161,8 +161,8 @@ int16_t GetRollDistance(uint64_t seek_preroll_ns, uint32_t sampling_frequency) {
 }  // namespace
 
 MP4Muxer::MP4Muxer(const MuxerOptions& options,
-                   std::shared_ptr<mp4::DashEventMessageHandler> dash_handler)
-    : Muxer(options), dash_handler_(std::move(dash_handler)) {}
+                   std::shared_ptr<mp4::DashEventMessageHandler> emsg_handler)
+    : Muxer(options), emsg_handler_(std::move(emsg_handler)) {}
 MP4Muxer::~MP4Muxer() {}
 
 Status MP4Muxer::InitializeMuxer() {
@@ -313,7 +313,7 @@ Status MP4Muxer::DelayInitializeMuxer() {
                                                     std::move(moov)));
   } else {
     segmenter_.reset(new MultiSegmentSegmenter(
-        options(), std::move(ftyp), std::move(moov), std::move(dash_handler_)));
+        options(), std::move(ftyp), std::move(moov), std::move(emsg_handler_)));
   }
 
   const Status segmenter_initialized =

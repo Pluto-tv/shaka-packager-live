@@ -115,7 +115,6 @@ WvmMediaParser::~WvmMediaParser() {}
 void WvmMediaParser::Init(const InitCB& init_cb,
                           const NewMediaSampleCB& new_media_sample_cb,
                           const NewTextSampleCB& new_text_sample_cb,
-                          const DASHEventMessageBoxCB& event_message_cb,
                           KeySource* decryption_key_source) {
   DCHECK(!is_initialized_);
   DCHECK(init_cb != nullptr);

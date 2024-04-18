@@ -272,12 +272,6 @@ class MP4MediaParserTest {
     return false;
   }
 
-  bool NewDashEventMessage(
-      std::shared_ptr<media::mp4::DASHEventMessageBox> info) {
-    emsg_samples_.push_back(std::move(info));
-    return true;
-  }
-
   void InitializeParser(media::KeySource* decryption_key_source) {
     parser_->Init(
         std::bind(&MP4MediaParserTest::InitF, this, std::placeholders::_1),
@@ -285,13 +279,16 @@ class MP4MediaParserTest {
                   std::placeholders::_2),
         std::bind(&MP4MediaParserTest::NewTextSampleF, this,
                   std::placeholders::_1, std::placeholders::_2),
-        std::bind(&MP4MediaParserTest::NewDashEventMessage, this,
-                  std::placeholders::_1),
         decryption_key_source);
   }
 
   std::unique_ptr<media::mp4::MP4MediaParser> parser_ =
-      std::make_unique<media::mp4::MP4MediaParser>();
+      std::make_unique<media::mp4::MP4MediaParser>(
+          false,
+          [this](std::shared_ptr<media::mp4::DASHEventMessageBox> info) {
+            emsg_samples_.push_back(std::move(info));
+            return true;
+          });
   std::vector<std::shared_ptr<media::MediaSample>> samples_;
   std::vector<std::shared_ptr<media::mp4::DASHEventMessageBox>> emsg_samples_;
 };
@@ -613,11 +610,6 @@ class LivePackagerMp2tTest : public LivePackagerBaseTest {
     return false;
   }
 
-  bool OnDashEventMessageEvent(
-      std::shared_ptr<media::mp4::DASHEventMessageBox> emsg_box_info) {
-    return true;
-  }
-
   void InitializeParser() {
     parser_->Init(
         std::bind(&LivePackagerMp2tTest::OnInit, this, std::placeholders::_1),
@@ -625,8 +617,6 @@ class LivePackagerMp2tTest : public LivePackagerBaseTest {
                   std::placeholders::_1, std::placeholders::_2),
         std::bind(&LivePackagerMp2tTest::OnNewTextSample, this,
                   std::placeholders::_1, std::placeholders::_2),
-        std::bind(&LivePackagerMp2tTest::OnDashEventMessageEvent, this,
-                  std::placeholders::_1),
         NULL);
   }
 };
@@ -1138,6 +1128,16 @@ class LivePackagerTestReEncrypt
       std::make_unique<MP4MediaParserTest>(key_source_.get());
 };
 
+inline bool operator==(const media::mp4::DASHEventMessageBox& lhs,
+                       const media::mp4::DASHEventMessageBox& rhs) {
+  return std::tie(lhs.scheme_id_uri, lhs.value, lhs.timescale,
+                  lhs.presentation_time_delta, lhs.event_duration, lhs.id,
+                  lhs.message_data) ==
+         std::tie(rhs.scheme_id_uri, rhs.value, rhs.timescale,
+                  rhs.presentation_time_delta, rhs.event_duration, rhs.id,
+                  rhs.message_data);
+}
+
 TEST_P(LivePackagerTestReEncrypt, VerifyReEncryption) {
   std::vector<uint8_t> init_segment_buffer =
       ReadTestDataFile(GetParam().init_segment_name);
@@ -1183,6 +1183,8 @@ TEST_P(LivePackagerTestReEncrypt, VerifyReEncryption) {
   auto& actual_emsg_samples = parser_enc_->GetEmsgSamples();
 
   CHECK_EQ(expected_samples.size(), actual_samples.size());
+  ASSERT_GT(expected_samples.size(), 0);
+  ASSERT_GT(expected_emsg_samples.size(), 0);
   CHECK_EQ(expected_emsg_samples.size(), actual_emsg_samples.size());
   CHECK(std::equal(
       expected_samples.begin(), expected_samples.end(), actual_samples.begin(),
@@ -1194,7 +1196,7 @@ TEST_P(LivePackagerTestReEncrypt, VerifyReEncryption) {
   CHECK(std::equal(expected_emsg_samples.begin(), expected_emsg_samples.end(),
                    actual_emsg_samples.begin(), actual_emsg_samples.end(),
                    [](const auto& s1, const auto& s2) {
-                     return s1->GetID() == s2->GetID();
+                     return (*s1.get()) == (*s2.get());
                    }));
 }
 

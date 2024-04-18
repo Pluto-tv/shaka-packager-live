@@ -132,8 +132,6 @@ class Demuxer : public OriginHandler {
                            std::shared_ptr<MediaSample> sample);
   bool NewTextSampleEvent(uint32_t track_id,
                           std::shared_ptr<TextSample> sample);
-  bool NewDashEventMessageEvent(
-      std::shared_ptr<mp4::DASHEventMessageBox> emsg_box_info);
   bool PushMediaSample(uint32_t track_id, std::shared_ptr<MediaSample> sample);
   bool PushTextSample(uint32_t track_id, std::shared_ptr<TextSample> sample);
 

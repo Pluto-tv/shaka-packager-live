@@ -177,8 +177,10 @@ const uint64_t kNanosecondsPerSecond = 1000000000ull;
 
 }  // namespace
 
-MP4MediaParser::MP4MediaParser(bool cts_offset_adjustment)
+MP4MediaParser::MP4MediaParser(bool cts_offset_adjustment,
+                               const DASHEventMessageBoxCB& event_message_cb)
     : state_(kWaitingForInit),
+      event_message_cb_(event_message_cb),
       decryption_key_source_(NULL),
       moof_head_(0),
       mdat_tail_(0),
@@ -189,18 +191,15 @@ MP4MediaParser::~MP4MediaParser() {}
 void MP4MediaParser::Init(const InitCB& init_cb,
                           const NewMediaSampleCB& new_media_sample_cb,
                           const NewTextSampleCB& new_text_sample_cb,
-                          const DASHEventMessageBoxCB& event_message_cb,
                           KeySource* decryption_key_source) {
   DCHECK_EQ(state_, kWaitingForInit);
   DCHECK(init_cb_ == nullptr);
   DCHECK(init_cb != nullptr);
   DCHECK(new_media_sample_cb != nullptr);
-  DCHECK(event_message_cb != nullptr);
 
   ChangeState(kParsingBoxes);
   init_cb_ = init_cb;
   new_sample_cb_ = new_media_sample_cb;
-  event_message_cb_ = event_message_cb;
   decryption_key_source_ = decryption_key_source;
   if (decryption_key_source)
     decryptor_source_.reset(new DecryptorSource(decryption_key_source));
@@ -263,7 +262,7 @@ bool MP4MediaParser::LoadMoov(const std::string& file_path) {
   }
   if (!file->Seek(0)) {
     LOG(WARNING) << "Filesystem does not support seeking on file '" << file_path
-               << "'";
+                 << "'";
     return false;
   }
 
@@ -318,7 +317,7 @@ bool MP4MediaParser::LoadMoov(const std::string& file_path) {
       }
       queue_.Reset();  // So that we don't need to adjust data offsets.
       mdat_tail_ = 0;  // So it will skip boxes until mdat.
-      break;  // Done.
+      break;           // Done.
     }
     file_position += box_size;
     if (!file->Seek(file_position)) {
@@ -413,8 +412,7 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
     } else if (moov_->extends.header.fragment_duration > 0) {
       DCHECK(moov_->header.timescale != 0);
       duration = Rescale(moov_->extends.header.fragment_duration,
-                         moov_->header.timescale,
-                         timescale);
+                         moov_->header.timescale, timescale);
     } else if (moov_->header.duration > 0 &&
                moov_->header.duration != std::numeric_limits<uint64_t>::max()) {
       DCHECK(moov_->header.timescale != 0);
@@ -854,8 +852,8 @@ bool MP4MediaParser::EnqueueSample(bool* err) {
   queue_.PeekAt(sample_offset, &buf, &buf_size);
   if (buf_size < runs_->sample_size()) {
     if (sample_offset < queue_.head()) {
-      LOG(ERROR) << "Incorrect sample offset " << sample_offset
-                 << " < " << queue_.head();
+      LOG(ERROR) << "Incorrect sample offset " << sample_offset << " < "
+                 << queue_.head();
       *err = true;
     }
     return false;
@@ -905,10 +903,8 @@ bool MP4MediaParser::EnqueueSample(bool* err) {
   stream_sample->set_duration(runs_->duration());
 
   DVLOG(3) << "Pushing frame: "
-           << ", key=" << runs_->is_keyframe()
-           << ", dur=" << runs_->duration()
-           << ", dts=" << runs_->dts()
-           << ", cts=" << runs_->cts()
+           << ", key=" << runs_->is_keyframe() << ", dur=" << runs_->duration()
+           << ", dts=" << runs_->dts() << ", cts=" << runs_->cts()
            << ", size=" << runs_->sample_size();
 
   if (!new_sample_cb_(runs_->track_id(), stream_sample)) {
