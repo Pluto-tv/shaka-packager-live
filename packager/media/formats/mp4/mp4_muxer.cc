@@ -160,15 +160,18 @@ int16_t GetRollDistance(uint64_t seek_preroll_ns, uint32_t sampling_frequency) {
 
 }  // namespace
 
-MP4Muxer::MP4Muxer(const MuxerOptions& options,
-                   std::shared_ptr<mp4::DashEventMessageHandler> emsg_handler)
-    : Muxer(options), emsg_handler_(std::move(emsg_handler)) {}
+MP4Muxer::MP4Muxer(const MuxerOptions& options) : Muxer(options) {}
 MP4Muxer::~MP4Muxer() {}
 
 Status MP4Muxer::InitializeMuxer() {
   // Muxer will be delay-initialized after seeing the first sample.
   to_be_initialized_ = true;
   return Status::OK;
+}
+
+void MP4Muxer::SetDashEventMessageHandler(
+    const std::shared_ptr<mp4::DashEventMessageHandler>& emsg_handler) {
+  emsg_handler_ = emsg_handler;
 }
 
 Status MP4Muxer::Finalize() {

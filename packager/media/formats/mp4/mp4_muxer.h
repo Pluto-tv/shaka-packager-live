@@ -34,9 +34,11 @@ struct Track;
 class MP4Muxer : public Muxer {
  public:
   /// Create a MP4Muxer object from MuxerOptions.
-  explicit MP4Muxer(const MuxerOptions& options,
-                    std::shared_ptr<mp4::DashEventMessageHandler> emsg_handler);
+  explicit MP4Muxer(const MuxerOptions& options);
   ~MP4Muxer() override;
+
+  void SetDashEventMessageHandler(
+      const std::shared_ptr<mp4::DashEventMessageHandler>& emsg_handler);
 
  protected:
   Status DelayInitializeMuxer();
