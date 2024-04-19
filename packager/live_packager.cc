@@ -399,6 +399,7 @@ Status LivePackager::Package(const Segment& init_segment,
   packaging_params.enable_null_ts_packet_stuffing = true;
   packaging_params.cts_offset_adjustment =
       config_.format == LiveConfig::OutputFormat::TS;
+  packaging_params.emsg_processing = config_.emsg_processing;
 
   if (!config_.decryption_key.empty() && !config_.decryption_key_id.empty()) {
     DecryptionParams& decryption_params = packaging_params.decryption_params;

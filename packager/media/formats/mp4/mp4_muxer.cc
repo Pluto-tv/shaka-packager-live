@@ -312,8 +312,7 @@ Status MP4Muxer::DelayInitializeMuxer() {
     segmenter_.reset(new LowLatencySegmentSegmenter(options(), std::move(ftyp),
                                                     std::move(moov)));
   } else {
-    segmenter_.reset(new MultiSegmentSegmenter(
-        options(), std::move(ftyp), std::move(moov), std::move(emsg_handler_)));
+    CreateMultiSegmentSegmenter(std::move(ftyp), std::move(moov), &segmenter_);
   }
 
   const Status segmenter_initialized =
@@ -323,6 +322,16 @@ Status MP4Muxer::DelayInitializeMuxer() {
 
   FireOnMediaStartEvent();
   return Status::OK;
+}
+
+void MP4Muxer::CreateMultiSegmentSegmenter(
+    std::unique_ptr<FileType> ftyp,
+    std::unique_ptr<Movie> moov,
+    std::unique_ptr<Segmenter>* segmenter) {
+  auto multi_segment_segmenter = std::make_unique<MultiSegmentSegmenter>(
+      options(), std::move(ftyp), std::move(moov));
+  multi_segment_segmenter->SetDashEventMessageHandler(emsg_handler_);
+  *segmenter = std::move(multi_segment_segmenter);
 }
 
 Status MP4Muxer::UpdateEditListOffsetFromSample(const MediaSample& sample) {

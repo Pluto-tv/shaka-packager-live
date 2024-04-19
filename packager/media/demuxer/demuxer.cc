@@ -158,6 +158,19 @@ void Demuxer::SetLanguageOverride(const std::string& stream_label,
   language_overrides_[stream_index] = language_override;
 }
 
+void Demuxer::CreateMp4MediaParser(std::unique_ptr<MediaParser>* parser) {
+  std::unique_ptr<media::mp4::MP4MediaParser> mp4_parser =
+      std::make_unique<mp4::MP4MediaParser>(cts_offset_adjustment_);
+  mp4_parser->SetEventMessageBoxCB(
+      [this](std::shared_ptr<mp4::DASHEventMessageBox> emsg_box_info) {
+        if (dash_event_handler_) {
+          dash_event_handler_->OnDashEvent(std::move(emsg_box_info));
+        }
+        return true;
+      });
+  *parser = std::move(mp4_parser);
+}
+
 Status Demuxer::InitializeParser() {
   DCHECK(!media_file_);
   DCHECK(!all_streams_ready_);
@@ -189,14 +202,7 @@ Status Demuxer::InitializeParser() {
   // Initialize media parser.
   switch (container_name_) {
     case CONTAINER_MOV:
-      parser_.reset(new mp4::MP4MediaParser(
-          cts_offset_adjustment_,
-          [this](std::shared_ptr<mp4::DASHEventMessageBox> emsg_box_info) {
-            if (dash_event_handler_) {
-              dash_event_handler_->OnDashEvent(std::move(emsg_box_info));
-            }
-            return true;
-          }));
+      CreateMp4MediaParser(&parser_);
       break;
     case CONTAINER_MPEG2TS:
       parser_.reset(new mp2t::Mp2tMediaParser());

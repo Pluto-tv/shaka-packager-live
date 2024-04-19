@@ -28,9 +28,7 @@ struct ProtectionSystemSpecificHeader;
 
 class MP4MediaParser : public MediaParser {
  public:
-  explicit MP4MediaParser(
-      bool cts_offset_adjustment = false,
-      const DASHEventMessageBoxCB& event_message_cb = nullptr);
+  explicit MP4MediaParser(bool cts_offset_adjustment = false);
   ~MP4MediaParser() override;
 
   /// @name MediaParser implementation overrides.
@@ -50,6 +48,8 @@ class MP4MediaParser : public MediaParser {
   /// @param file_path is the path to the media file to be parsed.
   /// @return true if successful, false otherwise.
   bool LoadMoov(const std::string& file_path);
+
+  void SetEventMessageBoxCB(const DASHEventMessageBoxCB& event_message_cb);
 
  private:
   enum State {

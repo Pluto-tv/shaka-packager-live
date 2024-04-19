@@ -280,15 +280,16 @@ class MP4MediaParserTest {
         std::bind(&MP4MediaParserTest::NewTextSampleF, this,
                   std::placeholders::_1, std::placeholders::_2),
         decryption_key_source);
+
+    parser_->SetEventMessageBoxCB(
+        [this](std::shared_ptr<media::mp4::DASHEventMessageBox> info) {
+          emsg_samples_.push_back(std::move(info));
+          return true;
+        });
   }
 
   std::unique_ptr<media::mp4::MP4MediaParser> parser_ =
-      std::make_unique<media::mp4::MP4MediaParser>(
-          false,
-          [this](std::shared_ptr<media::mp4::DASHEventMessageBox> info) {
-            emsg_samples_.push_back(std::move(info));
-            return true;
-          });
+      std::make_unique<media::mp4::MP4MediaParser>();
   std::vector<std::shared_ptr<media::MediaSample>> samples_;
   std::vector<std::shared_ptr<media::mp4::DASHEventMessageBox>> emsg_samples_;
 };
@@ -1081,6 +1082,7 @@ struct LivePackagerReEncryptCase {
   LiveConfig::OutputFormat output_format;
   LiveConfig::TrackType track_type;
   const char* media_segment_format;
+  bool emsg_processing;
 };
 
 class LivePackagerTestReEncrypt
@@ -1164,6 +1166,7 @@ TEST_P(LivePackagerTestReEncrypt, VerifyReEncryption) {
     live_config.protection_scheme = GetParam().encryption_scheme;
     live_config.decryption_key = HexStringToVector(kKeyHex);
     live_config.decryption_key_id = HexStringToVector(kKeyIdHex);
+    live_config.emsg_processing = GetParam().emsg_processing;
 
     SetupLivePackagerConfig(live_config);
 
@@ -1184,8 +1187,6 @@ TEST_P(LivePackagerTestReEncrypt, VerifyReEncryption) {
 
   CHECK_EQ(expected_samples.size(), actual_samples.size());
   ASSERT_GT(expected_samples.size(), 0);
-  ASSERT_GT(expected_emsg_samples.size(), 0);
-  CHECK_EQ(expected_emsg_samples.size(), actual_emsg_samples.size());
   CHECK(std::equal(
       expected_samples.begin(), expected_samples.end(), actual_samples.begin(),
       actual_samples.end(), [](const auto& s1, const auto& s2) {
@@ -1193,27 +1194,42 @@ TEST_P(LivePackagerTestReEncrypt, VerifyReEncryption) {
                0 == memcmp(s1->data(), s2->data(), s1->data_size());
       }));
 
-  CHECK(std::equal(expected_emsg_samples.begin(), expected_emsg_samples.end(),
-                   actual_emsg_samples.begin(), actual_emsg_samples.end(),
-                   [](const auto& s1, const auto& s2) {
-                     return (*s1.get()) == (*s2.get());
-                   }));
+  if (GetParam().emsg_processing) {
+    ASSERT_GT(expected_emsg_samples.size(), 0);
+    CHECK_EQ(expected_emsg_samples.size(), actual_emsg_samples.size());
+    CHECK(std::equal(expected_emsg_samples.begin(), expected_emsg_samples.end(),
+                     actual_emsg_samples.begin(), actual_emsg_samples.end(),
+                     [](const auto& s1, const auto& s2) {
+                       return (*s1.get()) == (*s2.get());
+                     }));
+  } else {
+    ASSERT_EQ(actual_emsg_samples.size(), 0);
+  }
 }
 
 INSTANTIATE_TEST_CASE_P(
     LivePackagerReEncryptTypes,
     LivePackagerTestReEncrypt,
     ::testing::Values(
-        // Verify decrypt FMP4 and re-encrypt to FMP4 with CENC encryption.
+        // Verify decrypt FMP4 and re-encrypt to FMP4 with CENC encryption,
+        // ENABLE processing EMSG.
         LivePackagerReEncryptCase{
             7, "encrypted/prd_data/init.mp4",
             LiveConfig::EncryptionScheme::CENC, LiveConfig::OutputFormat::FMP4,
-            LiveConfig::TrackType::VIDEO, "encrypted/prd_data/%05d.m4s"},
-        // Verify decrypt FMP4 and re-encrypt to FMP4 with CBCS encryption.
+            LiveConfig::TrackType::VIDEO, "encrypted/prd_data/%05d.m4s", true},
+        // Verify decrypt FMP4 and re-encrypt to FMP4 with CBCS encryption,
+        // ENABLE processing EMSG.
         LivePackagerReEncryptCase{
             7, "encrypted/prd_data/init.mp4",
             LiveConfig::EncryptionScheme::CBCS, LiveConfig::OutputFormat::FMP4,
-            LiveConfig::TrackType::VIDEO, "encrypted/prd_data/%05d.m4s"}));
+            LiveConfig::TrackType::VIDEO, "encrypted/prd_data/%05d.m4s", true},
+        // Verify decrypt FMP4 and re-encrypt to FMP4 with CBCS encryption,
+        // DISABLE processing EMSG
+        LivePackagerReEncryptCase{7, "encrypted/prd_data/init.mp4",
+                                  LiveConfig::EncryptionScheme::CBCS,
+                                  LiveConfig::OutputFormat::FMP4,
+                                  LiveConfig::TrackType::VIDEO,
+                                  "encrypted/prd_data/%05d.m4s", false}));
 
 struct TimedTextTestCase {
   const char* media_segment_format;

@@ -177,16 +177,19 @@ const uint64_t kNanosecondsPerSecond = 1000000000ull;
 
 }  // namespace
 
-MP4MediaParser::MP4MediaParser(bool cts_offset_adjustment,
-                               const DASHEventMessageBoxCB& event_message_cb)
+MP4MediaParser::MP4MediaParser(bool cts_offset_adjustment)
     : state_(kWaitingForInit),
-      event_message_cb_(event_message_cb),
       decryption_key_source_(NULL),
       moof_head_(0),
       mdat_tail_(0),
       cts_offset_adjustment_(cts_offset_adjustment) {}
 
 MP4MediaParser::~MP4MediaParser() {}
+
+void MP4MediaParser::SetEventMessageBoxCB(
+    const DASHEventMessageBoxCB& event_message_cb) {
+  event_message_cb_ = event_message_cb;
+}
 
 void MP4MediaParser::Init(const InitCB& init_cb,
                           const NewMediaSampleCB& new_media_sample_cb,

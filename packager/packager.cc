@@ -464,8 +464,11 @@ Status CreateDemuxer(
     const PackagingParams& packaging_params,
     std::shared_ptr<Demuxer>* new_demuxer,
     std::shared_ptr<mp4::DashEventMessageHandler>* new_emsg_handler) {
-  std::shared_ptr<mp4::DashEventMessageHandler> emsg_handler =
-      std::make_shared<mp4::DashEventMessageHandler>();
+  if (packaging_params.emsg_processing) {
+    std::shared_ptr<mp4::DashEventMessageHandler> emsg_handler =
+        std::make_shared<mp4::DashEventMessageHandler>();
+    *new_emsg_handler = std::move(emsg_handler);
+  }
 
   std::shared_ptr<Demuxer> demuxer = std::make_shared<Demuxer>(stream.input);
   demuxer->set_dump_stream_info(packaging_params.test_params.dump_stream_info);
@@ -485,7 +488,6 @@ Status CreateDemuxer(
   }
 
   *new_demuxer = std::move(demuxer);
-  *new_emsg_handler = std::move(emsg_handler);
   return Status::OK;
 }
 
