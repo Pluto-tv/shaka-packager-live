@@ -138,8 +138,6 @@ class Demuxer : public OriginHandler {
   // Read from the source and send it to the parser.
   Status Parse();
 
-  void CreateMp4MediaParser(std::unique_ptr<MediaParser>* parser);
-
   std::string file_name_;
   File* media_file_ = nullptr;
   // A stream is considered ready after receiving the stream info.

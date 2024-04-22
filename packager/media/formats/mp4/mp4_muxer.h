@@ -74,10 +74,6 @@ class MP4Muxer : public Muxer {
   // Get time in seconds since midnight, Jan. 1, 1904, in UTC Time.
   uint64_t IsoTimeNow();
 
-  void CreateMultiSegmentSegmenter(std::unique_ptr<FileType> ftyp,
-                                   std::unique_ptr<Movie> moov,
-                                   std::unique_ptr<Segmenter>* segmenter);
-
   // Assumes single stream (multiplexed a/v not supported yet).
   bool to_be_initialized_ = true;
   std::optional<int64_t> edit_list_offset_;

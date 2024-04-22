@@ -54,10 +54,6 @@ class MediaParser {
                              std::shared_ptr<TextSample> text_sample)>
       NewTextSampleCB;
 
-  typedef std::function<bool(
-      std::shared_ptr<mp4::DASHEventMessageBox> emsg_box_info)>
-      DASHEventMessageBoxCB;
-
   /// Initialize the parser with necessary callbacks. Must be called before any
   /// data is passed to Parse().
   /// @param init_cb will be called once enough data has been parsed to

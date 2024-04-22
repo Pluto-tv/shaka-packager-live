@@ -69,11 +69,9 @@ std::shared_ptr<Muxer> MuxerFactory::CreateMuxer(
         muxer = std::make_shared<mp4::MP4InitMuxer>(options);
         break;
       }
-      {
-        auto mp4_muxer = std::make_shared<mp4::MP4Muxer>(options);
-        mp4_muxer->SetDashEventMessageHandler(dash_handler);
-        muxer = mp4_muxer;
-      }
+      muxer = std::make_shared<mp4::MP4Muxer>(options);
+      dynamic_cast<mp4::MP4Muxer*>(muxer.get())
+          ->SetDashEventMessageHandler(dash_handler);
       break;
     default:
       LOG(ERROR) << "Cannot support muxing to " << output_format;
