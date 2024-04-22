@@ -126,6 +126,9 @@ struct LiveConfig {
   /// Flag used to enable parsing of EMSG (Event Message) boxes during fmp4
   /// parsing, and writing EMSG box data to output segments.
   bool emsg_processing = false;
+
+  /// Include pssh in the encrypted stream.
+  bool include_pssh_in_stream = false;
 };
 
 class LivePackager {

@@ -22,6 +22,7 @@ LivePackager_t livepackager_new(LivePackagerConfig_t cfg) {
       .decryption_key = {},
       .decryption_key_id = {},
       .emsg_processing = cfg.emsg_processing,
+      .include_pssh_in_stream = cfg.include_pssh_in_stream,
   };
 
   if (cfg.protection_scheme != ENCRYPTION_SCHEME_NONE) {

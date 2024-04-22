@@ -68,6 +68,9 @@ typedef struct LivePackagerConfig {
   /// parsing, and writing EMSG box data to output segments.
   bool emsg_processing;
 
+  /// Include pssh in the encrypted stream.
+  bool include_pssh_in_stream;
+
   /// Decryption parameters
   bool enable_decryption;
   uint8_t decryption_key[KEY_SIZE];
