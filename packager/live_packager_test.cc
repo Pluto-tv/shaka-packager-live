@@ -1197,11 +1197,10 @@ TEST_P(LivePackagerTestReEncrypt, VerifyReEncryption) {
   if (GetParam().emsg_processing) {
     ASSERT_GT(expected_emsg_samples.size(), 0);
     CHECK_EQ(expected_emsg_samples.size(), actual_emsg_samples.size());
-    CHECK(std::equal(expected_emsg_samples.begin(), expected_emsg_samples.end(),
-                     actual_emsg_samples.begin(), actual_emsg_samples.end(),
-                     [](const auto& s1, const auto& s2) {
-                       return (*s1.get()) == (*s2.get());
-                     }));
+    CHECK(
+        std::equal(expected_emsg_samples.begin(), expected_emsg_samples.end(),
+                   actual_emsg_samples.begin(), actual_emsg_samples.end(),
+                   [](const auto& s1, const auto& s2) { return *s1 == *s2; }));
   } else {
     ASSERT_EQ(actual_emsg_samples.size(), 0);
   }
