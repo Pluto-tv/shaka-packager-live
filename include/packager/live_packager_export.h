@@ -34,7 +34,7 @@ typedef enum EncryptionScheme {
   ENCRYPTION_SCHEME_CENC,
 } EncryptionScheme_t;
 
-typedef enum ContentProtectionSystem : uint16_t {
+typedef enum ContentProtectionSystem {
   NONE = 0,
   COMMON = (1 << 0),
   WIDEVINE = (1 << 1),
@@ -77,9 +77,6 @@ typedef struct LivePackagerConfig {
   /// Flag used to enable parsing of EMSG (Event Message) boxes during fmp4
   /// parsing, and writing EMSG box data to output segments.
   bool emsg_processing;
-
-  /// Include pssh in the encrypted stream.
-  bool include_pssh_in_stream;
 
   /// Decryption parameters
   bool enable_decryption;

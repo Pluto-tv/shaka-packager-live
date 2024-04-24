@@ -1151,7 +1151,6 @@ struct LivePackagerReEncryptCase {
   ProtectionSystem protection_system;
   const char* media_segment_format;
   bool emsg_processing;
-  bool include_pssh_in_stream;
 };
 
 class LivePackagerTestReEncrypt
@@ -1165,7 +1164,6 @@ class LivePackagerTestReEncrypt
     live_config.track_type = GetParam().track_type;
     live_config.protection_scheme = GetParam().encryption_scheme;
     live_config.protection_system = GetParam().protection_system;
-    live_config.include_pssh_in_stream = GetParam().include_pssh_in_stream;
     live_config.decryption_key = HexStringToVector(kKeyHex);
     live_config.decryption_key_id = HexStringToVector(kKeyIdHex);
     SetupLivePackagerConfig(live_config);
@@ -1220,7 +1218,7 @@ TEST_P(LivePackagerTestReEncrypt, VerifyReEncryption) {
 
   SegmentBuffer actual_buf;
   ASSERT_EQ(Status::OK, live_packager_->PackageInit(init_seg, actual_buf));
-  if (GetParam().include_pssh_in_stream) {
+  if (GetParam().protection_system != ProtectionSystem::kNone) {
     CheckVideoPsshInfo(GetParam().protection_system, actual_buf);
   }
 
@@ -1292,14 +1290,14 @@ INSTANTIATE_TEST_CASE_P(
             LiveConfig::EncryptionScheme::CENC, LiveConfig::OutputFormat::FMP4,
             LiveConfig::TrackType::VIDEO,
             ProtectionSystem::kPlayReady | ProtectionSystem::kWidevine,
-            "encrypted/prd_data/%05d.m4s", true, true},
+            "encrypted/prd_data/%05d.m4s", true},
         // Verify decrypt FMP4 and re-encrypt to FMP4 with CBCS encryption,
         // ENABLE processing EMSG.
         LivePackagerReEncryptCase{
             7, "encrypted/prd_data/init.mp4",
             LiveConfig::EncryptionScheme::CBCS, LiveConfig::OutputFormat::FMP4,
             LiveConfig::TrackType::VIDEO, ProtectionSystem::kWidevine,
-            "encrypted/prd_data/%05d.m4s", true, true},
+            "encrypted/prd_data/%05d.m4s", true},
         // Verify decrypt FMP4 and re-encrypt to FMP4 with CBCS encryption,
         // DISABLE processing EMSG
         LivePackagerReEncryptCase{
@@ -1311,7 +1309,6 @@ INSTANTIATE_TEST_CASE_P(
             ProtectionSystem::kPlayReady,
             "encrypted/prd_data/%05d.m4s",
             false,
-            true,
         }));
 
 struct TimedTextTestCase {

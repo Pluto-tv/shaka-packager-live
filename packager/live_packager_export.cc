@@ -23,13 +23,10 @@ LivePackager_t livepackager_new(LivePackagerConfig_t cfg) {
       .decryption_key = {},
       .decryption_key_id = {},
       .emsg_processing = cfg.emsg_processing,
-      .include_pssh_in_stream = cfg.include_pssh_in_stream,
   };
 
-  if (cfg.include_pssh_in_stream) {
-    converted.protection_system |= static_cast<shaka::ProtectionSystem>(
-        static_cast<uint16_t>(cfg.protection_system));
-  }
+  converted.protection_system |=
+      static_cast<shaka::ProtectionSystem>(cfg.protection_system);
 
   if (cfg.protection_scheme != ENCRYPTION_SCHEME_NONE) {
     converted.iv = std::vector(cfg.iv, cfg.iv + cfg.iv_size);

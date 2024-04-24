@@ -14,7 +14,6 @@
 
 #include <packager/macros/classes.h>
 #include <packager/media/base/container_names.h>
-#include <packager/media/formats/mp4/box_definitions.h>
 
 namespace shaka {
 namespace media {
