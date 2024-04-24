@@ -329,7 +329,8 @@ Status LivePackager::PackageInit(const Segment& init_segment,
   packaging_params.chunking_params.segment_duration_in_seconds =
       DEFAULT_SEGMENT_DURATION;
 
-  packaging_params.mp4_output_params.include_pssh_in_stream = config_.include_pssh_in_stream;
+  packaging_params.mp4_output_params.include_pssh_in_stream =
+      config_.include_pssh_in_stream;
   packaging_params.transport_stream_timestamp_offset_ms =
       config_.m2ts_offset_ms;
 
@@ -463,7 +464,8 @@ Status LivePackager::PackageTimedText(const Segment& in,
       config_.timed_text_decode_time;
   packaging_params.mp4_output_params.sequence_number = config_.segment_number;
   packaging_params.chunking_params.adjust_sample_boundaries = true;
-  packaging_params.mp4_output_params.include_pssh_in_stream = config_.include_pssh_in_stream;
+  packaging_params.mp4_output_params.include_pssh_in_stream =
+      config_.include_pssh_in_stream;
   packaging_params.webvtt_header_only_output_segment = true;
 
   StreamDescriptors descriptors =
@@ -511,6 +513,9 @@ Status SegmentManager::InitializeEncryption(
     default:
       return Status(error::INVALID_ARGUMENT,
                     "invalid encryption scheme provided to LivePackager.");
+  }
+  if (config.include_pssh_in_stream) {
+    encryption_params.protection_systems = config.protection_system;
   }
 
   encryption_params.key_provider = KeyProvider::kRawKey;

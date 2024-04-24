@@ -16,6 +16,7 @@ LivePackager_t livepackager_new(LivePackagerConfig_t cfg) {
       .key_id = {},
       .protection_scheme =
           shaka::LiveConfig::EncryptionScheme(cfg.protection_scheme),
+      .protection_system = shaka::ProtectionSystem::kNone,
       .segment_number = cfg.segment_number,
       .m2ts_offset_ms = cfg.m2ts_offset_ms,
       .timed_text_decode_time = cfg.timed_text_decode_time,
@@ -24,6 +25,11 @@ LivePackager_t livepackager_new(LivePackagerConfig_t cfg) {
       .emsg_processing = cfg.emsg_processing,
       .include_pssh_in_stream = cfg.include_pssh_in_stream,
   };
+
+  if (cfg.include_pssh_in_stream) {
+    converted.protection_system |= static_cast<shaka::ProtectionSystem>(
+        static_cast<uint16_t>(cfg.protection_system));
+  }
 
   if (cfg.protection_scheme != ENCRYPTION_SCHEME_NONE) {
     converted.iv = std::vector(cfg.iv, cfg.iv + cfg.iv_size);
