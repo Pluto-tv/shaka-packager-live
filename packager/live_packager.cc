@@ -330,7 +330,7 @@ Status LivePackager::PackageInit(const Segment& init_segment,
       DEFAULT_SEGMENT_DURATION;
 
   packaging_params.mp4_output_params.include_pssh_in_stream =
-      config_.protection_system == ProtectionSystem::kNone ? false : true;
+      config_.protection_system != ProtectionSystem::kNone;
   packaging_params.transport_stream_timestamp_offset_ms =
       config_.m2ts_offset_ms;
 
@@ -395,7 +395,7 @@ Status LivePackager::Package(const Segment& init_segment,
 
   packaging_params.mp4_output_params.sequence_number = config_.segment_number;
   packaging_params.mp4_output_params.include_pssh_in_stream =
-      config_.protection_system == ProtectionSystem::kNone ? false : true;
+      config_.protection_system != ProtectionSystem::kNone;
   packaging_params.transport_stream_timestamp_offset_ms =
       config_.m2ts_offset_ms;
   packaging_params.enable_null_ts_packet_stuffing = true;
