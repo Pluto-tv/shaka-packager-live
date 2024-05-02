@@ -1,8 +1,8 @@
 #include <packager/live_packager.h>
 #include <packager/live_packager_export.h>
+#include <cstring>
 
 #include <memory>
-#include <string>
 
 struct LivePackager_instance_s {
   std::unique_ptr<shaka::LivePackager> inner;
@@ -92,6 +92,7 @@ LivePackagerStatus_t livepackager_package(LivePackager_t lp,
   shaka::Status status =
       lp->inner->Package(input_init, input_media, *dest->inner);
   std::string status_message = status.ToString();
+
   return LivePackagerStatus_s{strdup(status_message.c_str()), status.ok()};
 }
 
