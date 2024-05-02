@@ -7,11 +7,6 @@ struct LivePackager_instance_s {
   std::unique_ptr<shaka::LivePackager> inner;
 };
 
-struct LivePackagerStatus_s {
-  const char* status_message;
-  bool ok;
-};
-
 LivePackager_t livepackager_new(LivePackagerConfig_t cfg) {
   shaka::LiveConfig converted{
       .format = shaka::LiveConfig::OutputFormat(cfg.format),
@@ -54,14 +49,6 @@ void livepackager_free(LivePackager_t lp) {
   delete lp;
 }
 
-void live_packager_status_free(LivePackagerStatus_t self) {
-  delete self;
-}
-
-const char* status_get_error(LivePackagerStatus_t self) {
-  return self->status_message;
-}
-
 struct LivePackager_buffer_s {
   std::unique_ptr<shaka::SegmentBuffer> inner;
 };
@@ -90,8 +77,7 @@ LivePackagerStatus_t livepackager_package_init(LivePackager_t lp,
   shaka::SegmentData input(init, init_len);
   shaka::Status status = lp->inner->PackageInit(input, *dest->inner);
   std::string status_message = status.ToString();
-  return new (std::nothrow)
-      LivePackagerStatus_s{status_message.c_str(), status.ok()};
+  return LivePackagerStatus_s{strdup(status_message.c_str()), status.ok()};
 }
 
 LivePackagerStatus_t livepackager_package(LivePackager_t lp,
@@ -105,8 +91,7 @@ LivePackagerStatus_t livepackager_package(LivePackager_t lp,
   shaka::Status status =
       lp->inner->Package(input_init, input_media, *dest->inner);
   std::string status_message = status.ToString();
-  return new (std::nothrow)
-      LivePackagerStatus_s{status_message.c_str(), status.ok()};
+  return LivePackagerStatus_s{strdup(status_message.c_str()), status.ok()};
 }
 
 LivePackagerStatus_t livepackager_package_timedtext_init(
@@ -119,13 +104,11 @@ LivePackagerStatus_t livepackager_package_timedtext_init(
   shaka::Status status = lp->inner->PackageTimedText(input_seg, out);
   std::string status_message = status.ToString();
   if (!status.ok()) {
-    return new (std::nothrow)
-        LivePackagerStatus_s{status_message.c_str(), status.ok()};
+    return LivePackagerStatus_s{strdup(status_message.c_str()), status.ok()};
   }
 
   dest->inner->AppendData(out.InitSegmentData(), out.InitSegmentSize());
-  return new (std::nothrow)
-      LivePackagerStatus_s{status_message.c_str(), status.ok()};
+  return LivePackagerStatus_s{strdup(status_message.c_str()), status.ok()};
 }
 
 LivePackagerStatus_t livepackager_package_timedtext(LivePackager_t lp,
@@ -137,11 +120,9 @@ LivePackagerStatus_t livepackager_package_timedtext(LivePackager_t lp,
   shaka::Status status = lp->inner->PackageTimedText(input_seg, out);
   std::string status_message = status.ToString();
   if (!status.ok()) {
-    return new (std::nothrow)
-        LivePackagerStatus_s{status_message.c_str(), status.ok()};
+    return LivePackagerStatus_s{strdup(status_message.c_str()), status.ok()};
   }
 
   dest->inner->AppendData(out.SegmentData(), out.SegmentSize());
-  return new (std::nothrow)
-      LivePackagerStatus_s{status_message.c_str(), status.ok()};
+  return LivePackagerStatus_s{strdup(status_message.c_str()), status.ok()};
 }

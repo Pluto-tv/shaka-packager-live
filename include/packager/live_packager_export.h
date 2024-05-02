@@ -94,10 +94,10 @@ size_t livepackager_buf_size(LivePackagerBuffer_t buf);
 
 typedef struct LivePackager_instance_s* LivePackager_t;
 
-typedef struct LivePackagerStatus_s* LivePackagerStatus_t;
-void live_packager_status_free(LivePackagerStatus_t self);
-
-const char* status_get_error(LivePackagerStatus_t self);
+typedef struct LivePackagerStatus_s {
+  const char* status_message;
+  bool ok;
+} LivePackagerStatus_t;
 
 LivePackager_t livepackager_new(LivePackagerConfig_t cfg);
 void livepackager_free(LivePackager_t lp);
