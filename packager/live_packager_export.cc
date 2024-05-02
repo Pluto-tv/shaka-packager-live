@@ -2,6 +2,7 @@
 #include <packager/live_packager_export.h>
 
 #include <memory>
+#include <string>
 
 struct LivePackager_instance_s {
   std::unique_ptr<shaka::LivePackager> inner;
