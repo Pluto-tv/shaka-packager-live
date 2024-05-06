@@ -78,7 +78,8 @@ LivePackagerStatus_t livepackager_package_init(LivePackager_t lp,
   shaka::SegmentData input(init, init_len);
   shaka::Status status = lp->inner->PackageInit(input, *dest->inner);
   std::string status_message = status.ToString();
-  return LivePackagerStatus_s{strdup(status_message.c_str()), status.ok()};
+  return LivePackagerStatus_s{
+      status.ok() ? nullptr : strdup(status_message.c_str()), status.ok()};
 }
 
 LivePackagerStatus_t livepackager_package(LivePackager_t lp,
@@ -93,7 +94,8 @@ LivePackagerStatus_t livepackager_package(LivePackager_t lp,
       lp->inner->Package(input_init, input_media, *dest->inner);
   std::string status_message = status.ToString();
 
-  return LivePackagerStatus_s{strdup(status_message.c_str()), status.ok()};
+  return LivePackagerStatus_s{
+      status.ok() ? nullptr : strdup(status_message.c_str()), status.ok()};
 }
 
 LivePackagerStatus_t livepackager_package_timedtext_init(
@@ -104,13 +106,13 @@ LivePackagerStatus_t livepackager_package_timedtext_init(
   shaka::SegmentData input_seg(seg, seg_len);
   shaka::FullSegmentBuffer out;
   shaka::Status status = lp->inner->PackageTimedText(input_seg, out);
-  std::string status_message = status.ToString();
   if (!status.ok()) {
+    std::string status_message = status.ToString();
     return LivePackagerStatus_s{strdup(status_message.c_str()), status.ok()};
   }
 
   dest->inner->AppendData(out.InitSegmentData(), out.InitSegmentSize());
-  return LivePackagerStatus_s{strdup(status_message.c_str()), status.ok()};
+  return LivePackagerStatus_s{nullptr, status.ok()};
 }
 
 LivePackagerStatus_t livepackager_package_timedtext(LivePackager_t lp,
@@ -120,11 +122,11 @@ LivePackagerStatus_t livepackager_package_timedtext(LivePackager_t lp,
   shaka::SegmentData input_seg(seg, seg_len);
   shaka::FullSegmentBuffer out;
   shaka::Status status = lp->inner->PackageTimedText(input_seg, out);
-  std::string status_message = status.ToString();
   if (!status.ok()) {
+    std::string status_message = status.ToString();
     return LivePackagerStatus_s{strdup(status_message.c_str()), status.ok()};
   }
 
   dest->inner->AppendData(out.SegmentData(), out.SegmentSize());
-  return LivePackagerStatus_s{strdup(status_message.c_str()), status.ok()};
+  return LivePackagerStatus_s{nullptr, status.ok()};
 }

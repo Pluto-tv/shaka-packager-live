@@ -95,7 +95,10 @@ size_t livepackager_buf_size(LivePackagerBuffer_t buf);
 typedef struct LivePackager_instance_s* LivePackager_t;
 
 typedef struct LivePackagerStatus_s {
-  const char* status_message;
+  /// In the event of an error this field will not be NULL and contain error
+  /// message with status code. Clients will need to free this memory in the
+  /// event that error_message is not NULL.
+  const char* error_message;
   bool ok;
 } LivePackagerStatus_t;
 
