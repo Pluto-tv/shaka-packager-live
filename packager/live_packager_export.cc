@@ -135,11 +135,11 @@ LivePackagerStatus_t livepackager_package_timedtext(LivePackager_t lp,
 static std::unique_ptr<shaka::pluto::live::LogCollectorSink> custom_sink;
 static std::mutex sink_mutex;
 
-void initializeLog(LogSeverity_t sev) {
+void lp_initializeLog(LogSeverity_t sev) {
   shaka::pluto::live::InitializeLog(static_cast<absl::LogSeverityAtLeast>(sev));
 }
 
-void installCustomLogSink() {
+void lp_installCustomLogSink() {
   std::lock_guard<std::mutex> lock(sink_mutex);
   if (!custom_sink) {
     custom_sink = std::make_unique<shaka::pluto::live::LogCollectorSink>();
@@ -147,7 +147,7 @@ void installCustomLogSink() {
   }
 }
 
-void removeCustomLogSink() {
+void lp_removeCustomLogSink() {
   std::lock_guard<std::mutex> lock(sink_mutex);
   if (custom_sink) {
     shaka::pluto::live::RemoveCustomLogSink(*custom_sink);
@@ -155,7 +155,7 @@ void removeCustomLogSink() {
   }
 }
 
-char** getErrorMessages(int *num_messages) {
+char** lp_getErrorMessages(int *num_messages) {
   std::lock_guard<std::mutex> lock(sink_mutex);
   *num_messages = 0;
   if (!custom_sink) {
@@ -189,4 +189,18 @@ char** getErrorMessages(int *num_messages) {
 
   *num_messages = messages.size();
   return out_messages;
+}
+
+void freeErrorMessages(char** messages, int num_messages) {
+  if (!messages) {
+    return;
+  }
+
+  for(int i(0); i < num_messages; ++i) {
+    if (messages[i]) {
+      free(messages[i]);
+    }
+  }
+
+  free(messages);
 }

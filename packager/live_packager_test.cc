@@ -1443,8 +1443,8 @@ INSTANTIATE_TEST_CASE_P(
 );
 
 TEST(LivePackagerLoggingTest, InvalidDecryptKeyID) {
-  initializeLog(WARNING);
-  installCustomLogSink();
+  lp_initializeLog(WARNING);
+  lp_installCustomLogSink();
 
   std::vector<uint8_t> init_segment_buffer = ReadTestDataFile("encrypted/prd_data/init.mp4");
   ASSERT_FALSE(init_segment_buffer.empty());
@@ -1475,7 +1475,7 @@ TEST(LivePackagerLoggingTest, InvalidDecryptKeyID) {
   }; 
 
   int num_errors = 0;
-  const auto messages = getErrorMessages(&num_errors);
+  const auto messages = lp_getErrorMessages(&num_errors);
   ASSERT_EQ(expected_errors.size(), num_errors);
   for(int i(0); i < num_errors; ++i) {
     ASSERT_NE(nullptr, messages[i]);
@@ -1483,6 +1483,6 @@ TEST(LivePackagerLoggingTest, InvalidDecryptKeyID) {
     free(messages[i]);
   }
   free(messages);
-  removeCustomLogSink();
+  lp_removeCustomLogSink();
 }
 }  // namespace shaka

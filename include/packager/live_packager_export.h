@@ -139,10 +139,13 @@ typedef enum LogSeverity {
   FATAL = 3,
 } LogSeverity_t;
 
-void initializeLog(LogSeverity_t sev);
-void installCustomLogSink();
-void removeCustomLogSink();
-char** getErrorMessages(int *num_messages);
+void lp_initializeLog(LogSeverity_t sev);
+void lp_installCustomLogSink();
+void lp_removeCustomLogSink();
+
+/// When the return value is not NULL, clients will need to free this memory
+char** lp_getErrorMessages(int *num_messages);
+void lp_freeErrorMessages(char** messages, int num_messages);
 
 #ifdef __cplusplus
 }
