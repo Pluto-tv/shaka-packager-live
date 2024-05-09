@@ -156,8 +156,8 @@ void removeCustomLogSink() {
 }
 
 char** getErrorMessages(int *num_messages) {
+  std::lock_guard<std::mutex> lock(sink_mutex);
   *num_messages = 0;
-
   if (!custom_sink) {
     return nullptr;
   }
