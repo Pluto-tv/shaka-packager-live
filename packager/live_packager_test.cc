@@ -1486,3 +1486,9 @@ TEST(LivePackagerLoggingTest, InvalidDecryptKeyID) {
   lp_removeCustomLogSink();
 }
 }  // namespace shaka
+
+int main(int argc, char **argv) { 
+  absl::SetMinLogLevel(absl::LogSeverityAtLeast::kWarning);
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS(); 
+}
