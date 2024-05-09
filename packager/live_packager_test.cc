@@ -1480,9 +1480,8 @@ TEST(LivePackagerLoggingTest, InvalidDecryptKeyID) {
   for(int i(0); i < num_errors; ++i) {
     ASSERT_NE(nullptr, messages[i]);
     EXPECT_EQ(expected_errors[i], std::string(messages[i]));
-    free(messages[i]);
   }
-  free(messages);
+  lp_freeErrorMessages(messages, num_errors);
   lp_removeCustomLogSink();
 }
 }  // namespace shaka

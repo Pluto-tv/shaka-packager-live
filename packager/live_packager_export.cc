@@ -191,7 +191,7 @@ char** lp_getErrorMessages(int *num_messages) {
   return out_messages;
 }
 
-void freeErrorMessages(char** messages, int num_messages) {
+void lp_freeErrorMessages(char** messages, int num_messages) {
   if (!messages) {
     return;
   }
@@ -199,8 +199,10 @@ void freeErrorMessages(char** messages, int num_messages) {
   for(int i(0); i < num_messages; ++i) {
     if (messages[i]) {
       free(messages[i]);
+      messages[i] = nullptr;
     }
   }
 
   free(messages);
+  messages = nullptr;
 }
