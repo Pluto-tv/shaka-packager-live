@@ -128,6 +128,22 @@ LivePackagerStatus_t livepackager_package_timedtext(LivePackager_t lp,
                                                     size_t seg_len,
                                                     LivePackagerBuffer_t dest);
 
+
+//
+// Logging
+//
+typedef enum LogSeverity {
+  INFO = 0,
+  WARNING = 1,
+  ERROR = 2,
+  FATAL = 3,
+} LogSeverity_t;
+
+void initializeLog(LogSeverity_t sev);
+void installCustomLogSink();
+void removeCustomLogSink();
+char** getErrorMessages(int *num_messages);
+
 #ifdef __cplusplus
 }
 #endif
