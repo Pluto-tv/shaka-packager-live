@@ -29,6 +29,7 @@
 #include <packager/media/formats/mp2t/ts_packet.h>
 #include <packager/media/formats/mp2t/ts_section.h>
 #include <packager/media/formats/mp4/box_definitions.h>
+#include <packager/media/formats/mp4/box_definitions_comparison.h>
 #include <packager/media/formats/mp4/box_reader.h>
 #include <packager/media/formats/mp4/mp4_media_parser.h>
 
@@ -898,20 +899,7 @@ TEST_F(LivePackagerBaseTest, EditListAfterRepackage) {
   for (size_t i(0); i < exp_moov.tracks.size(); ++i) {
     const auto& exp_track = exp_moov.tracks[i];
     const auto& act_track = act_moov.tracks[i];
-
-    const auto& exp_edits = exp_track.edit.list.edits;
-    const auto& act_edits = act_track.edit.list.edits;
-    ASSERT_EQ(exp_edits.size(), act_edits.size());
-
-    for (size_t j(0); j < exp_edits.size(); ++j) {
-      const auto& exp_entry = exp_edits[j];
-      const auto& act_entry = act_edits[i];
-
-      EXPECT_EQ(exp_entry.media_rate_fraction, act_entry.media_rate_fraction);
-      EXPECT_EQ(exp_entry.media_rate_integer, act_entry.media_rate_integer);
-      EXPECT_EQ(exp_entry.media_time, act_entry.media_time);
-      EXPECT_EQ(exp_entry.segment_duration, act_entry.segment_duration);
-    }
+    EXPECT_EQ(exp_track.edit.list.edits, act_track.edit.list.edits);
   }
 }
 
