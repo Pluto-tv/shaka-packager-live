@@ -293,7 +293,7 @@ Status MP4Muxer::DelayInitializeMuxer() {
       entry.media_time = edit_list_offset_.value();
       entry.media_rate_integer = 1;
       trak.edit.list.edits.push_back(entry);
-    } else if (stream->media_time() > 0) {
+    } else if (stream->media_time() != 0) {
       EditListEntry entry;
       entry.media_time = stream->media_time();
       entry.media_rate_integer = 1;
