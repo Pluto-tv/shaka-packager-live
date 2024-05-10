@@ -903,13 +903,15 @@ TEST_F(LivePackagerBaseTest, EditListAfterRepackage) {
     const auto& act_edits = act_track.edit.list.edits;
     ASSERT_EQ(exp_edits.size(), act_edits.size());
 
-    const auto& exp_entry = exp_edits.front();
-    const auto& act_entry = act_edits.front();
+    for (size_t j(0); j < exp_edits.size(); ++j) {
+      const auto& exp_entry = exp_edits[j];
+      const auto& act_entry = act_edits[i];
 
-    EXPECT_EQ(exp_entry.media_rate_fraction, act_entry.media_rate_fraction);
-    EXPECT_EQ(exp_entry.media_rate_integer, act_entry.media_rate_integer);
-    EXPECT_EQ(exp_entry.media_time, act_entry.media_time);
-    EXPECT_EQ(exp_entry.segment_duration, act_entry.segment_duration);
+      EXPECT_EQ(exp_entry.media_rate_fraction, act_entry.media_rate_fraction);
+      EXPECT_EQ(exp_entry.media_rate_integer, act_entry.media_rate_integer);
+      EXPECT_EQ(exp_entry.media_time, act_entry.media_time);
+      EXPECT_EQ(exp_entry.segment_duration, act_entry.segment_duration);
+    }
   }
 }
 
