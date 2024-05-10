@@ -124,9 +124,7 @@ class StreamInfo {
   void set_encryption_config(const EncryptionConfig& encryption_config) {
     encryption_config_ = encryption_config;
   }
-  void set_media_time(int64_t media_time) {
-    media_time_ = media_time;
-  }
+  void set_media_time(int64_t media_time) { media_time_ = media_time; }
 
  private:
   // Whether the stream is Audio or Video.

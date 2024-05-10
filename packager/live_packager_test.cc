@@ -297,7 +297,7 @@ class MP4MediaParserTest {
   std::vector<std::shared_ptr<media::mp4::DASHEventMessageBox>> emsg_samples_;
 };
 
-bool GetBox(const Segment& buffer, media::mp4::Box &out) {
+bool GetBox(const Segment& buffer, media::mp4::Box& out) {
   bool err(true);
   size_t bytes_to_read(buffer.Size());
   const uint8_t* data(buffer.Data());
@@ -883,8 +883,7 @@ TEST_F(LivePackagerBaseTest, EditListAfterRepackage) {
   live_config.decryption_key_id = HexStringToVector(kKeyIdHex);
   SetupLivePackagerConfig(live_config);
 
-  SegmentData init_seg(init_segment_buffer.data(),
-                      init_segment_buffer.size());
+  SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
   SegmentBuffer actual_buf;
   const auto status = live_packager_->PackageInit(init_seg, actual_buf);
   ASSERT_EQ(Status::OK, status);
