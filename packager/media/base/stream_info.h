@@ -157,8 +157,8 @@ class StreamInfo {
   // Optional data required for preserving media time when repackaging an
   // init segment alone.
   int64_t media_time_ = 0;
-  // Optional data required for preserving default sample duration when repackaging an
-  // init segment alone.
+  // Optional data required for preserving default sample duration when
+  // repackaging an init segment alone.
   uint32_t default_sample_duration_ = 0;
 
   // Not using DISALLOW_COPY_AND_ASSIGN here intentionally to allow the compiler

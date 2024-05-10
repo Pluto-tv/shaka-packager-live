@@ -598,7 +598,8 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
 
       for (const auto& trex : moov_->extends.tracks) {
         if (trex.track_id == track->header.track_id) {
-          streams.back()->set_default_sample_duration(trex.default_sample_duration);
+          streams.back()->set_default_sample_duration(
+              trex.default_sample_duration);
           break;
         }
       }
@@ -777,7 +778,8 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
 
       for (const auto& trex : moov_->extends.tracks) {
         if (trex.track_id == track->header.track_id) {
-          video_stream_info->set_default_sample_duration(trex.default_sample_duration);
+          video_stream_info->set_default_sample_duration(
+              trex.default_sample_duration);
           break;
         }
       }
