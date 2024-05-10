@@ -758,6 +758,11 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
                                              pssh_raw_data.size());
       }
 
+      const EditList& edit_list = track->edit.list;
+      if (edit_list.edits.size() == 1u) {
+        video_stream_info->set_media_time(edit_list.edits.front().media_time);
+      }
+
       streams.push_back(video_stream_info);
     }
   }
