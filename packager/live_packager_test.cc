@@ -915,12 +915,18 @@ TEST_F(LivePackagerBaseTest, MehdBoxIncluded) {
   live_config.decryption_key_id = HexStringToVector(kKeyIdHex);
   SetupLivePackagerConfig(live_config);
 
-  SegmentData init_seg(init_segment_buffer.data(),
-                       init_segment_buffer.size());
+  SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
   SegmentBuffer actual_buf;
   const auto status = live_packager_->PackageInit(init_seg, actual_buf);
   ASSERT_EQ(Status::OK, status);
   ASSERT_GT(actual_buf.Size(), 0);
+
+  media::mp4::Movie exp_moov;
+  ASSERT_TRUE(GetBox(init_seg, exp_moov));
+  media::mp4::Movie act_moov;
+  ASSERT_TRUE(GetBox(actual_buf, act_moov));
+
+  ASSERT_EQ(exp_moov.extends.header, act_moov.extends.header);
 }
 
 TEST_F(LivePackagerBaseTest, EncryptionFailure) {

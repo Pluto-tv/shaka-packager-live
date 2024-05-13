@@ -247,6 +247,7 @@ Status MP4Muxer::DelayInitializeMuxer() {
     if (codec_fourcc != FOURCC_avc3 && codec_fourcc != FOURCC_hev1)
       ftyp->compatible_brands.push_back(FOURCC_cmfc);
 
+    // Carry over movie extends header duration from init segment.
     moov->extends.header.fragment_duration = streams()[0].get()->duration();
   }
 
@@ -256,8 +257,6 @@ Status MP4Muxer::DelayInitializeMuxer() {
 
   moov->tracks.resize(streams().size());
   moov->extends.tracks.resize(streams().size());
-//  const StreamInfo* stream_info = streams()[0].get();
-//  moov->extends.header.fragment_duration = stream_info->duration();
 
   // Initialize tracks.
   for (uint32_t i = 0; i < streams().size(); ++i) {
