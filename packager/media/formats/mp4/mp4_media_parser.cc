@@ -410,9 +410,12 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
 
     // Calculate duration (based on timescale).
     int64_t duration = 0;
-    if (track->media.header.duration > 0) {
+    if (track->media.header.duration > 0 &&
+        track->media.header.duration != std::numeric_limits<uint64_t>::max()) {
       duration = track->media.header.duration;
-    } else if (moov_->extends.header.fragment_duration > 0) {
+    } else if (moov_->extends.header.fragment_duration > 0 &&
+               moov_->extends.header.fragment_duration !=
+                   std::numeric_limits<uint64_t>::max()) {
       DCHECK(moov_->header.timescale != 0);
       duration = Rescale(moov_->extends.header.fragment_duration,
                          moov_->header.timescale, timescale);
