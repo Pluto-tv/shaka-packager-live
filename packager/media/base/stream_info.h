@@ -110,6 +110,7 @@ class StreamInfo {
   uint32_t get_default_sample_duration() const {
     return default_sample_duration_;
   }
+  bool is_mehd_header_duration() const { return mehd_header_carryover_; };
 
   void set_duration(int64_t duration) { duration_ = duration; }
   void set_codec(Codec codec) { codec_ = codec; }
@@ -130,6 +131,10 @@ class StreamInfo {
   void set_media_time(int64_t media_time) { media_time_ = media_time; }
   void set_default_sample_duration(uint32_t duration) {
     default_sample_duration_ = duration;
+  }
+
+  void set_mehd_header_carryover(bool mehd_header_carryover) {
+    mehd_header_carryover_ = mehd_header_carryover;
   }
 
  private:
@@ -160,6 +165,10 @@ class StreamInfo {
   // Optional data required for preserving default sample duration when
   // repackaging an init segment alone.
   uint32_t default_sample_duration_ = 0;
+
+  // Flag to indicate whether the duration originated in the movie extends
+  // header and should carry over to the output segment.
+  bool mehd_header_carryover_ = false;
 
   // Not using DISALLOW_COPY_AND_ASSIGN here intentionally to allow the compiler
   // generated copy constructor and assignment operator. Since the extra data is

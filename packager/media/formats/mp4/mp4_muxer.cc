@@ -248,7 +248,8 @@ Status MP4Muxer::DelayInitializeMuxer() {
       ftyp->compatible_brands.push_back(FOURCC_cmfc);
 
     // Carry over movie extends header duration from init segment.
-    if (streams()[0].get()->duration() > 0) {
+    if (streams()[0].get()->duration() > 0 &&
+        streams()[0].get()->is_mehd_header_duration()) {
       moov->extends.header.fragment_duration = streams()[0].get()->duration();
     }
   }
