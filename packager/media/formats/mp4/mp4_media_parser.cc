@@ -410,17 +410,16 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
 
     // Calculate duration (based on timescale).
     int64_t duration = 0;
-    bool mehd_header_carryover = false;
-    if (track->media.header.duration > 0 &&
-        track->media.header.duration != std::numeric_limits<uint64_t>::max()) {
+    int64_t default_fragment_duration = 0;
+    if (track->media.header.duration > 0) {
       duration = track->media.header.duration;
-    } else if (moov_->extends.header.fragment_duration > 0 &&
-               moov_->extends.header.fragment_duration !=
-                   std::numeric_limits<uint64_t>::max()) {
+    } else if (moov_->extends.header.fragment_duration > 0) {
       DCHECK(moov_->header.timescale != 0);
       duration = Rescale(moov_->extends.header.fragment_duration,
                          moov_->header.timescale, timescale);
-      mehd_header_carryover = true;
+      if (duration > 0) {
+        default_fragment_duration = duration;
+      }
     } else if (moov_->header.duration > 0 &&
                moov_->header.duration != std::numeric_limits<uint64_t>::max()) {
       DCHECK(moov_->header.timescale != 0);
@@ -595,7 +594,7 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
           num_channels, sampling_frequency, seek_preroll_ns, codec_delay_ns,
           max_bitrate, avg_bitrate, track->media.header.language.code,
           is_encrypted));
-      streams.back()->set_mehd_header_carryover(mehd_header_carryover);
+      streams.back()->set_default_fragment_duration(default_fragment_duration);
 
       const EditList& edit_list = track->edit.list;
       if (edit_list.edits.size() == 1u) {
@@ -789,7 +788,8 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
           break;
         }
       }
-      video_stream_info->set_mehd_header_carryover(mehd_header_carryover);
+      video_stream_info->set_default_fragment_duration(
+          default_fragment_duration);
 
       streams.push_back(video_stream_info);
     }
