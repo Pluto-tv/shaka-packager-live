@@ -1201,7 +1201,22 @@ INSTANTIATE_TEST_CASE_P(
         LivePackagerTestCase{
             5, "audio/en/init.mp4", LiveConfig::EncryptionScheme::SAMPLE_AES,
             LiveConfig::OutputFormat::TS, LiveConfig::TrackType::AUDIO,
-            "audio/en/%05d.m4s", false}));
+            "audio/en/%05d.m4s", false},
+        // Verify packaging of CMAF Video segments, no encryption
+        LivePackagerTestCase{
+            10, "cmaf/video/init.mp4", LiveConfig::EncryptionScheme::NONE,
+            LiveConfig::OutputFormat::FMP4, LiveConfig::TrackType::VIDEO,
+            "cmaf/video/seg_34313817%01d.m4s", false},
+        // Verify packaging of CMAF Audio segments
+        LivePackagerTestCase{
+            10, "cmaf/audio/init.mp4", LiveConfig::EncryptionScheme::NONE,
+            LiveConfig::OutputFormat::FMP4, LiveConfig::TrackType::AUDIO,
+            "cmaf/audio/seg_34313817%01d.m4s", false},
+        // Verify packaging of CMAF Video segments, with encryption
+        LivePackagerTestCase{
+            10, "audio/en/init.mp4", LiveConfig::EncryptionScheme::CENC,
+            LiveConfig::OutputFormat::FMP4, LiveConfig::TrackType::AUDIO,
+            "cmaf/video/seg_34313817%01d.m4s", false}));
 
 struct LivePackagerReEncryptCase {
   unsigned int num_segments;
