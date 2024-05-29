@@ -1098,10 +1098,8 @@ class LivePackagerEncryptionTest
     // TODO: make this more generic to handle mp2t as well
     std::vector<uint8_t> buf = ReadTestDataFile(GetParam().exp_init);
     for (unsigned int i = 0; i < GetParam().num_segments; i++) {
-      auto index =
-          GetParam().exp_init.find("cmaf") != std::string::npos ? i : i + 1;
       std::string input_fname;
-      if (FormatWithIndex(GetParam().exp_media_seg, index, input_fname)) {
+      if (FormatWithIndex(GetParam().exp_media_seg, i, input_fname)) {
         auto seg_buf = ReadTestDataFile(input_fname);
         buf.insert(buf.end(), seg_buf.begin(), seg_buf.end());
       }
@@ -1535,6 +1533,9 @@ INSTANTIATE_TEST_CASE_P(
             0,
         }));
 
+// Exercise edge case found in webvtt_to_mp4_handler for large decode times.
+// Issue was a narrow conversion from int64_t to int (32 bit) for segment_start.
+// Valid decode times can be int64_t.
 TEST_F(LivePackagerBaseTest, TestCmafTimedText) {
   std::vector<uint8_t> segment_buffer =
       ReadTestDataFile("timed_text/cmaf/text_cmaf_fragment_343138171.vtt");
