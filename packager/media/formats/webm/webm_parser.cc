@@ -388,7 +388,7 @@ static const ElementIdInfo kSimpleTagIds[] = {
 };
 
 #define LIST_ELEMENT_INFO(id, level, id_info) \
-  {(id), (level), (id_info), std::size(id_info)}
+  { (id), (level), (id_info), std::size(id_info) }
 
 static const ListElementInfo kListElementInfo[] = {
   LIST_ELEMENT_INFO(kWebMIdCluster, 1, kClusterIds),
