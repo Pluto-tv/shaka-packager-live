@@ -183,7 +183,6 @@ bool EsParserTeletext::ParseInternal(const uint8_t* data,
       break;
     }
 
-
     RCHECK(reader.SkipBits(16));
 
     uint16_t address_bits;
@@ -274,7 +273,8 @@ bool EsParserTeletext::ParseDataBlock(const int64_t pts,
 }
 
 void EsParserTeletext::UpdateCharset() {
-  memcpy(current_charset_, TELETEXT_CHARSET_G0_LATIN, sizeof(TELETEXT_CHARSET_G0_LATIN));
+  memcpy(current_charset_, TELETEXT_CHARSET_G0_LATIN,
+         sizeof(TELETEXT_CHARSET_G0_LATIN));
   if (charset_code_ > 7) {
     return;
   }
