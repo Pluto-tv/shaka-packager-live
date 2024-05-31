@@ -30,6 +30,7 @@
 #include <packager/media/formats/mp2t/ts_packet.h>
 #include <packager/media/formats/mp2t/ts_section.h>
 #include <packager/media/formats/mp4/box_definitions.h>
+#include <packager/media/formats/mp4/box_definitions_comparison.h>
 #include <packager/media/formats/mp4/box_reader.h>
 #include <packager/media/formats/mp4/mp4_media_parser.h>
 
@@ -297,6 +298,31 @@ class MP4MediaParserTest {
   std::vector<std::shared_ptr<media::MediaSample>> samples_;
   std::vector<std::shared_ptr<media::mp4::DASHEventMessageBox>> emsg_samples_;
 };
+
+bool GetBox(const Segment& buffer, media::mp4::Box& out) {
+  bool err(true);
+  size_t bytes_to_read(buffer.Size());
+  const uint8_t* data(buffer.Data());
+
+  while (bytes_to_read > 0) {
+    std::unique_ptr<media::mp4::BoxReader> reader(
+        media::mp4::BoxReader::ReadBox(data, bytes_to_read, &err));
+
+    if (err) {
+      return false;
+    }
+
+    if (reader->type() == out.BoxType()) {
+      out.Parse(reader.get());
+      return true;
+    }
+
+    data += reader->size();
+    bytes_to_read -= reader->size();
+  }
+
+  return false;
+}
 
 void CheckVideoInitSegment(const SegmentBuffer& buffer, media::FourCC format) {
   bool err(true);
@@ -846,6 +872,41 @@ TEST_F(LivePackagerBaseTest, VerifyPrdDecryptReEncrypt) {
   }
 }
 
+TEST_F(LivePackagerBaseTest, MoovAfterRepackage) {
+  std::vector<uint8_t> init_segment_buffer =
+      ReadTestDataFile("encrypted/prd_data/init.mp4");
+  ASSERT_FALSE(init_segment_buffer.empty());
+
+  LiveConfig live_config;
+  live_config.format = LiveConfig::OutputFormat::FMP4;
+  live_config.track_type = LiveConfig::TrackType::VIDEO;
+  live_config.protection_scheme = LiveConfig::EncryptionScheme::CENC;
+  live_config.decryption_key = HexStringToVector(kKeyHex);
+  live_config.decryption_key_id = HexStringToVector(kKeyIdHex);
+  SetupLivePackagerConfig(live_config);
+
+  SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
+  SegmentBuffer actual_buf;
+  const auto status = live_packager_->PackageInit(init_seg, actual_buf);
+  ASSERT_EQ(Status::OK, status);
+  ASSERT_GT(actual_buf.Size(), 0);
+
+  media::mp4::Movie exp_moov;
+  ASSERT_TRUE(GetBox(init_seg, exp_moov));
+  media::mp4::Movie act_moov;
+  ASSERT_TRUE(GetBox(actual_buf, act_moov));
+  ASSERT_EQ(exp_moov.extends.header, act_moov.extends.header);
+
+  ASSERT_EQ(exp_moov.tracks.size(), act_moov.tracks.size());
+  for (size_t i(0); i < exp_moov.tracks.size(); ++i) {
+    const auto& exp_track = exp_moov.tracks[i];
+    const auto& act_track = act_moov.tracks[i];
+    EXPECT_EQ(exp_track.edit.list.edits, act_track.edit.list.edits);
+  }
+
+  EXPECT_EQ(exp_moov.extends.tracks, act_moov.extends.tracks);
+}
+
 TEST_F(LivePackagerBaseTest, EncryptionFailure) {
   std::vector<uint8_t> init_segment_buffer = ReadTestDataFile("input/init.mp4");
   ASSERT_FALSE(init_segment_buffer.empty());
@@ -1016,6 +1077,8 @@ struct LivePackagerTestCase {
   LiveConfig::TrackType track_type;
   const char* media_segment_format;
   bool compare_samples;
+  std::string exp_init;
+  const char* exp_media_seg;
 };
 
 class LivePackagerEncryptionTest
@@ -1035,13 +1098,14 @@ class LivePackagerEncryptionTest
  protected:
   static std::vector<uint8_t> ReadExpectedData() {
     // TODO: make this more generic to handle mp2t as well
-    std::vector<uint8_t> buf = ReadTestDataFile("expected/fmp4/init.mp4");
+    std::vector<uint8_t> buf = ReadTestDataFile(GetParam().exp_init);
     for (unsigned int i = 0; i < GetParam().num_segments; i++) {
-      auto seg_buf =
-          ReadTestDataFile(absl::StrFormat("expected/fmp4/%04d.m4s", i + 1));
-      buf.insert(buf.end(), seg_buf.begin(), seg_buf.end());
+      std::string input_fname;
+      if (FormatWithIndex(GetParam().exp_media_seg, i, input_fname)) {
+        auto seg_buf = ReadTestDataFile(input_fname);
+        buf.insert(buf.end(), seg_buf.begin(), seg_buf.end());
+      }
     }
-
     return buf;
   }
 
@@ -1117,32 +1181,62 @@ INSTANTIATE_TEST_CASE_P(
         LivePackagerTestCase{
             10, "input/init.mp4", LiveConfig::EncryptionScheme::SAMPLE_AES,
             LiveConfig::OutputFormat::TS, LiveConfig::TrackType::VIDEO,
-            "input/%04d.m4s", false},
+            "input/%04d.m4s", false, "expected/fmp4/init.mp4",
+            "expected/fmp4/%04d.m4s"},
         // Verify FMP4 to TS with AES-128 encryption.
         LivePackagerTestCase{
             10, "input/init.mp4", LiveConfig::EncryptionScheme::AES_128,
             LiveConfig::OutputFormat::TS, LiveConfig::TrackType::VIDEO,
-            "input/%04d.m4s", false},
+            "input/%04d.m4s", false, "expected/fmp4/init.mp4",
+            "expected/fmp4/%04d.m4s"},
         // Verify FMP4 to FMP4 with Sample AES encryption.
         LivePackagerTestCase{
             10, "input/init.mp4", LiveConfig::EncryptionScheme::SAMPLE_AES,
             LiveConfig::OutputFormat::FMP4, LiveConfig::TrackType::VIDEO,
-            "input/%04d.m4s", true},
+            "input/%04d.m4s", true, "expected/fmp4/init.mp4",
+            "expected/fmp4/%04d.m4s"},
         // Verify FMP4 to FMP4 with CENC encryption.
         LivePackagerTestCase{
             10, "input/init.mp4", LiveConfig::EncryptionScheme::CENC,
             LiveConfig::OutputFormat::FMP4, LiveConfig::TrackType::VIDEO,
-            "input/%04d.m4s", true},
+            "input/%04d.m4s", true, "expected/fmp4/init.mp4",
+            "expected/fmp4/%04d.m4s"},
         // Verify FMP4 to FMP4 with CBCS encryption.
         LivePackagerTestCase{
             10, "input/init.mp4", LiveConfig::EncryptionScheme::CBCS,
             LiveConfig::OutputFormat::FMP4, LiveConfig::TrackType::VIDEO,
-            "input/%04d.m4s", true},
+            "input/%04d.m4s", true, "expected/fmp4/init.mp4",
+            "expected/fmp4/%04d.m4s"},
         // Verify AUDIO segments only to TS with Sample AES encryption.
         LivePackagerTestCase{
             5, "audio/en/init.mp4", LiveConfig::EncryptionScheme::SAMPLE_AES,
             LiveConfig::OutputFormat::TS, LiveConfig::TrackType::AUDIO,
-            "audio/en/%05d.m4s", false}));
+            "audio/en/%05d.m4s", false, "expected/fmp4/init.mp4",
+            "expected/fmp4/%04d.m4s"},
+        // Verify packaging of CMAF Video segments, no encryption
+        LivePackagerTestCase{
+            10, "cmaf/video/init.mp4", LiveConfig::EncryptionScheme::NONE,
+            LiveConfig::OutputFormat::FMP4, LiveConfig::TrackType::VIDEO,
+            "cmaf/video/seg_34313817%01d.m4s", true, "cmaf/video/init.mp4",
+            "cmaf/video/seg_34313817%01d.m4s"},
+        // Verify packaging of CMAF Audio segments
+        LivePackagerTestCase{
+            10, "cmaf/audio/init.mp4", LiveConfig::EncryptionScheme::NONE,
+            LiveConfig::OutputFormat::FMP4, LiveConfig::TrackType::AUDIO,
+            "cmaf/audio/seg_34313817%01d.m4s", true, "cmaf/audio/init.mp4",
+            "cmaf/audio/seg_34313817%01d.m4s"},
+        // Verify packaging of CMAF audio segments, with encryption
+        LivePackagerTestCase{
+            10, "cmaf/audio/init.mp4", LiveConfig::EncryptionScheme::CENC,
+            LiveConfig::OutputFormat::FMP4, LiveConfig::TrackType::AUDIO,
+            "cmaf/audio/seg_34313817%01d.m4s", true, "cmaf/audio/init.mp4",
+            "cmaf/audio/seg_34313817%01d.m4s"},
+        // Verify packaging of CMAF video segments, with encryption
+        LivePackagerTestCase{
+            10, "cmaf/video/init.mp4", LiveConfig::EncryptionScheme::CENC,
+            LiveConfig::OutputFormat::FMP4, LiveConfig::TrackType::VIDEO,
+            "cmaf/video/seg_34313817%01d.m4s", true, "cmaf/video/init.mp4",
+            "cmaf/video/seg_34313817%01d.m4s"}));
 
 struct LivePackagerReEncryptCase {
   unsigned int num_segments;
@@ -1471,7 +1565,7 @@ TEST(LivePackagerLoggingTest, InvalidDecryptKeyID) {
     "(ERROR): Error retrieving decryption key: 14 (INTERNAL_ERROR): Key for key_id=00000000621f2afe7ab2c868d5fd2e2e was not found.",
     "(ERROR): Cannot decrypt samples.",
     "(ERROR): Error while parsing MP4",
-  }; 
+  };
 
   int num_errors = 0;
   const auto messages = lp_getErrorMessages(&num_errors);
@@ -1483,6 +1577,38 @@ TEST(LivePackagerLoggingTest, InvalidDecryptKeyID) {
   lp_freeErrorMessages(messages, num_errors);
   lp_removeCustomLogSink();
 }
+
+// Exercise edge case found in webvtt_to_mp4_handler for large decode times.
+// Issue was a narrow conversion from int64_t to int (32 bit) for segment_start.
+// Valid decode times can be int64_t.
+TEST_F(LivePackagerBaseTest, TestCmafTimedText) {
+  std::vector<uint8_t> segment_buffer =
+      ReadTestDataFile("timed_text/cmaf/text_cmaf_fragment_343138171.vtt");
+  ASSERT_FALSE(segment_buffer.empty());
+
+  SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+
+  FullSegmentBuffer out;
+
+  LiveConfig live_config;
+  live_config.format = LiveConfig::OutputFormat::VTTMP4;
+  live_config.track_type = LiveConfig::TrackType::TEXT;
+  live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
+  live_config.segment_number = 343138171;
+  live_config.timed_text_decode_time = (154412176500000 / 90000) * 1000;
+
+  SetupLivePackagerConfig(live_config);
+  ASSERT_EQ(Status::OK, live_packager_->PackageTimedText(media_seg, out));
+  ASSERT_GT(out.SegmentSize(), 0);
+
+  CheckTextInitSegment(out, media::FourCC::FOURCC_text,
+                       media::FourCC::FOURCC_wvtt);
+
+  SegmentBuffer seg;
+  seg.AppendData(out.SegmentData(), out.SegmentSize());
+  CheckSegment(live_config, seg, 1000, true);
+}
+
 }  // namespace shaka
 
 int main(int argc, char** argv) {

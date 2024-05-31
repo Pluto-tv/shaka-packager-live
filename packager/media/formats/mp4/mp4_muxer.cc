@@ -246,6 +246,11 @@ Status MP4Muxer::DelayInitializeMuxer() {
     // supported yet.
     if (codec_fourcc != FOURCC_avc3 && codec_fourcc != FOURCC_hev1)
       ftyp->compatible_brands.push_back(FOURCC_cmfc);
+
+    // Carry over movie extends header duration from init segment.
+    if (streams()[0].get()->get_default_fragment_duration() > 0)
+      moov->extends.header.fragment_duration =
+          streams()[0].get()->get_default_fragment_duration();
   }
 
   moov->header.creation_time = IsoTimeNow();
@@ -264,6 +269,9 @@ Status MP4Muxer::DelayInitializeMuxer() {
     TrackExtends& trex = moov->extends.tracks[i];
     trex.track_id = trak.header.track_id;
     trex.default_sample_description_index = 1;
+    if (stream->get_default_sample_duration() != 0) {
+      trex.default_sample_duration = stream->get_default_sample_duration();
+    }
 
     bool generate_trak_result = false;
     switch (stream->stream_type()) {
@@ -291,6 +299,11 @@ Status MP4Muxer::DelayInitializeMuxer() {
     if (edit_list_offset_.value_or(0) > 0) {
       EditListEntry entry;
       entry.media_time = edit_list_offset_.value();
+      entry.media_rate_integer = 1;
+      trak.edit.list.edits.push_back(entry);
+    } else if (stream->media_time() != 0) {
+      EditListEntry entry;
+      entry.media_time = stream->media_time();
       entry.media_rate_integer = 1;
       trak.edit.list.edits.push_back(entry);
     }

@@ -106,6 +106,13 @@ class StreamInfo {
   const EncryptionConfig& encryption_config() const {
     return encryption_config_;
   }
+  int64_t media_time() const { return media_time_; }
+  uint32_t get_default_sample_duration() const {
+    return default_sample_duration_;
+  }
+  int64_t get_default_fragment_duration() const {
+    return default_fragment_duration_;
+  };
 
   void set_duration(int64_t duration) { duration_ = duration; }
   void set_codec(Codec codec) { codec_ = codec; }
@@ -122,6 +129,14 @@ class StreamInfo {
   }
   void set_encryption_config(const EncryptionConfig& encryption_config) {
     encryption_config_ = encryption_config;
+  }
+  void set_media_time(int64_t media_time) { media_time_ = media_time; }
+  void set_default_sample_duration(uint32_t duration) {
+    default_sample_duration_ = duration;
+  }
+
+  void set_default_fragment_duration(int64_t default_fragment_duration) {
+    default_fragment_duration_ = default_fragment_duration;
   }
 
  private:
@@ -145,6 +160,17 @@ class StreamInfo {
   // Optional byte data required for some audio/video decoders such as Vorbis
   // codebooks.
   std::vector<uint8_t> codec_config_;
+
+  // Optional data required for preserving media time when repackaging an
+  // init segment alone.
+  int64_t media_time_ = 0;
+  // Optional data required for preserving default sample duration when
+  // repackaging an init segment alone.
+  uint32_t default_sample_duration_ = 0;
+
+  // Data to indicate whether the fragment duration originated in the movie
+  // extends header and should carry over to the output segment.
+  int64_t default_fragment_duration_ = 0;
 
   // Not using DISALLOW_COPY_AND_ASSIGN here intentionally to allow the compiler
   // generated copy constructor and assignment operator. Since the extra data is
