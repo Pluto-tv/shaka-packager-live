@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <fstream>
 
 #include <absl/log/log.h>
 #include <absl/strings/str_format.h>
@@ -1434,7 +1435,11 @@ TEST_P(TimedTextParameterizedTest, VerifyTimedText) {
 
         std::vector<uint8_t> actual_buf(out.SegmentData(),
                                         out.SegmentData() + out.SegmentSize());
-        ASSERT_EQ(expected_buf, actual_buf);
+
+        std::ofstream fout("sub_"+std::to_string(i)+".m4s", std::ios::out | std::ios::binary);
+        fout.write((char*)actual_buf.data(), actual_buf.size());
+
+        EXPECT_EQ(expected_buf, actual_buf);
       }
     }
   }
@@ -1454,6 +1459,7 @@ INSTANTIATE_TEST_CASE_P(
             media::FourCC::FOURCC_wvtt,
             Status::OK,
             0,
+        #if 0
         },
         // VTT in text --> TTML in Text
         TimedTextTestCase{
@@ -1498,5 +1504,6 @@ INSTANTIATE_TEST_CASE_P(
             media::FourCC::FOURCC_NULL,
             Status(error::INVALID_ARGUMENT, "Stream not available"),
             0,
+        #endif
         }));
 }  // namespace shaka

@@ -38,7 +38,7 @@ bool IsVideoCodec(Codec codec) {
 }  // namespace
 
 TsSegmenter::TsSegmenter(const MuxerOptions& options, MuxerListener* listener)
-    : muxer_options_(options),
+    : muxer_options_(options), 
       listener_(listener),
       transport_stream_timestamp_offset_(
           options.transport_stream_timestamp_offset_ms * kTsTimescale / 1000),
@@ -48,8 +48,6 @@ TsSegmenter::TsSegmenter(const MuxerOptions& options, MuxerListener* listener)
 TsSegmenter::~TsSegmenter() {}
 
 Status TsSegmenter::Initialize(const StreamInfo& stream_info) {
-  if (muxer_options_.segment_template.empty())
-    return Status(error::MUXER_FAILURE, "Segment template not specified.");
   if (!pes_packet_generator_->Initialize(stream_info)) {
     return Status(error::MUXER_FAILURE,
                   "Failed to initialize PesPacketGenerator.");
@@ -193,6 +191,8 @@ Status TsSegmenter::FinalizeSegment(int64_t start_timestamp, int64_t duration) {
     }
   }
 
+  // TODO(david): Remove?
+  #if 0
   // This method may be called from Finalize() so segment_started_ could
   // be false.
   if (!segment_started_)
@@ -225,6 +225,7 @@ Status TsSegmenter::FinalizeSegment(int64_t start_timestamp, int64_t duration) {
                             duration * timescale_scale_, file_size);
   }
   segment_started_ = false;
+  #endif
 
   return Status::OK;
 }
