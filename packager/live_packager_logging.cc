@@ -2,20 +2,21 @@
 #include <iostream>
 #include <mutex>
 
-#include <packager/live_packager_logging.h>
 #include <absl/base/log_severity.h>
 #include <absl/log/globals.h>
 #include <absl/log/initialize.h>
 #include <absl/log/log.h>
 #include <absl/log/log_sink_registry.h>
 #include <absl/strings/str_format.h>
+#include <packager/live_packager_logging.h>
 
 namespace shaka::pluto::live {
 
 void LogCollectorSink::Send(const absl::LogEntry& entry) {
-  if(messages_.size() <= max_message_count_){
-    const auto msg = absl::StrFormat(
-      "(%s): %s", absl::LogSeverityName(entry.log_severity()), entry.text_message());
+  if (messages_.size() <= max_message_count_) {
+    const auto msg =
+        absl::StrFormat("(%s): %s", absl::LogSeverityName(entry.log_severity()),
+                        entry.text_message());
     messages_.push_back(msg);
   }
 }
@@ -35,12 +36,12 @@ void InitializeLog(absl::LogSeverityAtLeast sev) {
   absl::SetMinLogLevel(sev);
 }
 
-void InstallCustomLogSink(absl::LogSink &sink) {
+void InstallCustomLogSink(absl::LogSink& sink) {
   absl::AddLogSink(&sink);
 }
 
-void RemoveCustomLogSink(absl::LogSink &sink) {
+void RemoveCustomLogSink(absl::LogSink& sink) {
   absl::RemoveLogSink(&sink);
 }
 
-} // namespace shaka::pluto::live
+}  // namespace shaka::pluto::live

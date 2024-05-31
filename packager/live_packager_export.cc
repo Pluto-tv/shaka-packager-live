@@ -155,31 +155,31 @@ void lp_removeCustomLogSink() {
   }
 }
 
-char** lp_getErrorMessages(int *num_messages) {
+char** lp_getErrorMessages(int* num_messages) {
   std::lock_guard<std::mutex> lock(sink_mutex);
   *num_messages = 0;
   if (!custom_sink) {
     return nullptr;
   }
 
-  const auto &messages = custom_sink->GetMessages();
+  const auto& messages = custom_sink->GetMessages();
 
   if (messages.empty()) {
     return nullptr;
   }
 
-  char **out_messages = (char **)malloc(messages.size() * sizeof(char *));
+  char** out_messages = (char**)malloc(messages.size() * sizeof(char*));
   if (!out_messages) {
     return nullptr;
   }
 
-  for(size_t i(0); i < messages.size(); ++i) {
-    const auto &msg = messages[i];
+  for (size_t i(0); i < messages.size(); ++i) {
+    const auto& msg = messages[i];
     out_messages[i] = strdup(msg.c_str());
 
     if (!out_messages[i]) {
       // free memory allocated for earlier strings
-      for(size_t j(0); j < i; ++j) {
+      for (size_t j(0); j < i; ++j) {
         free(out_messages[j]);
       }
       free(out_messages);
@@ -196,7 +196,7 @@ void lp_freeErrorMessages(char** messages, int num_messages) {
     return;
   }
 
-  for(int i(0); i < num_messages; ++i) {
+  for (int i(0); i < num_messages; ++i) {
     if (messages[i]) {
       free(messages[i]);
       messages[i] = nullptr;

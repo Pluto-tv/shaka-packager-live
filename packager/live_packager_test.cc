@@ -1439,22 +1439,21 @@ INSTANTIATE_TEST_CASE_P(
             media::FourCC::FOURCC_NULL,
             Status(error::INVALID_ARGUMENT, "Stream not available"),
             0,
-        })
-);
+        }));
 
 TEST(LivePackagerLoggingTest, InvalidDecryptKeyID) {
   lp_initializeLog(WARNING);
   lp_installCustomLogSink();
 
-  std::vector<uint8_t> init_segment_buffer = ReadTestDataFile("encrypted/prd_data/init.mp4");
+  std::vector<uint8_t> init_segment_buffer =
+      ReadTestDataFile("encrypted/prd_data/init.mp4");
   ASSERT_FALSE(init_segment_buffer.empty());
 
   std::string segment_num = absl::StrFormat("encrypted/prd_data/%05d.m4s", 1);
   std::vector<uint8_t> segment_buffer = ReadTestDataFile(segment_num);
   ASSERT_FALSE(segment_buffer.empty());
 
-  SegmentData init_seg(init_segment_buffer.data(),
-                        init_segment_buffer.size());
+  SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
   SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
 
   LiveConfig live_config;
@@ -1477,7 +1476,7 @@ TEST(LivePackagerLoggingTest, InvalidDecryptKeyID) {
   int num_errors = 0;
   const auto messages = lp_getErrorMessages(&num_errors);
   ASSERT_EQ(expected_errors.size(), num_errors);
-  for(int i(0); i < num_errors; ++i) {
+  for (int i(0); i < num_errors; ++i) {
     ASSERT_NE(nullptr, messages[i]);
     EXPECT_EQ(expected_errors[i], std::string(messages[i]));
   }
@@ -1486,8 +1485,8 @@ TEST(LivePackagerLoggingTest, InvalidDecryptKeyID) {
 }
 }  // namespace shaka
 
-int main(int argc, char **argv) { 
+int main(int argc, char** argv) {
   absl::SetMinLogLevel(absl::LogSeverityAtLeast::kWarning);
   ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS(); 
+  return RUN_ALL_TESTS();
 }

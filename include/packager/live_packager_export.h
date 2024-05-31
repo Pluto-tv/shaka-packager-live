@@ -128,7 +128,6 @@ LivePackagerStatus_t livepackager_package_timedtext(LivePackager_t lp,
                                                     size_t seg_len,
                                                     LivePackagerBuffer_t dest);
 
-
 //
 // Logging
 //
@@ -139,12 +138,15 @@ typedef enum LogSeverity {
   FATAL = 3,
 } LogSeverity_t;
 
+
+/// Enable general logging
 void lp_initializeLog(LogSeverity_t sev);
+/// Capture detailed logging messages
 void lp_installCustomLogSink();
 void lp_removeCustomLogSink();
 
 /// When the return value is not NULL, clients will need to free this memory
-char** lp_getErrorMessages(int *num_messages);
+char** lp_getErrorMessages(int* num_messages);
 void lp_freeErrorMessages(char** messages, int num_messages);
 
 #ifdef __cplusplus
