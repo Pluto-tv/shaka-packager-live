@@ -1,6 +1,43 @@
 # Changelog
 
 
+## [3.3.0](https://github.com/Pluto-tv/shaka-packager-live/compare/v3.2.0...v3.3.0) (2024-06-03)
+
+
+### Features
+
+* Add xHE-AAC support ([#1092](https://github.com/Pluto-tv/shaka-packager-live/issues/1092)) ([5d998fc](https://github.com/Pluto-tv/shaka-packager-live/commit/5d998fca7fb1d3d9c98f5b26561f842edcb2a925))
+* **DASH:** Add video transfer characteristics. ([#1210](https://github.com/Pluto-tv/shaka-packager-live/issues/1210)) ([8465f5f](https://github.com/Pluto-tv/shaka-packager-live/commit/8465f5f020b5c6152d24107a6d164301e05c3176))
+* Generate the entire AV1 codec string when the colr atom is present ([#1205](https://github.com/Pluto-tv/shaka-packager-live/issues/1205)) ([cc9a691](https://github.com/Pluto-tv/shaka-packager-live/commit/cc9a691aef946dfb4d68077d3a741ef1b88d2f21)), closes [#1007](https://github.com/Pluto-tv/shaka-packager-live/issues/1007)
+* sync upstream main ([#32](https://github.com/Pluto-tv/shaka-packager-live/issues/32)) ([3a7f4f0](https://github.com/Pluto-tv/shaka-packager-live/commit/3a7f4f064ac25109a3acff7d2144c76c08a5d924))
+* Write colr atom to muxed mp4 ([#1261](https://github.com/Pluto-tv/shaka-packager-live/issues/1261)) ([f264bef](https://github.com/Pluto-tv/shaka-packager-live/commit/f264befe868a9fbf054697a6d06218cc25de055d)), closes [#1202](https://github.com/Pluto-tv/shaka-packager-live/issues/1202)
+
+
+### Bug Fixes
+
+* Accept 100% when parsing WEBVTT regions ([#1006](https://github.com/Pluto-tv/shaka-packager-live/issues/1006)) ([e1b0c7c](https://github.com/Pluto-tv/shaka-packager-live/commit/e1b0c7c45431327fd3ce193514a5407d07b39b22)), closes [#1004](https://github.com/Pluto-tv/shaka-packager-live/issues/1004)
+* Add missing limits header ([efbca39](https://github.com/Pluto-tv/shaka-packager-live/commit/efbca399c0507c6d8a24e880a1e0eb3fc737e1db))
+* dash_roles add role=description for DVS audio per DASH-IF-IOP-v4.3 ([#1054](https://github.com/Pluto-tv/shaka-packager-live/issues/1054)) ([dc03952](https://github.com/Pluto-tv/shaka-packager-live/commit/dc0395291a090b342beaab2e89c627dc33ee89b0))
+* Don't close upstream on HttpFile::Flush ([#1201](https://github.com/Pluto-tv/shaka-packager-live/issues/1201)) ([53d91cd](https://github.com/Pluto-tv/shaka-packager-live/commit/53d91cd0f1295a0c3456cb1a34e5235a0316c523)), closes [#1196](https://github.com/Pluto-tv/shaka-packager-live/issues/1196)
+* Explicitly signal the lack of CEA captions in HLS ([d48bf0f](https://github.com/Pluto-tv/shaka-packager-live/commit/d48bf0f48ee3e37f797d2186885af9f9747482aa)), closes [#922](https://github.com/Pluto-tv/shaka-packager-live/issues/922)
+* Fix build errors related to std::numeric_limits ([#972](https://github.com/Pluto-tv/shaka-packager-live/issues/972)) ([9996c73](https://github.com/Pluto-tv/shaka-packager-live/commit/9996c736aea79e0cce22bee18dc7dcabfffff47b))
+* Fix crash in static-linked linux builds ([e2d66b3](https://github.com/Pluto-tv/shaka-packager-live/commit/e2d66b33facf629b25a9dd7c4cf20db2f846dcf5)), closes [#996](https://github.com/Pluto-tv/shaka-packager-live/issues/996)
+* Fix failure fetching encryption keys ([7392d80](https://github.com/Pluto-tv/shaka-packager-live/commit/7392d8003e27b424cf472509c2bc2782b326f18b))
+* Fix failure on very short WebVTT files ([#1216](https://github.com/Pluto-tv/shaka-packager-live/issues/1216)) ([dab165d](https://github.com/Pluto-tv/shaka-packager-live/commit/dab165d3e5d979e2e5ff783d91d948357b932078)), closes [#1217](https://github.com/Pluto-tv/shaka-packager-live/issues/1217)
+* Fix handling of non-interleaved multi track FMP4 files ([#1214](https://github.com/Pluto-tv/shaka-packager-live/issues/1214)) ([dcf3225](https://github.com/Pluto-tv/shaka-packager-live/commit/dcf32258ffd725bc3de06c9bceb86fc8a403ecba)), closes [#1213](https://github.com/Pluto-tv/shaka-packager-live/issues/1213)
+* Fix issues with `collections.abc` in Python 3.10+ ([#1188](https://github.com/Pluto-tv/shaka-packager-live/issues/1188)) ([80e0240](https://github.com/Pluto-tv/shaka-packager-live/commit/80e024013df87a4bfeb265c8ea83cfa2a0c5db0f)), closes [#1192](https://github.com/Pluto-tv/shaka-packager-live/issues/1192)
+* hls, set the DEFAULT explicitly to NO. Supports native HLS players. ([#1170](https://github.com/Pluto-tv/shaka-packager-live/issues/1170)) ([1ab6818](https://github.com/Pluto-tv/shaka-packager-live/commit/1ab68188326685ab4e427e7a6eab0694e0b0b60a)), closes [#1169](https://github.com/Pluto-tv/shaka-packager-live/issues/1169)
+* Indexing `bytes` produces `int` on python3 for `pssh-box.py` ([#1228](https://github.com/Pluto-tv/shaka-packager-live/issues/1228)) ([d9d3c7f](https://github.com/Pluto-tv/shaka-packager-live/commit/d9d3c7f8be13e493a99b2ff4b72a402c441c1666)), closes [#1227](https://github.com/Pluto-tv/shaka-packager-live/issues/1227)
+* Low Latency DASH: include the "availabilityTimeComplete=false" attribute ([#1198](https://github.com/Pluto-tv/shaka-packager-live/issues/1198)) ([d687ad1](https://github.com/Pluto-tv/shaka-packager-live/commit/d687ad1ed00da260c4f4e5169b042ef4291052a0))
+* **MP4:** Add compatible brand dby1 for Dolby content. ([#1211](https://github.com/Pluto-tv/shaka-packager-live/issues/1211)) ([520926c](https://github.com/Pluto-tv/shaka-packager-live/commit/520926c27ad0d183127e4548c4564af33a2ad2f3))
+* Parse one frame mpeg-ts video ([#1015](https://github.com/Pluto-tv/shaka-packager-live/issues/1015)) ([b221aa9](https://github.com/Pluto-tv/shaka-packager-live/commit/b221aa9caf4f8357a696f3265d1e2a5bf504dbd9)), closes [#1013](https://github.com/Pluto-tv/shaka-packager-live/issues/1013)
+* Prevent crash in GetEarliestTimestamp() if periods are empty ([#1173](https://github.com/Pluto-tv/shaka-packager-live/issues/1173)) ([d6f28d4](https://github.com/Pluto-tv/shaka-packager-live/commit/d6f28d456c6ec5ecf39c868447d85294a698166d)), closes [#1172](https://github.com/Pluto-tv/shaka-packager-live/issues/1172)
+* PTS diverge DTS when DTS close to 2pow33 and PTS more than 0 ([#1050](https://github.com/Pluto-tv/shaka-packager-live/issues/1050)) ([ab8ab12](https://github.com/Pluto-tv/shaka-packager-live/commit/ab8ab12d098c352372014180bd2cb5407e018739)), closes [#1049](https://github.com/Pluto-tv/shaka-packager-live/issues/1049)
+* Roll back depot_tools, bypass vpython ([#1045](https://github.com/Pluto-tv/shaka-packager-live/issues/1045)) ([3fd538a](https://github.com/Pluto-tv/shaka-packager-live/commit/3fd538a587184a87e2b41a526e089247007aa526)), closes [#1023](https://github.com/Pluto-tv/shaka-packager-live/issues/1023)
+* TTML generator timestamp millisecond formatting ([#1179](https://github.com/Pluto-tv/shaka-packager-live/issues/1179)) ([494769c](https://github.com/Pluto-tv/shaka-packager-live/commit/494769ca864e04d582f707934a6573cad78d2e8c)), closes [#1180](https://github.com/Pluto-tv/shaka-packager-live/issues/1180)
+* Update golden files for ttml tests and failing hls unit tests. ([#1226](https://github.com/Pluto-tv/shaka-packager-live/issues/1226)) ([ac47e52](https://github.com/Pluto-tv/shaka-packager-live/commit/ac47e529ad7b69cc232f7f96e2a042990505776f))
+* webvtt single cue do not fail on EOS ([#1061](https://github.com/Pluto-tv/shaka-packager-live/issues/1061)) ([b9d477b](https://github.com/Pluto-tv/shaka-packager-live/commit/b9d477b969f34124dfe184b4ac1d00ea8faf0a7d)), closes [#1018](https://github.com/Pluto-tv/shaka-packager-live/issues/1018)
+
 ## [3.2.0](https://github.com/shaka-project/shaka-packager/compare/v3.1.0...v3.2.0) (2024-05-11)
 
 
