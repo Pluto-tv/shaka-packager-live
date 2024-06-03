@@ -8,6 +8,8 @@
 
 #include <cstdint>
 
+#include <cstdint>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

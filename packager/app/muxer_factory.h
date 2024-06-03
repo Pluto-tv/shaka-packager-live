@@ -53,8 +53,6 @@ class MuxerFactory {
   const Mp4OutputParams mp4_params_;
   const std::string temp_dir_;
   int32_t transport_stream_timestamp_offset_ms_ = 0;
-
-  // enable init segment packaging separately
   bool init_segment_only_;
 
   // enable null TS packet stuffing
