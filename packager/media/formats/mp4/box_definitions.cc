@@ -2,22 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "packager/media/formats/mp4/box_definitions.h"
+#include <packager/media/formats/mp4/box_definitions.h>
 
-#include <gflags/gflags.h>
 #include <algorithm>
 #include <limits>
 
-#include "packager/base/logging.h"
-#include "packager/media/base/bit_reader.h"
-#include "packager/media/base/macros.h"
-#include "packager/media/base/rcheck.h"
-#include "packager/media/formats/mp4/box_buffer.h"
+#include <absl/flags/flag.h>
+#include <absl/log/check.h>
+#include <absl/log/log.h>
 
-DEFINE_bool(mvex_before_trak,
-            false,
-            "Android MediaExtractor requires mvex to be written before trak. "
-            "Set the flag to true to comply with the requirement.");
+#include <packager/macros/logging.h>
+#include <packager/media/base/bit_reader.h>
+#include <packager/media/base/rcheck.h>
+#include <packager/media/formats/mp4/box_buffer.h>
+
+ABSL_FLAG(bool,
+          mvex_before_trak,
+          false,
+          "Android MediaExtractor requires mvex to be written before trak. "
+          "Set the flag to true to comply with the requirement.");
 
 namespace {
 const uint32_t kFourCCSize = 4;
@@ -377,19 +380,20 @@ size_t SampleEncryption::ComputeSizeInternal() {
 }
 
 bool SampleEncryption::ParseFromSampleEncryptionData(
-    uint8_t iv_size,
-    std::vector<SampleEncryptionEntry>* sample_encryption_entries) const {
-  DCHECK(IsIvSizeValid(iv_size));
+    uint8_t l_iv_size,
+    std::vector<SampleEncryptionEntry>* l_sample_encryption_entries) const {
+  DCHECK(IsIvSizeValid(l_iv_size));
 
   BufferReader reader(sample_encryption_data.data(),
                       sample_encryption_data.size());
   uint32_t sample_count = 0;
   RCHECK(reader.Read4(&sample_count));
 
-  sample_encryption_entries->resize(sample_count);
-  for (auto& sample_encryption_entry : *sample_encryption_entries) {
+  l_sample_encryption_entries->resize(sample_count);
+  for (auto& sample_encryption_entry : *l_sample_encryption_entries) {
     RCHECK(sample_encryption_entry.ParseFromBuffer(
-               iv_size, (flags & kUseSubsampleEncryption) != 0, &reader) != 0);
+               l_iv_size, (flags & kUseSubsampleEncryption) != 0, &reader) !=
+           0);
   }
   return true;
 }
@@ -555,7 +559,7 @@ bool MovieHeader::ReadWriteInternal(BoxBuffer* buffer) {
          buffer->ReadWriteUInt64NBytes(&duration, num_bytes));
 
   std::vector<uint8_t> matrix(kUnityMatrix,
-                              kUnityMatrix + arraysize(kUnityMatrix));
+                              kUnityMatrix + std::size(kUnityMatrix));
   RCHECK(buffer->ReadWriteInt32(&rate) && buffer->ReadWriteInt16(&volume) &&
          buffer->IgnoreBytes(10) &&  // reserved
          buffer->ReadWriteVector(&matrix, matrix.size()) &&
@@ -598,7 +602,7 @@ bool TrackHeader::ReadWriteInternal(BoxBuffer* buffer) {
       volume = (width != 0 && height != 0) ? 0 : 0x100;
   }
   std::vector<uint8_t> matrix(kUnityMatrix,
-                              kUnityMatrix + arraysize(kUnityMatrix));
+                              kUnityMatrix + std::size(kUnityMatrix));
   RCHECK(buffer->IgnoreBytes(8) &&  // reserved
          buffer->ReadWriteInt16(&layer) &&
          buffer->ReadWriteInt16(&alternate_group) &&
@@ -1290,20 +1294,20 @@ bool HandlerReference::ReadWriteInternal(BoxBuffer* buffer) {
     switch (handler_type) {
       case FOURCC_vide:
         handler_name.assign(kVideoHandlerName,
-                            kVideoHandlerName + arraysize(kVideoHandlerName));
+                            kVideoHandlerName + std::size(kVideoHandlerName));
         break;
       case FOURCC_soun:
         handler_name.assign(kAudioHandlerName,
-                            kAudioHandlerName + arraysize(kAudioHandlerName));
+                            kAudioHandlerName + std::size(kAudioHandlerName));
         break;
       case FOURCC_text:
         handler_name.assign(kTextHandlerName,
-                            kTextHandlerName + arraysize(kTextHandlerName));
+                            kTextHandlerName + std::size(kTextHandlerName));
         break;
       case FOURCC_subt:
         handler_name.assign(
             kSubtitleHandlerName,
-            kSubtitleHandlerName + arraysize(kSubtitleHandlerName));
+            kSubtitleHandlerName + std::size(kSubtitleHandlerName));
         break;
       case FOURCC_ID32:
         break;
@@ -1629,6 +1633,16 @@ bool VideoSampleEntry::ReadWriteInternal(BoxBuffer* buffer) {
           extra_codec_configs.push_back(std::move(dv_box));
       }
     }
+    const bool is_av1 = actual_format == FOURCC_av01;
+    if (is_av1) {
+      for (FourCC fourcc : {FOURCC_dvvC}) {
+        CodecConfiguration dv_box;
+        dv_box.box_type = fourcc;
+        RCHECK(buffer->TryReadWriteChild(&dv_box));
+        if (!dv_box.data.empty())
+          extra_codec_configs.push_back(std::move(dv_box));
+      }
+    }
   } else {
     for (CodecConfiguration& extra_codec_config : extra_codec_configs)
       RCHECK(buffer->ReadWriteChild(&extra_codec_config));
@@ -1665,8 +1679,8 @@ size_t VideoSampleEntry::ComputeSizeInternal() {
   return size;
 }
 
-FourCC VideoSampleEntry::GetCodecConfigurationBoxType(FourCC format) const {
-  switch (format) {
+FourCC VideoSampleEntry::GetCodecConfigurationBoxType(FourCC l_format) const {
+  switch (l_format) {
     case FOURCC_av01:
       return FOURCC_av1C;
     case FOURCC_avc1:
@@ -1681,7 +1695,7 @@ FourCC VideoSampleEntry::GetCodecConfigurationBoxType(FourCC format) const {
     case FOURCC_vp09:
       return FOURCC_vpcC;
     default:
-      LOG(ERROR) << FourCCToString(format) << " is not supported.";
+      LOG(ERROR) << FourCCToString(l_format) << " is not supported.";
       return FOURCC_NULL;
   }
 }
@@ -1805,6 +1819,27 @@ size_t DTSSpecific::ComputeSizeInternal() {
   return HeaderSize() + sizeof(sampling_frequency) + sizeof(max_bitrate) +
          sizeof(avg_bitrate) + sizeof(pcm_sample_depth) +
          sizeof(kDdtsExtraData);
+}
+
+UDTSSpecific::UDTSSpecific() = default;
+UDTSSpecific::~UDTSSpecific() = default;
+
+FourCC UDTSSpecific::BoxType() const {
+  return FOURCC_udts;
+}
+
+bool UDTSSpecific::ReadWriteInternal(BoxBuffer* buffer) {
+  RCHECK(ReadWriteHeaderInternal(buffer) &&
+         buffer->ReadWriteVector(
+             &data, buffer->Reading() ? buffer->BytesLeft() : data.size()));
+  return true;
+}
+
+size_t UDTSSpecific::ComputeSizeInternal() {
+  // This box is optional. Skip it if not initialized.
+  if (data.empty())
+    return 0;
+  return HeaderSize() + data.size();
 }
 
 AC3Specific::AC3Specific() = default;
@@ -1944,6 +1979,27 @@ size_t FlacSpecific::ComputeSizeInternal() {
   return HeaderSize() + data.size();
 }
 
+ALACSpecific::ALACSpecific() = default;
+ALACSpecific::~ALACSpecific() = default;
+
+FourCC ALACSpecific::BoxType() const {
+  return FOURCC_alac;
+}
+
+bool ALACSpecific::ReadWriteInternal(BoxBuffer* buffer) {
+  RCHECK(ReadWriteHeaderInternal(buffer));
+  size_t size = buffer->Reading() ? buffer->BytesLeft() : data.size();
+  RCHECK(buffer->ReadWriteVector(&data, size));
+  return true;
+}
+
+size_t ALACSpecific::ComputeSizeInternal() {
+  // This box is optional. Skip it if not initialized.
+  if (data.empty())
+    return 0;
+  return HeaderSize() + data.size();
+}
+
 AudioSampleEntry::AudioSampleEntry() = default;
 AudioSampleEntry::~AudioSampleEntry() = default;
 
@@ -1979,12 +2035,14 @@ bool AudioSampleEntry::ReadWriteInternal(BoxBuffer* buffer) {
 
   RCHECK(buffer->TryReadWriteChild(&esds));
   RCHECK(buffer->TryReadWriteChild(&ddts));
+  RCHECK(buffer->TryReadWriteChild(&udts));
   RCHECK(buffer->TryReadWriteChild(&dac3));
   RCHECK(buffer->TryReadWriteChild(&dec3));
   RCHECK(buffer->TryReadWriteChild(&dac4));
   RCHECK(buffer->TryReadWriteChild(&dops));
   RCHECK(buffer->TryReadWriteChild(&dfla));
   RCHECK(buffer->TryReadWriteChild(&mhac));
+  RCHECK(buffer->TryReadWriteChild(&alac));
 
   // Somehow Edge does not support having sinf box before codec_configuration,
   // box, so just do it in the end of AudioSampleEntry. See
@@ -2010,7 +2068,8 @@ size_t AudioSampleEntry::ComputeSizeInternal() {
          sizeof(samplesize) + sizeof(samplerate) + sinf.ComputeSize() +
          esds.ComputeSize() + ddts.ComputeSize() + dac3.ComputeSize() +
          dec3.ComputeSize() + dops.ComputeSize() + dfla.ComputeSize() +
-         dac4.ComputeSize() + mhac.ComputeSize() +
+         dac4.ComputeSize() + mhac.ComputeSize() + udts.ComputeSize() +
+         alac.ComputeSize() +
          // Reserved and predefined bytes.
          6 + 8 +  // 6 + 8 bytes reserved.
          4;       // 4 bytes predefined.
@@ -2472,7 +2531,7 @@ bool Movie::ReadWriteInternal(BoxBuffer* buffer) {
     // We do not care the content of metadata box in the source content, so just
     // skip reading the box.
     RCHECK(buffer->TryReadWriteChild(&metadata));
-    if (FLAGS_mvex_before_trak) {
+    if (absl::GetFlag(FLAGS_mvex_before_trak)) {
       // |extends| has to be written before |tracks| to workaround Android
       // MediaExtractor bug which requires |mvex| to be placed before |trak|.
       // See https://github.com/shaka-project/shaka-packager/issues/711 for
@@ -2481,7 +2540,7 @@ bool Movie::ReadWriteInternal(BoxBuffer* buffer) {
     }
     for (uint32_t i = 0; i < tracks.size(); ++i)
       RCHECK(buffer->ReadWriteChild(&tracks[i]));
-    if (!FLAGS_mvex_before_trak) {
+    if (!absl::GetFlag(FLAGS_mvex_before_trak)) {
       RCHECK(buffer->TryReadWriteChild(&extends));
     }
     for (uint32_t i = 0; i < pssh.size(); ++i)

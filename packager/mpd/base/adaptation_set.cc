@@ -1,20 +1,25 @@
-// Copyright 2017 Google Inc. All rights reserved.
+// Copyright 2017 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/mpd/base/adaptation_set.h"
+#include <packager/mpd/base/adaptation_set.h>
 
 #include <cmath>
 
-#include "packager/base/logging.h"
-#include "packager/base/strings/string_number_conversions.h"
-#include "packager/mpd/base/media_info.pb.h"
-#include "packager/mpd/base/mpd_options.h"
-#include "packager/mpd/base/mpd_utils.h"
-#include "packager/mpd/base/representation.h"
-#include "packager/mpd/base/xml/xml_node.h"
+#include <absl/log/check.h>
+#include <absl/log/log.h>
+#include <absl/strings/numbers.h>
+#include <absl/strings/str_format.h>
+
+#include <packager/macros/classes.h>
+#include <packager/macros/logging.h>
+#include <packager/mpd/base/media_info.pb.h>
+#include <packager/mpd/base/mpd_options.h>
+#include <packager/mpd/base/mpd_utils.h>
+#include <packager/mpd/base/representation.h>
+#include <packager/mpd/base/xml/xml_node.h>
 
 namespace shaka {
 namespace {
@@ -30,8 +35,8 @@ AdaptationSet::Role MediaInfoTextTypeToRole(
     case MediaInfo::TextInfo::SUBTITLE:
       return AdaptationSet::kRoleSubtitle;
     default:
-      NOTREACHED() << "Unknown MediaInfo TextType: " << type
-                   << " assuming subtitle.";
+      NOTIMPLEMENTED() << "Unknown MediaInfo TextType: " << type
+                       << " assuming subtitle.";
       return AdaptationSet::kRoleSubtitle;
   }
 }
@@ -56,6 +61,20 @@ std::string RoleToText(AdaptationSet::Role role) {
       return "dub";
     case AdaptationSet::kRoleDescription:
       return "description";
+    case AdaptationSet::kRoleSign:
+      return "sign";
+    case AdaptationSet::kRoleMetadata:
+      return "metadata";
+    case AdaptationSet::kRoleEnhancedAudioIntelligibility:
+      return "enhanced-audio-intelligibility";
+    case AdaptationSet::kRoleEmergency:
+      return "emergency";
+    case AdaptationSet::kRoleForcedSubtitle:
+      return "forced-subtitle";
+    case AdaptationSet::kRoleEasyreader:
+      return "easyreader";
+    case AdaptationSet::kRoleKaraoke:
+      return "karaoke";
     default:
       return "unknown";
   }
@@ -98,7 +117,7 @@ std::string GetPictureAspectRatio(uint32_t width,
           << scaled_height << ") reduced to " << par_num << ":" << par_den
           << " with error " << min_error << ".";
 
-  return base::IntToString(par_num) + ":" + base::IntToString(par_den);
+  return absl::StrFormat("%d:%d", par_num, par_den);
 }
 
 // Adds an entry to picture_aspect_ratio if the size of picture_aspect_ratio is
@@ -171,15 +190,77 @@ AdaptationSet::AdaptationSet(const std::string& language,
     : representation_counter_(counter),
       language_(language),
       mpd_options_(mpd_options),
-      segments_aligned_(kSegmentAlignmentUnknown),
-      force_set_segment_alignment_(false) {
+      protected_content_(nullptr) {
   DCHECK(counter);
 }
 
-AdaptationSet::~AdaptationSet() {}
+AdaptationSet::~AdaptationSet() {
+  delete protected_content_;
+}
+
+void AdaptationSet::set_protected_content(const MediaInfo& media_info) {
+  DCHECK(!protected_content_);
+  protected_content_ =
+      new MediaInfo::ProtectedContent(media_info.protected_content());
+}
+
+// The easiest way to check whether two protobufs are equal, is to compare the
+// serialized version.
+bool ProtectedContentEq(
+    const MediaInfo::ProtectedContent& content_protection1,
+    const MediaInfo::ProtectedContent& content_protection2) {
+  return content_protection1.SerializeAsString() ==
+         content_protection2.SerializeAsString();
+}
+
+bool AdaptationSet::MatchAdaptationSet(
+    const MediaInfo& media_info,
+    bool content_protection_in_adaptation_set) {
+  if (codec_ != GetBaseCodec(media_info))
+    return false;
+
+  if (!content_protection_in_adaptation_set)
+    return true;
+
+  if (!protected_content_)
+    return !media_info.has_protected_content();
+
+  if (!media_info.has_protected_content())
+    return false;
+
+  return ProtectedContentEq(*protected_content_,
+                            media_info.protected_content());
+}
+
+std::set<std::string> GetUUIDs(
+    const MediaInfo::ProtectedContent* protected_content) {
+  std::set<std::string> uuids;
+  for (const auto& entry : protected_content->content_protection_entry())
+    uuids.insert(entry.uuid());
+  return uuids;
+}
+
+bool AdaptationSet::SwitchableAdaptationSet(
+    const AdaptationSet& adaptation_set) {
+  // adaptation sets are switchable if both are not protected
+  if (!protected_content_ && !adaptation_set.protected_content()) {
+    return true;
+  }
+
+  // or if both are protected and have the same UUID
+  if (protected_content_ && adaptation_set.protected_content()) {
+    return GetUUIDs(protected_content_) ==
+           GetUUIDs(adaptation_set.protected_content());
+  }
+
+  return false;
+}
 
 Representation* AdaptationSet::AddRepresentation(const MediaInfo& media_info) {
-  const uint32_t representation_id = (*representation_counter_)++;
+  const uint32_t representation_id = media_info.has_index()
+                                         ? media_info.index()
+                                         : (*representation_counter_)++;
+
   // Note that AdaptationSet outlive Representation, so this object
   // will die before AdaptationSet.
   std::unique_ptr<RepresentationStateChangeListener> listener(
@@ -239,7 +320,7 @@ void AdaptationSet::AddRole(Role role) {
 // can be passed to Representation to avoid setting redundant attributes. For
 // example, if AdaptationSet@width is set, then Representation@width is
 // redundant and should not be set.
-base::Optional<xml::XmlNode> AdaptationSet::GetXml() {
+std::optional<xml::XmlNode> AdaptationSet::GetXml() {
   xml::AdaptationSetXmlNode adaptation_set;
 
   bool suppress_representation_width = false;
@@ -247,47 +328,73 @@ base::Optional<xml::XmlNode> AdaptationSet::GetXml() {
   bool suppress_representation_frame_rate = false;
 
   if (id_ && !adaptation_set.SetId(id_.value()))
-    return base::nullopt;
+    return std::nullopt;
   if (!adaptation_set.SetStringAttribute("contentType", content_type_))
-    return base::nullopt;
+    return std::nullopt;
   if (!language_.empty() && language_ != "und" &&
       !adaptation_set.SetStringAttribute("lang", language_)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Note that std::{set,map} are ordered, so the last element is the max value.
   if (video_widths_.size() == 1) {
     suppress_representation_width = true;
     if (!adaptation_set.SetIntegerAttribute("width", *video_widths_.begin()))
-      return base::nullopt;
+      return std::nullopt;
   } else if (video_widths_.size() > 1) {
     if (!adaptation_set.SetIntegerAttribute("maxWidth",
                                             *video_widths_.rbegin())) {
-      return base::nullopt;
+      return std::nullopt;
     }
   }
+
   if (video_heights_.size() == 1) {
     suppress_representation_height = true;
     if (!adaptation_set.SetIntegerAttribute("height", *video_heights_.begin()))
-      return base::nullopt;
+      return std::nullopt;
   } else if (video_heights_.size() > 1) {
     if (!adaptation_set.SetIntegerAttribute("maxHeight",
                                             *video_heights_.rbegin())) {
-      return base::nullopt;
+      return std::nullopt;
     }
+  }
+
+  if (subsegment_start_with_sap_) {
+    if (!adaptation_set.SetIntegerAttribute("subsegmentStartsWithSAP",
+                                            subsegment_start_with_sap_))
+      return std::nullopt;
+  } else if (start_with_sap_) {
+    if (!adaptation_set.SetIntegerAttribute("startWithSAP", start_with_sap_))
+      return std::nullopt;
   }
 
   if (video_frame_rates_.size() == 1) {
     suppress_representation_frame_rate = true;
     if (!adaptation_set.SetStringAttribute(
             "frameRate", video_frame_rates_.begin()->second)) {
-      return base::nullopt;
+      return std::nullopt;
     }
   } else if (video_frame_rates_.size() > 1) {
     if (!adaptation_set.SetStringAttribute(
             "maxFrameRate", video_frame_rates_.rbegin()->second)) {
-      return base::nullopt;
+      return std::nullopt;
     }
+  }
+
+  // https://dashif.org/docs/DASH-IF-IOP-v4.3.pdf - 4.2.5.1
+  if (IsVideo() && matrix_coefficients_ > 0 &&
+      !adaptation_set.AddSupplementalProperty(
+          "urn:mpeg:mpegB:cicp:MatrixCoefficients",
+          std::to_string(matrix_coefficients_))) {
+    return std::nullopt;
+  }
+
+  // https://dashif.org/docs/DASH-IF-IOP-v4.3.pdf - 4.2.5.1
+  if (IsVideo() && color_primaries_ > 0 &&
+      !adaptation_set.AddSupplementalProperty(
+          "urn:mpeg:mpegB:cicp:ColourPrimaries",
+          std::to_string(color_primaries_))) {
+    return std::nullopt;
   }
 
   // https://dashif.org/docs/DASH-IF-IOP-v4.3.pdf - 4.2.5.1
@@ -295,7 +402,7 @@ base::Optional<xml::XmlNode> AdaptationSet::GetXml() {
       !adaptation_set.AddSupplementalProperty(
           "urn:mpeg:mpegB:cicp:TransferCharacteristics",
           std::to_string(transfer_characteristics_))) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Note: must be checked before checking segments_aligned_ (below). So that
@@ -310,62 +417,65 @@ base::Optional<xml::XmlNode> AdaptationSet::GetXml() {
                 ? "subsegmentAlignment"
                 : "segmentAlignment",
             "true")) {
-      return base::nullopt;
+      return std::nullopt;
     }
   }
 
   if (picture_aspect_ratio_.size() == 1 &&
       !adaptation_set.SetStringAttribute("par",
                                          *picture_aspect_ratio_.begin())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!adaptation_set.AddContentProtectionElements(
           content_protection_elements_)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string trick_play_reference_ids;
-  for (const AdaptationSet* adaptation_set : trick_play_references_) {
+  for (const AdaptationSet* tp_adaptation_set : trick_play_references_) {
     // Should be a whitespace-separated list, see DASH-IOP 3.2.9.
     if (!trick_play_reference_ids.empty())
       trick_play_reference_ids += ' ';
-    CHECK(adaptation_set->has_id());
-    trick_play_reference_ids += std::to_string(adaptation_set->id());
+    CHECK(tp_adaptation_set->has_id());
+    trick_play_reference_ids += std::to_string(tp_adaptation_set->id());
   }
   if (!trick_play_reference_ids.empty() &&
       !adaptation_set.AddEssentialProperty(
           "http://dashif.org/guidelines/trickmode", trick_play_reference_ids)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string switching_ids;
-  for (const AdaptationSet* adaptation_set : switchable_adaptation_sets_) {
+  for (const AdaptationSet* s_adaptation_set : switchable_adaptation_sets_) {
     // Should be a comma-separated list, see DASH-IOP 3.8.
     if (!switching_ids.empty())
       switching_ids += ',';
-    CHECK(adaptation_set->has_id());
-    switching_ids += std::to_string(adaptation_set->id());
+    CHECK(s_adaptation_set->has_id());
+    switching_ids += std::to_string(s_adaptation_set->id());
   }
   if (!switching_ids.empty() &&
       !adaptation_set.AddSupplementalProperty(
           "urn:mpeg:dash:adaptation-set-switching:2016", switching_ids)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   for (const AdaptationSet::Accessibility& accessibility : accessibilities_) {
     if (!adaptation_set.AddAccessibilityElement(accessibility.scheme,
                                                 accessibility.value)) {
-      return base::nullopt;
+      return std::nullopt;
     }
   }
 
   for (AdaptationSet::Role role : roles_) {
     if (!adaptation_set.AddRoleElement("urn:mpeg:dash:role:2011",
                                        RoleToText(role))) {
-      return base::nullopt;
+      return std::nullopt;
     }
   }
+
+  if (!label_.empty() && !adaptation_set.AddLabelElement(label_))
+    return std::nullopt;
 
   for (const auto& representation_pair : representation_map_) {
     const auto& representation = representation_pair.second;
@@ -377,10 +487,10 @@ base::Optional<xml::XmlNode> AdaptationSet::GetXml() {
       representation->SuppressOnce(Representation::kSuppressFrameRate);
     auto child = representation->GetXml();
     if (!child || !adaptation_set.AddChild(std::move(*child)))
-      return base::nullopt;
+      return std::nullopt;
   }
 
-  return std::move(adaptation_set);
+  return adaptation_set;
 }
 
 void AdaptationSet::ForceSetSegmentAlignment(bool segment_alignment) {
@@ -392,6 +502,14 @@ void AdaptationSet::ForceSetSegmentAlignment(bool segment_alignment) {
 void AdaptationSet::AddAdaptationSetSwitching(
     const AdaptationSet* adaptation_set) {
   switchable_adaptation_sets_.push_back(adaptation_set);
+}
+
+void AdaptationSet::ForceSubsegmentStartswithSAP(uint32_t sap_value) {
+  subsegment_start_with_sap_ = sap_value;
+}
+
+void AdaptationSet::ForceStartwithSAP(uint32_t sap_value) {
+  start_with_sap_ = sap_value;
 }
 
 // For dynamic MPD, storing all start_time and duration will out-of-memory
@@ -448,6 +566,19 @@ void AdaptationSet::UpdateFromMediaInfo(const MediaInfo& media_info) {
 
     AddPictureAspectRatio(video_info, &picture_aspect_ratio_);
   }
+
+  // the command-line index for this AdaptationSet will be the
+  // minimum of the Representations in the set
+  if (media_info.has_index()) {
+    if (index_.has_value()) {
+      index_ = std::min(index_.value(), media_info.index());
+    } else {
+      index_ = media_info.index();
+    }
+  }
+
+  if (media_info.has_dash_label())
+    label_ = media_info.dash_label();
 
   if (media_info.has_video_info()) {
     content_type_ = "video";
@@ -601,7 +732,7 @@ void AdaptationSet::RecordFrameRate(int32_t frame_duration, int32_t timescale) {
     return;
   }
   video_frame_rates_[static_cast<double>(timescale) / frame_duration] =
-      base::IntToString(timescale) + "/" + base::IntToString(frame_duration);
+      absl::StrFormat("%d/%d", timescale, frame_duration);
 }
 
 }  // namespace shaka

@@ -4,14 +4,14 @@
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/event/multi_codec_muxer_listener.h"
+#include <packager/media/event/multi_codec_muxer_listener.h>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "packager/media/base/muxer_options.h"
-#include "packager/media/event/mock_muxer_listener.h"
-#include "packager/media/event/muxer_listener_test_helper.h"
+#include <packager/media/base/muxer_options.h>
+#include <packager/media/event/mock_muxer_listener.h>
+#include <packager/media/event/muxer_listener_test_helper.h>
 
 namespace shaka {
 namespace media {
@@ -27,6 +27,8 @@ const int64_t kSegmentStartTime = 19283;
 const int64_t kSegmentDuration = 98028;
 const uint64_t kSegmentSize = 756739;
 const int32_t kTimescale = 90000;
+const int64_t kSegmentNumber = 10;
+
 MuxerListener::ContainerType kContainer = MuxerListener::kContainerMpeg2ts;
 
 }  // namespace
@@ -79,10 +81,11 @@ TEST_F(MultiCodecMuxerListenerTest, OnNewSegmentAfterOnMediaStartSingleCodec) {
 
   EXPECT_CALL(*listener_for_first_codec_,
               OnNewSegment(StrEq("new_segment_name10.ts"), kSegmentStartTime,
-                           kSegmentDuration, kSegmentSize));
+                           kSegmentDuration, kSegmentSize, kSegmentNumber));
 
   multi_codec_listener_.OnNewSegment("new_segment_name10.ts", kSegmentStartTime,
-                                     kSegmentDuration, kSegmentSize);
+                                     kSegmentDuration, kSegmentSize,
+                                     kSegmentNumber);
 }
 
 TEST_F(MultiCodecMuxerListenerTest, OnMediaStartTwoCodecs) {
@@ -114,13 +117,14 @@ TEST_F(MultiCodecMuxerListenerTest, OnNewSegmentAfterOnMediaStartTwoCodecs) {
 
   EXPECT_CALL(*listener_for_first_codec_,
               OnNewSegment(StrEq("new_segment_name10.ts"), kSegmentStartTime,
-                           kSegmentDuration, kSegmentSize));
+                           kSegmentDuration, kSegmentSize, kSegmentNumber));
   EXPECT_CALL(*listener_for_second_codec_,
               OnNewSegment(StrEq("new_segment_name10.ts"), kSegmentStartTime,
-                           kSegmentDuration, kSegmentSize));
+                           kSegmentDuration, kSegmentSize, kSegmentNumber));
 
   multi_codec_listener_.OnNewSegment("new_segment_name10.ts", kSegmentStartTime,
-                                     kSegmentDuration, kSegmentSize);
+                                     kSegmentDuration, kSegmentSize,
+                                     kSegmentNumber);
 }
 
 }  // namespace media

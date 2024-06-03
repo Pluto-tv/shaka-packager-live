@@ -1,12 +1,12 @@
-// Copyright 2017 Google Inc. All rights reserved.
+// Copyright 2017 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include <gtest/gtest.h>
+#include <packager/media/formats/webvtt/webvtt_utils.h>
 
-#include "packager/media/formats/webvtt/webvtt_utils.h"
+#include <gtest/gtest.h>
 
 namespace shaka {
 namespace media {
@@ -158,6 +158,16 @@ TEST(WebVttUtilsTest, SettingsToString) {
   const auto actual = WebVttSettingsToString(settings);
   EXPECT_EQ(actual,
             "region:foo line:27% position:42% size:54% direction:rl align:end");
+}
+
+TEST(WebVttUtilsTest, TeletextSettingsToStringRemovesRegionOutputsIntegerLine) {
+  TextSettings settings;
+  settings.region = "ttx_9";
+  settings.line = TextNumber(9.5, TextUnitType::kLines);
+  settings.text_alignment = TextAlignment::kCenter;
+
+  const auto actual = WebVttSettingsToString(settings);
+  EXPECT_EQ(actual, "line:10 align:center");
 }
 
 TEST(WebVttUtilsTest, SettingsToString_IgnoresDefaults) {

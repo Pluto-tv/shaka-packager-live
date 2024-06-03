@@ -1,15 +1,18 @@
-// Copyright 2017 Google Inc. All rights reserved.
+// Copyright 2017 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/base/media_handler_test_base.h"
+#include <packager/media/base/media_handler_test_base.h>
 
-#include "packager/media/base/audio_stream_info.h"
-#include "packager/media/base/text_stream_info.h"
-#include "packager/media/base/video_stream_info.h"
-#include "packager/status_test_util.h"
+#include <absl/log/check.h>
+
+#include <packager/macros/compiler.h>
+#include <packager/media/base/audio_stream_info.h>
+#include <packager/media/base/text_stream_info.h>
+#include <packager/media/base/video_stream_info.h>
+#include <packager/status/status_test_util.h>
 
 namespace {
 
@@ -24,11 +27,14 @@ const uint64_t kCodecDelayNs = 56789;
 const uint32_t kMaxBitrate = 13579;
 const uint32_t kAvgBitrate = 13000;
 const char kLanguage[] = "eng";
-const uint16_t kWidth = 10u;
-const uint16_t kHeight = 20u;
+const uint32_t kWidth = 10u;
+const uint32_t kHeight = 20u;
 const uint32_t kPixelWidth = 2u;
 const uint32_t kPixelHeight = 3u;
+const uint8_t kColorPrimaries = 0;
+const uint8_t kMatrixCoefficients = 0;
 const uint8_t kTransferCharacteristics = 0;
+
 const int16_t kTrickPlayFactor = 0;
 const uint8_t kNaluLengthSize = 1u;
 const bool kEncrypted = true;
@@ -126,6 +132,7 @@ std::string ToPrettyString(const std::string& str) {
 }
 
 bool FakeInputMediaHandler::ValidateOutputStreamIndex(size_t index) const {
+  UNUSED(index);
   return true;
 }
 
@@ -134,6 +141,7 @@ Status FakeInputMediaHandler::InitializeInternal() {
 }
 
 Status FakeInputMediaHandler::Process(std::unique_ptr<StreamData> stream_data) {
+  UNUSED(stream_data);
   return Status(error::INTERNAL_ERROR,
                 "FakeInputMediaHandler should never be a downstream handler.");
 }
@@ -163,10 +171,12 @@ Status CachingMediaHandler::Process(std::unique_ptr<StreamData> stream_data) {
 }
 
 Status CachingMediaHandler::OnFlushRequest(size_t input_stream_index) {
+  UNUSED(input_stream_index);
   return Status::OK;
 }
 
 bool CachingMediaHandler::ValidateOutputStreamIndex(size_t stream_index) const {
+  UNUSED(stream_index);
   return true;
 }
 
@@ -182,7 +192,7 @@ std::unique_ptr<StreamInfo> MediaHandlerTestBase::GetVideoStreamInfo(
 std::unique_ptr<StreamInfo> MediaHandlerTestBase::GetVideoStreamInfo(
     int32_t time_scale,
     uint32_t width,
-    uint64_t height) const {
+    uint32_t height) const {
   return GetVideoStreamInfo(time_scale, kCodecVP9, width, height);
 }
 
@@ -196,12 +206,13 @@ std::unique_ptr<StreamInfo> MediaHandlerTestBase::GetVideoStreamInfo(
     int32_t time_scale,
     Codec codec,
     uint32_t width,
-    uint64_t height) const {
+    uint32_t height) const {
   return std::unique_ptr<VideoStreamInfo>(new VideoStreamInfo(
       kTrackId, time_scale, kDuration, codec, H26xStreamFormat::kUnSpecified,
       kCodecString, kCodecConfig, sizeof(kCodecConfig), width, height,
-      kPixelWidth, kPixelHeight, kTransferCharacteristics, kTrickPlayFactor,
-      kNaluLengthSize, kLanguage, !kEncrypted));
+      kPixelWidth, kPixelHeight, kColorPrimaries, kMatrixCoefficients,
+      kTransferCharacteristics, kTrickPlayFactor, kNaluLengthSize, kLanguage,
+      !kEncrypted));
 }
 
 std::unique_ptr<StreamInfo> MediaHandlerTestBase::GetAudioStreamInfo(
@@ -244,11 +255,13 @@ std::shared_ptr<MediaSample> MediaHandlerTestBase::GetMediaSample(
 std::unique_ptr<SegmentInfo> MediaHandlerTestBase::GetSegmentInfo(
     int64_t start_timestamp,
     int64_t duration,
-    bool is_subsegment) const {
+    bool is_subsegment,
+    int64_t segment_number) const {
   std::unique_ptr<SegmentInfo> info(new SegmentInfo);
   info->start_timestamp = start_timestamp;
   info->duration = duration;
   info->is_subsegment = is_subsegment;
+  info->segment_number = segment_number;
 
   return info;
 }

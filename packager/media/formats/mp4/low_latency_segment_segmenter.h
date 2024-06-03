@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2014 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -7,10 +7,10 @@
 #ifndef PACKAGER_MEDIA_FORMATS_MP4_LOW_LATENCY_SEGMENT_SEGMENTER_H_
 #define PACKAGER_MEDIA_FORMATS_MP4_LOW_LATENCY_SEGMENT_SEGMENTER_H_
 
-#include "packager/media/formats/mp4/segmenter.h"
-
-#include "packager/file/file.h"
-#include "packager/file/file_closer.h"
+#include <packager/file.h>
+#include <packager/file/file_closer.h>
+#include <packager/macros/classes.h>
+#include <packager/media/formats/mp4/segmenter.h>
 
 namespace shaka {
 namespace media {
@@ -44,13 +44,13 @@ class LowLatencySegmentSegmenter : public Segmenter {
   // Segmenter implementation overrides.
   Status DoInitialize() override;
   Status DoFinalize() override;
-  Status DoFinalizeSegment() override;
-  Status DoFinalizeChunk() override;
+  Status DoFinalizeSegment(int64_t segment_number) override;
+  Status DoFinalizeChunk(int64_t segment_number) override;
 
   // Write segment to file.
   Status WriteInitSegment();
   Status WriteChunk();
-  Status WriteInitialChunk();
+  Status WriteInitialChunk(int64_t segment_number);
   Status FinalizeSegment();
 
   uint64_t GetSegmentDuration();

@@ -4,11 +4,13 @@
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/formats/packed_audio/packed_audio_writer.h"
+#include <packager/media/formats/packed_audio/packed_audio_writer.h>
 
-#include "packager/media/base/muxer_util.h"
-#include "packager/media/formats/packed_audio/packed_audio_segmenter.h"
-#include "packager/status_macros.h"
+#include <absl/log/check.h>
+
+#include <packager/macros/status.h>
+#include <packager/media/base/muxer_util.h>
+#include <packager/media/formats/packed_audio/packed_audio_segmenter.h>
 
 namespace shaka {
 namespace media {
@@ -79,7 +81,7 @@ Status PackedAudioWriter::FinalizeSegment(size_t stream_id,
       options().segment_template.empty()
           ? options().output_file_name
           : GetSegmentName(options().segment_template, segment_timestamp,
-                           segment_number_++, options().bandwidth);
+                           segment_info.segment_number, options().bandwidth);
 
   // Save |segment_size| as it will be cleared after writing.
   const size_t segment_size = segmenter_->segment_buffer()->Size();
@@ -90,7 +92,8 @@ Status PackedAudioWriter::FinalizeSegment(size_t stream_id,
   if (muxer_listener()) {
     muxer_listener()->OnNewSegment(
         segment_path, segment_timestamp + transport_stream_timestamp_offset_,
-        segment_info.duration * segmenter_->TimescaleScale(), segment_size);
+        segment_info.duration * segmenter_->TimescaleScale(), segment_size,
+        segment_info.segment_number);
   }
   return Status::OK;
 }

@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All rights reserved.
+// Copyright 2017 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -11,10 +11,10 @@
 #include <memory>
 #include <utility>
 
-#include "packager/media/base/media_sample.h"
-#include "packager/media/base/stream_info.h"
-#include "packager/media/base/text_sample.h"
-#include "packager/status.h"
+#include <packager/media/base/media_sample.h>
+#include <packager/media/base/stream_info.h>
+#include <packager/media/base/text_sample.h>
+#include <packager/status.h>
 
 namespace shaka {
 namespace media {
@@ -59,6 +59,7 @@ struct SegmentInfo {
   bool is_encrypted = false;
   int64_t start_timestamp = -1;
   int64_t duration = 0;
+  int64_t segment_number = 1;
   // This is only available if key rotation is enabled. Note that we may have
   // a |key_rotation_encryption_config| even if the segment is not encrypted,
   // which is the case for clear lead.

@@ -1,24 +1,27 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2014 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/formats/mp4/multi_segment_segmenter.h"
+#include <packager/media/formats/mp4/multi_segment_segmenter.h>
 
 #include <algorithm>
 
-#include "packager/base/strings/string_number_conversions.h"
-#include "packager/base/strings/string_util.h"
-#include "packager/file/file.h"
-#include "packager/file/file_closer.h"
-#include "packager/media/base/buffer_writer.h"
-#include "packager/media/base/muxer_options.h"
-#include "packager/media/base/muxer_util.h"
-#include "packager/media/event/muxer_listener.h"
-#include "packager/media/formats/mp4/box_definitions.h"
-#include "packager/media/formats/mp4/key_frame_info.h"
-#include "packager/status_macros.h"
+#include <absl/log/check.h>
+#include <absl/strings/numbers.h>
+#include <absl/strings/str_format.h>
+
+#include <packager/file.h>
+#include <packager/file/file_closer.h>
+#include <packager/macros/logging.h>
+#include <packager/macros/status.h>
+#include <packager/media/base/buffer_writer.h>
+#include <packager/media/base/muxer_options.h>
+#include <packager/media/base/muxer_util.h>
+#include <packager/media/event/muxer_listener.h>
+#include <packager/media/formats/mp4/box_definitions.h>
+#include <packager/media/formats/mp4/key_frame_info.h>
 
 namespace shaka {
 namespace media {
@@ -28,8 +31,7 @@ MultiSegmentSegmenter::MultiSegmentSegmenter(const MuxerOptions& options,
                                              std::unique_ptr<FileType> ftyp,
                                              std::unique_ptr<Movie> moov)
     : Segmenter(options, std::move(ftyp), std::move(moov)),
-      styp_(new SegmentType),
-      num_segments_(0) {
+      styp_(new SegmentType) {
   // Use the same brands for styp as ftyp.
   styp_->major_brand = Segmenter::ftyp()->major_brand;
   styp_->compatible_brands = Segmenter::ftyp()->compatible_brands;
@@ -67,8 +69,8 @@ Status MultiSegmentSegmenter::DoFinalize() {
   return Status::OK;
 }
 
-Status MultiSegmentSegmenter::DoFinalizeSegment() {
-  return WriteSegment();
+Status MultiSegmentSegmenter::DoFinalizeSegment(int64_t segment_number) {
+  return WriteSegment(segment_number);
 }
 
 Status MultiSegmentSegmenter::WriteInitSegment() {
@@ -87,7 +89,7 @@ Status MultiSegmentSegmenter::WriteInitSegment() {
   return buffer->WriteToFile(file.get());
 }
 
-Status MultiSegmentSegmenter::WriteSegment() {
+Status MultiSegmentSegmenter::WriteSegment(int64_t segment_number) {
   DCHECK(sidx());
   DCHECK(fragment_buffer());
   DCHECK(styp_);
@@ -112,7 +114,7 @@ Status MultiSegmentSegmenter::WriteSegment() {
   } else {
     file_name = GetSegmentName(options().segment_template,
                                sidx()->earliest_presentation_time,
-                               num_segments_++, options().bandwidth);
+                               segment_number, options().bandwidth);
     file.reset(File::Open(file_name.c_str(), "w"));
     if (!file) {
       return Status(error::FILE_FAILURE,
@@ -157,9 +159,9 @@ Status MultiSegmentSegmenter::WriteSegment() {
   UpdateProgress(segment_duration);
   if (muxer_listener()) {
     muxer_listener()->OnSampleDurationReady(sample_duration());
-    muxer_listener()->OnNewSegment(file_name,
-                                   sidx()->earliest_presentation_time,
-                                   segment_duration, segment_size);
+    muxer_listener()->OnNewSegment(
+        file_name, sidx()->earliest_presentation_time, segment_duration,
+        segment_size, segment_number);
   }
 
   return Status::OK;

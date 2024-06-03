@@ -1,20 +1,20 @@
-// Copyright 2016 Google Inc. All rights reserved.
+// Copyright 2016 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
+#include <packager/media/formats/mp2t/ts_segmenter.h>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "packager/media/base/audio_stream_info.h"
-#include "packager/media/base/video_stream_info.h"
-#include "packager/media/event/mock_muxer_listener.h"
-#include "packager/media/formats/mp2t/pes_packet.h"
-#include "packager/media/formats/mp2t/program_map_table_writer.h"
-#include "packager/media/formats/mp2t/ts_segmenter.h"
-#include "packager/status_test_util.h"
-#include "packager/media/base/macros.h"
+#include <packager/media/base/audio_stream_info.h>
+#include <packager/media/base/video_stream_info.h>
+#include <packager/media/event/mock_muxer_listener.h>
+#include <packager/media/formats/mp2t/pes_packet.h>
+#include <packager/media/formats/mp2t/program_map_table_writer.h>
+#include <packager/status/status_test_util.h>
 
 namespace shaka {
 namespace media {
@@ -45,6 +45,8 @@ const uint32_t kWidth = 1280;
 const uint32_t kHeight = 720;
 const uint32_t kPixelWidth = 1;
 const uint32_t kPixelHeight = 1;
+const uint8_t kColorPrimaries = 0;
+const uint8_t kMatrixCoefficients = 0;
 const uint8_t kTransferCharacteristics = 0;
 const uint16_t kTrickPlayFactor = 1;
 const uint8_t kNaluLengthSize = 1;
@@ -84,13 +86,14 @@ class MockTsWriter : public TsWriter {
 
   MOCK_METHOD1(NewSegment, bool(BufferWriter* buffer_writer));
   MOCK_METHOD0(SignalEncrypted, void());
+  MOCK_METHOD0(FinalizeSegment, bool());
 
   // Similar to the hack above but takes a std::unique_ptr.
   MOCK_METHOD2(AddPesPacketMock, bool(PesPacket* pes_packet,
 			  BufferWriter* buffer_writer));
   bool AddPesPacket(std::unique_ptr<PesPacket> pes_packet,
 		  BufferWriter* buffer_writer) override {
-     buffer_writer->AppendArray(kAnyData, arraysize(kAnyData));
+    buffer_writer->AppendArray(kAnyData, std::size(kAnyData));
     // No need to keep the pes packet around for the current tests.
     return AddPesPacketMock(pes_packet.get(), buffer_writer);
   }
@@ -113,9 +116,9 @@ TEST_F(TsSegmenterTest, Initialize) {
   std::shared_ptr<VideoStreamInfo> stream_info(new VideoStreamInfo(
       kTrackId, kTimeScale, kDuration, kH264Codec,
       H26xStreamFormat::kAnnexbByteStream, kCodecString, kExtraData,
-      arraysize(kExtraData), kWidth, kHeight, kPixelWidth, kPixelHeight,
-      kTransferCharacteristics, kTrickPlayFactor, kNaluLengthSize, kLanguage,
-      kIsEncrypted));
+      std::size(kExtraData), kWidth, kHeight, kPixelWidth, kPixelHeight,
+      kColorPrimaries, kMatrixCoefficients, kTransferCharacteristics,
+      kTrickPlayFactor, kNaluLengthSize, kLanguage, kIsEncrypted));
   MuxerOptions options;
   options.segment_template = "file$Number$.ts";
   TsSegmenter segmenter(options, nullptr);
@@ -133,9 +136,9 @@ TEST_F(TsSegmenterTest, AddSample) {
   std::shared_ptr<VideoStreamInfo> stream_info(new VideoStreamInfo(
       kTrackId, kTimeScale, kDuration, kH264Codec,
       H26xStreamFormat::kAnnexbByteStream, kCodecString, kExtraData,
-      arraysize(kExtraData), kWidth, kHeight, kPixelWidth, kPixelHeight,
-      kTransferCharacteristics, kTrickPlayFactor, kNaluLengthSize, kLanguage,
-      kIsEncrypted));
+      std::size(kExtraData), kWidth, kHeight, kPixelWidth, kPixelHeight,
+      kColorPrimaries, kMatrixCoefficients, kTransferCharacteristics,
+      kTrickPlayFactor, kNaluLengthSize, kLanguage, kIsEncrypted));
   MuxerOptions options;
   options.segment_template = "file$Number$.ts";
   TsSegmenter segmenter(options, nullptr);
@@ -144,7 +147,7 @@ TEST_F(TsSegmenterTest, AddSample) {
       .WillOnce(Return(true));
 
   std::shared_ptr<MediaSample> sample =
-      MediaSample::CopyFrom(kAnyData, arraysize(kAnyData), kIsKeyFrame);
+      MediaSample::CopyFrom(kAnyData, std::size(kAnyData), kIsKeyFrame);
 
   Sequence writer_sequence;
   EXPECT_CALL(*mock_ts_writer_, NewSegment(_))
@@ -185,9 +188,9 @@ TEST_F(TsSegmenterTest, PassedSegmentDuration) {
   std::shared_ptr<VideoStreamInfo> stream_info(new VideoStreamInfo(
       kTrackId, kInputTimescale, kDuration, kH264Codec,
       H26xStreamFormat::kAnnexbByteStream, kCodecString, kExtraData,
-      arraysize(kExtraData), kWidth, kHeight, kPixelWidth, kPixelHeight,
-      kTransferCharacteristics, kTrickPlayFactor, kNaluLengthSize, kLanguage,
-      kIsEncrypted));
+      std::size(kExtraData), kWidth, kHeight, kPixelWidth, kPixelHeight,
+      kColorPrimaries, kMatrixCoefficients, kTransferCharacteristics,
+      kTrickPlayFactor, kNaluLengthSize, kLanguage, kIsEncrypted));
   MuxerOptions options;
   options.segment_template = "memory://file$Number$.ts";
 
@@ -200,17 +203,12 @@ TEST_F(TsSegmenterTest, PassedSegmentDuration) {
       .WillOnce(Return(true));
 
   std::shared_ptr<MediaSample> sample1 =
-      MediaSample::CopyFrom(kAnyData, arraysize(kAnyData), kIsKeyFrame);
+      MediaSample::CopyFrom(kAnyData, std::size(kAnyData), kIsKeyFrame);
   sample1->set_duration(kInputTimescale * 11);
   std::shared_ptr<MediaSample> sample2 =
-      MediaSample::CopyFrom(kAnyData, arraysize(kAnyData), kIsKeyFrame);
+      MediaSample::CopyFrom(kAnyData, std::size(kAnyData), kIsKeyFrame);
   // Doesn't really matter how long this is.
   sample2->set_duration(kInputTimescale * 7);
-
-  EXPECT_CALL(mock_listener,
-              OnNewSegment("memory://file1.ts",
-		           kFirstPts * kTimeScale / kInputTimescale,
-                           kTimeScale * 11, _));
 
   Sequence writer_sequence;
   EXPECT_CALL(*mock_ts_writer_, NewSegment(_))
@@ -237,16 +235,12 @@ TEST_F(TsSegmenterTest, PassedSegmentDuration) {
   EXPECT_CALL(*mock_pes_packet_generator_, NumberOfReadyPesPackets())
       .InSequence(ready_pes_sequence)
       .WillOnce(Return(1u));
- 
+
   EXPECT_CALL(*mock_pes_packet_generator_, NumberOfReadyPesPackets())
       .InSequence(ready_pes_sequence)
       .WillOnce(Return(0u));
 
   EXPECT_CALL(*mock_pes_packet_generator_, Flush())
-      .WillOnce(Return(true));
-
-  EXPECT_CALL(*mock_ts_writer_, NewSegment(_))
-      .InSequence(writer_sequence)
       .WillOnce(Return(true));
 
   EXPECT_CALL(*mock_ts_writer_, AddPesPacketMock(_, _))
@@ -276,9 +270,9 @@ TEST_F(TsSegmenterTest, InitializeThenFinalize) {
   std::shared_ptr<VideoStreamInfo> stream_info(new VideoStreamInfo(
       kTrackId, kTimeScale, kDuration, kH264Codec,
       H26xStreamFormat::kAnnexbByteStream, kCodecString, kExtraData,
-      arraysize(kExtraData), kWidth, kHeight, kPixelWidth, kPixelHeight,
-      kTransferCharacteristics, kTrickPlayFactor, kNaluLengthSize, kLanguage,
-      kIsEncrypted));
+      std::size(kExtraData), kWidth, kHeight, kPixelWidth, kPixelHeight,
+      kColorPrimaries, kMatrixCoefficients, kTransferCharacteristics,
+      kTrickPlayFactor, kNaluLengthSize, kLanguage, kIsEncrypted));
   MuxerOptions options;
   options.segment_template = "file$Number$.ts";
   TsSegmenter segmenter(options, nullptr);
@@ -304,9 +298,9 @@ TEST_F(TsSegmenterTest, FinalizeSegment) {
   std::shared_ptr<VideoStreamInfo> stream_info(new VideoStreamInfo(
       kTrackId, kTimeScale, kDuration, kH264Codec,
       H26xStreamFormat::kAnnexbByteStream, kCodecString, kExtraData,
-      arraysize(kExtraData), kWidth, kHeight, kPixelWidth, kPixelHeight,
-      kTransferCharacteristics, kTrickPlayFactor, kNaluLengthSize, kLanguage,
-      kIsEncrypted));
+      std::size(kExtraData), kWidth, kHeight, kPixelWidth, kPixelHeight,
+      kColorPrimaries, kMatrixCoefficients, kTransferCharacteristics,
+      kTrickPlayFactor, kNaluLengthSize, kLanguage, kIsEncrypted));
   MuxerOptions options;
   options.segment_template = "file$Number$.ts";
   TsSegmenter segmenter(options, nullptr);
@@ -331,9 +325,9 @@ TEST_F(TsSegmenterTest, EncryptedSample) {
   std::shared_ptr<VideoStreamInfo> stream_info(new VideoStreamInfo(
       kTrackId, kTimeScale, kDuration, kH264Codec,
       H26xStreamFormat::kAnnexbByteStream, kCodecString, kExtraData,
-      arraysize(kExtraData), kWidth, kHeight, kPixelWidth, kPixelHeight,
-      kTransferCharacteristics, kTrickPlayFactor, kNaluLengthSize, kLanguage,
-      kIsEncrypted));
+      std::size(kExtraData), kWidth, kHeight, kPixelWidth, kPixelHeight,
+      kColorPrimaries, kMatrixCoefficients, kTransferCharacteristics,
+      kTrickPlayFactor, kNaluLengthSize, kLanguage, kIsEncrypted));
   MuxerOptions options;
 
   options.segment_template = "memory://file$Number$.ts";
@@ -347,14 +341,11 @@ TEST_F(TsSegmenterTest, EncryptedSample) {
       .WillByDefault(Return(true));
   ON_CALL(*mock_pes_packet_generator_, Flush()).WillByDefault(Return(true));
 
-  const uint8_t kAnyData[] = {
-      0x01, 0x0F, 0x3C,
-  };
   std::shared_ptr<MediaSample> sample1 =
-      MediaSample::CopyFrom(kAnyData, arraysize(kAnyData), kIsKeyFrame);
+      MediaSample::CopyFrom(kAnyData, std::size(kAnyData), kIsKeyFrame);
   sample1->set_duration(kTimeScale * 2);
   std::shared_ptr<MediaSample> sample2 =
-      MediaSample::CopyFrom(kAnyData, arraysize(kAnyData), kIsKeyFrame);
+      MediaSample::CopyFrom(kAnyData, std::size(kAnyData), kIsKeyFrame);
   sample2->set_duration(kTimeScale * 3);
 
   EXPECT_CALL(*mock_pes_packet_generator_, PushSample(_))
@@ -393,8 +384,6 @@ TEST_F(TsSegmenterTest, EncryptedSample) {
   EXPECT_CALL(*mock_pes_packet_generator_, GetNextPesPacketMock())
       .InSequence(pes_packet_sequence)
       .WillOnce(Return(new PesPacket()));
-
-  EXPECT_CALL(mock_listener, OnNewSegment("memory://file1.ts", _, _, _));
 
   MockTsWriter* mock_ts_writer_raw = mock_ts_writer_.get();
 

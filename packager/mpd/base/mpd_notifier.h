@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2014 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -10,12 +10,13 @@
 #ifndef MPD_BASE_MPD_NOTIFIER_H_
 #define MPD_BASE_MPD_NOTIFIER_H_
 
-#include <stdint.h>
+#include <cstdint>
 #include <string>
 #include <vector>
 
-#include "packager/base/macros.h"
-#include "packager/mpd/base/mpd_options.h"
+#include <packager/macros/classes.h>
+#include <packager/macros/compiler.h>
+#include <packager/mpd/base/mpd_options.h>
 
 namespace shaka {
 
@@ -52,6 +53,7 @@ class MpdNotifier {
   /// @return true on success, false otherwise. This may fail if the container
   ///         specified by @a container_id does not exist.
   virtual bool NotifyAvailabilityTimeOffset(uint32_t container_id) {
+    UNUSED(container_id);
     return true;
   }
 
@@ -70,7 +72,10 @@ class MpdNotifier {
   ///        NotifyNewContainer().
   /// @return true on success, false otherwise. This may fail if the container
   ///         specified by @a container_id does not exist.
-  virtual bool NotifySegmentDuration(uint32_t container_id) { return true; }
+  virtual bool NotifySegmentDuration(uint32_t container_id) {
+    UNUSED(container_id);
+    return true;
+  }
 
   /// Notifies MpdBuilder that there is a new segment ready. For live, this
   /// is usually a new segment, for VOD this is usually a subsegment, for low
@@ -82,11 +87,13 @@ class MpdNotifier {
   /// @param duration is the duration of the new segment, in units of the
   ///        stream's time scale.
   /// @param size is the new segment size in bytes.
+  /// @param segment_number is the segment number.
   /// @return true on success, false otherwise.
   virtual bool NotifyNewSegment(uint32_t container_id,
                                 int64_t start_time,
                                 int64_t duration,
-                                uint64_t size) = 0;
+                                uint64_t size,
+                                int64_t segment_number) = 0;
 
   /// Notifies MpdBuilder that a segment is fully written and provides the
   /// segment's complete duration and size. For Low Latency only. Note, size and
@@ -102,6 +109,9 @@ class MpdNotifier {
   virtual bool NotifyCompletedSegment(uint32_t container_id,
                                       int64_t duration,
                                       uint64_t size) {
+    UNUSED(container_id);
+    UNUSED(duration);
+    UNUSED(size);
     return true;
   }
 

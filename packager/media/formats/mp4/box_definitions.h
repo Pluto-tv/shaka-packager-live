@@ -7,11 +7,11 @@
 
 #include <vector>
 
-#include "packager/media/base/decrypt_config.h"
-#include "packager/media/base/fourccs.h"
-#include "packager/media/codecs/aac_audio_specific_config.h"
-#include "packager/media/codecs/es_descriptor.h"
-#include "packager/media/formats/mp4/box.h"
+#include <packager/media/base/decrypt_config.h>
+#include <packager/media/base/fourccs.h>
+#include <packager/media/codecs/aac_audio_specific_config.h>
+#include <packager/media/codecs/es_descriptor.h>
+#include <packager/media/formats/mp4/box.h>
 
 namespace shaka {
 namespace media {
@@ -117,8 +117,8 @@ struct SampleEncryption : FullBox {
   ///             entries.
   /// @return true on success, false otherwise.
   bool ParseFromSampleEncryptionData(
-      uint8_t iv_size,
-      std::vector<SampleEncryptionEntry>* sample_encryption_entries) const;
+      uint8_t l_iv_size,
+      std::vector<SampleEncryptionEntry>* l_sample_encryption_entries) const;
 
   /// We may not know @a iv_size before reading this box. In this case, we will
   /// store sample encryption data for parsing later when @a iv_size is known.
@@ -294,7 +294,7 @@ struct VideoSampleEntry : Box {
     return format == FOURCC_encv ? sinf.format.format : format;
   }
   // Returns the box type of codec configuration box from video format.
-  FourCC GetCodecConfigurationBoxType(FourCC format) const;
+  FourCC GetCodecConfigurationBoxType(FourCC l_format) const;
 
   // Convert |extra_codec_configs| to vector.
   std::vector<uint8_t> ExtraCodecConfigsAsVector() const;
@@ -332,6 +332,12 @@ struct DTSSpecific : Box {
   uint32_t avg_bitrate = 0u;
   uint8_t pcm_sample_depth = 0u;
   std::vector<uint8_t> extra_data;
+};
+
+struct UDTSSpecific : Box {
+  DECLARE_BOX_METHODS(UDTSSpecific);
+
+  std::vector<uint8_t> data;
 };
 
 struct AC3Specific : Box {
@@ -376,6 +382,15 @@ struct FlacSpecific : FullBox {
   std::vector<uint8_t> data;
 };
 
+// ALAC specific decoder configuration box:
+//   https://wiki.multimedia.cx/index.php/Apple_Lossless_Audio_Coding
+// We do not care about the actual data inside, which is simply copied over.
+struct ALACSpecific : FullBox {
+  DECLARE_BOX_METHODS(ALACSpecific);
+
+  std::vector<uint8_t> data;
+};
+
 struct AudioSampleEntry : Box {
   DECLARE_BOX_METHODS(AudioSampleEntry);
 
@@ -396,12 +411,14 @@ struct AudioSampleEntry : Box {
 
   ElementaryStreamDescriptor esds;
   DTSSpecific ddts;
+  UDTSSpecific udts;
   AC3Specific dac3;
   EC3Specific dec3;
   AC4Specific dac4;
   OpusSpecific dops;
   FlacSpecific dfla;
   MHAConfiguration mhac;
+  ALACSpecific alac;
 };
 
 struct WebVTTConfigurationBox : Box {
@@ -736,6 +753,7 @@ struct TrackFragmentHeader : FullBox {
   };
 
   enum SampleFlagsMasks {
+    kUnset = 0x00000000,
     kReservedMask = 0xFC000000,
     kSampleDependsOnMask = 0x03000000,
     kSampleIsDependedOnMask = 0x00C00000,

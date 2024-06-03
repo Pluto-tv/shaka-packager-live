@@ -1,19 +1,22 @@
-// Copyright 2017 Google Inc. All rights reserved.
+// Copyright 2017 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/formats/webvtt/webvtt_to_mp4_handler.h"
+#include <packager/media/formats/webvtt/webvtt_to_mp4_handler.h>
 
 #include <algorithm>
 #include <map>
 
-#include "packager/media/base/buffer_writer.h"
-#include "packager/media/formats/mp4/box_buffer.h"
-#include "packager/media/formats/mp4/box_definitions.h"
-#include "packager/media/formats/webvtt/webvtt_utils.h"
-#include "packager/status_macros.h"
+#include <absl/log/check.h>
+
+#include <packager/macros/logging.h>
+#include <packager/macros/status.h>
+#include <packager/media/base/buffer_writer.h>
+#include <packager/media/formats/mp4/box_buffer.h>
+#include <packager/media/formats/mp4/box_definitions.h>
+#include <packager/media/formats/webvtt/webvtt_utils.h>
 
 namespace shaka {
 namespace media {
@@ -129,7 +132,16 @@ Status WebVttToMp4Handler::OnStreamInfo(
   DCHECK(stream_data);
   DCHECK(stream_data->stream_info);
 
-  return Dispatch(std::move(stream_data));
+  auto clone = stream_data->stream_info->Clone();
+  clone->set_codec(kCodecWebVtt);
+  clone->set_codec_string("wvtt");
+
+  if (clone->stream_type() != kStreamText) {
+    return Status(error::MUXER_FAILURE, "Incorrect stream type");
+  }
+
+  return Dispatch(
+      StreamData::FromStreamInfo(stream_data->stream_index, std::move(clone)));
 }
 
 Status WebVttToMp4Handler::OnCueEvent(std::unique_ptr<StreamData> stream_data) {
@@ -218,8 +230,8 @@ Status WebVttToMp4Handler::DispatchCurrentSegment(int64_t segment_start,
           break;
         }
         default: {
-          NOTREACHED() << "Unsupported DisplayActionType "
-                       << static_cast<int>(action.type);
+          NOTIMPLEMENTED() << "Unsupported DisplayActionType "
+                           << static_cast<int>(action.type);
           break;
         }
       }

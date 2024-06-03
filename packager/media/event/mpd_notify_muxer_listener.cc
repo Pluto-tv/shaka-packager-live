@@ -1,20 +1,23 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2014 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/event/mpd_notify_muxer_listener.h"
+#include <packager/media/event/mpd_notify_muxer_listener.h>
 
 #include <cmath>
 
-#include "packager/base/logging.h"
-#include "packager/media/base/audio_stream_info.h"
-#include "packager/media/base/protection_system_specific_info.h"
-#include "packager/media/base/video_stream_info.h"
-#include "packager/media/event/muxer_listener_internal.h"
-#include "packager/mpd/base/media_info.pb.h"
-#include "packager/mpd/base/mpd_notifier.h"
+#include <absl/log/check.h>
+#include <absl/log/log.h>
+
+#include <packager/macros/compiler.h>
+#include <packager/media/base/audio_stream_info.h>
+#include <packager/media/base/protection_system_specific_info.h>
+#include <packager/media/base/video_stream_info.h>
+#include <packager/media/event/muxer_listener_internal.h>
+#include <packager/mpd/base/media_info.pb.h>
+#include <packager/mpd/base/mpd_notifier.h>
 
 namespace shaka {
 namespace media {
@@ -34,6 +37,7 @@ void MpdNotifyMuxerListener::OnEncryptionInfoReady(
     const std::vector<uint8_t>& key_id,
     const std::vector<uint8_t>& iv,
     const std::vector<ProtectionSystemSpecificInfo>& key_system_info) {
+  UNUSED(iv);
   if (is_initial_encryption_info) {
     LOG_IF(WARNING, is_encrypted_)
         << "Updating initial encryption information.";
@@ -80,6 +84,12 @@ void MpdNotifyMuxerListener::OnMediaStart(const MuxerOptions& muxer_options,
     for (const std::string& role : roles_)
       media_info->add_dash_roles(role);
   }
+
+  if (index_.has_value())
+    media_info->set_index(index_.value());
+
+  if (!dash_label_.empty())
+    media_info->set_dash_label(dash_label_);
 
   if (is_encrypted_) {
     internal::SetContentProtectionFields(protection_scheme_, default_key_id_,
@@ -172,7 +182,8 @@ void MpdNotifyMuxerListener::OnMediaEnd(const MediaRanges& media_ranges,
         mpd_notifier_->NotifyNewSegment(
             notification_id_.value(), event_info.segment_info.start_time,
             event_info.segment_info.duration,
-            event_info.segment_info.segment_file_size);
+            event_info.segment_info.segment_file_size,
+            event_info.segment_info.segment_number);
         break;
       case EventInfoType::kKeyFrame:
         // NO-OP for DASH.
@@ -190,16 +201,20 @@ void MpdNotifyMuxerListener::OnMediaEnd(const MediaRanges& media_ranges,
 void MpdNotifyMuxerListener::OnNewSegment(const std::string& file_name,
                                           int64_t start_time,
                                           int64_t duration,
-                                          uint64_t segment_file_size) {
+                                          uint64_t segment_file_size,
+                                          int64_t segment_number) {
+  UNUSED(file_name);
   if (mpd_notifier_->dash_profile() == DashProfile::kLive) {
     mpd_notifier_->NotifyNewSegment(notification_id_.value(), start_time,
-                                    duration, segment_file_size);
+                                    duration, segment_file_size,
+                                    segment_number);
     if (mpd_notifier_->mpd_type() == MpdType::kDynamic)
       mpd_notifier_->Flush();
   } else {
     EventInfo event_info;
     event_info.type = EventInfoType::kSegment;
-    event_info.segment_info = {start_time, duration, segment_file_size};
+    event_info.segment_info = {start_time, duration, segment_file_size,
+                               segment_number};
     event_info_.push_back(event_info);
   }
 }
@@ -214,11 +229,14 @@ void MpdNotifyMuxerListener::OnKeyFrame(int64_t timestamp,
                                         uint64_t start_byte_offset,
                                         uint64_t size) {
   // NO-OP for DASH.
+  UNUSED(timestamp);
+  UNUSED(start_byte_offset);
+  UNUSED(size);
 }
 
 void MpdNotifyMuxerListener::OnCueEvent(int64_t timestamp,
                                         const std::string& cue_data) {
-  // Not using |cue_data| at this moment.
+  UNUSED(cue_data);
   if (mpd_notifier_->dash_profile() == DashProfile::kLive) {
     mpd_notifier_->NotifyCueEvent(notification_id_.value(), timestamp);
   } else {

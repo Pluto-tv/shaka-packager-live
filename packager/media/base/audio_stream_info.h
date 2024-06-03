@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2014 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -9,7 +9,7 @@
 
 #include <vector>
 
-#include "packager/media/base/stream_info.h"
+#include <packager/media/base/stream_info.h>
 
 namespace shaka {
 namespace media {
@@ -58,6 +58,10 @@ class AudioStreamInfo : public StreamInfo {
 
   void set_sampling_frequency(const uint32_t sampling_frequency) {
     sampling_frequency_ = sampling_frequency;
+  }
+
+  void set_max_bitrate(const uint32_t max_bitrate) {
+    max_bitrate_ = max_bitrate;
   }
 
   /// @param audio_object_type is only used by AAC Codec, ignored otherwise.

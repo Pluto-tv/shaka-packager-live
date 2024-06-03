@@ -1,20 +1,20 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2014 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/formats/mp4/single_segment_segmenter.h"
+#include <packager/media/formats/mp4/single_segment_segmenter.h>
 
 #include <algorithm>
 
-#include "packager/file/file.h"
-#include "packager/file/file_util.h"
-#include "packager/media/base/buffer_writer.h"
-#include "packager/media/base/muxer_options.h"
-#include "packager/media/event/progress_listener.h"
-#include "packager/media/formats/mp4/box_definitions.h"
-#include "packager/media/formats/mp4/key_frame_info.h"
+#include <absl/log/check.h>
+
+#include <packager/file/file_util.h>
+#include <packager/media/base/buffer_writer.h>
+#include <packager/media/base/muxer_options.h>
+#include <packager/media/event/progress_listener.h>
+#include <packager/media/formats/mp4/key_frame_info.h>
 
 namespace shaka {
 namespace media {
@@ -166,7 +166,7 @@ Status SingleSegmentSegmenter::DoFinalize() {
   return Status::OK;
 }
 
-Status SingleSegmentSegmenter::DoFinalizeSegment() {
+Status SingleSegmentSegmenter::DoFinalizeSegment(int64_t segment_number) {
   DCHECK(sidx());
   DCHECK(fragment_buffer());
   // sidx() contains pre-generated segment references with one reference per
@@ -224,9 +224,9 @@ Status SingleSegmentSegmenter::DoFinalizeSegment() {
   UpdateProgress(vod_ref.subsegment_duration);
   if (muxer_listener()) {
     muxer_listener()->OnSampleDurationReady(sample_duration());
-    muxer_listener()->OnNewSegment(options().output_file_name,
-                                   vod_ref.earliest_presentation_time,
-                                   vod_ref.subsegment_duration, segment_size);
+    muxer_listener()->OnNewSegment(
+        options().output_file_name, vod_ref.earliest_presentation_time,
+        vod_ref.subsegment_duration, segment_size, segment_number);
   }
   return Status::OK;
 }

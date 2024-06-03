@@ -1,22 +1,24 @@
-// Copyright 2017 Google Inc. All rights reserved.
+// Copyright 2017 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/mpd/base/representation.h"
-
-#include <gflags/gflags.h>
+#include <packager/mpd/base/representation.h>
 
 #include <algorithm>
 
-#include "packager/base/logging.h"
-#include "packager/base/strings/stringprintf.h"
-#include "packager/file/file.h"
-#include "packager/media/base/muxer_util.h"
-#include "packager/mpd/base/mpd_options.h"
-#include "packager/mpd/base/mpd_utils.h"
-#include "packager/mpd/base/xml/xml_node.h"
+#include <absl/flags/declare.h>
+#include <absl/log/check.h>
+#include <absl/log/log.h>
+#include <absl/strings/str_format.h>
+
+#include <packager/file.h>
+#include <packager/macros/logging.h>
+#include <packager/media/base/muxer_util.h>
+#include <packager/mpd/base/mpd_options.h>
+#include <packager/mpd/base/mpd_utils.h>
+#include <packager/mpd/base/xml/xml_node.h>
 
 namespace shaka {
 namespace {
@@ -106,10 +108,6 @@ Representation::Representation(
                      std::move(state_change_listener)) {
   mime_type_ = representation.mime_type_;
   codecs_ = representation.codecs_;
-
-  start_number_ = representation.start_number_;
-  for (const SegmentInfo& segment_info : representation.segment_infos_)
-    start_number_ += segment_info.repeat + 1;
 }
 
 Representation::~Representation() {}
@@ -153,6 +151,8 @@ bool Representation::Init() {
     return false;
 
   codecs_ = GetCodecs(media_info_);
+  supplemental_codecs_ = GetSupplementalCodecs(media_info_);
+  supplemental_profiles_ = GetSupplementalProfiles(media_info_);
   return true;
 }
 
@@ -170,7 +170,8 @@ void Representation::UpdateContentProtectionPssh(const std::string& drm_uuid,
 
 void Representation::AddNewSegment(int64_t start_time,
                                    int64_t duration,
-                                   uint64_t size) {
+                                   uint64_t size,
+                                   int64_t segment_number) {
   if (start_time == 0 && duration == 0) {
     LOG(WARNING) << "Got segment with start_time and duration == 0. Ignoring.";
     return;
@@ -186,7 +187,7 @@ void Representation::AddNewSegment(int64_t start_time,
   if (state_change_listener_)
     state_change_listener_->OnNewSegmentForRepresentation(start_time, duration);
 
-  AddSegmentInfo(start_time, duration);
+  AddSegmentInfo(start_time, duration, segment_number);
 
   // Only update the buffer depth and bandwidth estimator when the full segment
   // is completed. In the low latency case, only the first chunk in the segment
@@ -249,10 +250,10 @@ const MediaInfo& Representation::GetMediaInfo() const {
 // AddVideoInfo() (possibly adds FramePacking elements), AddAudioInfo() (Adds
 // AudioChannelConfig elements), AddContentProtectionElements*(), and
 // AddVODOnlyInfo() (Adds segment info).
-base::Optional<xml::XmlNode> Representation::GetXml() {
+std::optional<xml::XmlNode> Representation::GetXml() {
   if (!HasRequiredMediaInfoFields()) {
     LOG(ERROR) << "MediaInfo missing required fields.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   const uint64_t bandwidth = media_info_.has_bandwidth()
@@ -268,7 +269,17 @@ base::Optional<xml::XmlNode> Representation::GetXml() {
       !(codecs_.empty() ||
         representation.SetStringAttribute("codecs", codecs_)) ||
       !representation.SetStringAttribute("mimeType", mime_type_)) {
-    return base::nullopt;
+    return std::nullopt;
+  }
+
+  if (!supplemental_codecs_.empty() && !supplemental_profiles_.empty()) {
+    if (!representation.SetStringAttribute("scte214:supplementalCodecs",
+                                           supplemental_codecs_) ||
+        !representation.SetStringAttribute("scte214:supplementalProfiles",
+                                           supplemental_profiles_)) {
+      LOG(ERROR) << "Failed to add supplemental codecs/profiles to "
+                    "Representation XML.";
+    }
   }
 
   const bool has_video_info = media_info_.has_video_info();
@@ -281,18 +292,18 @@ base::Optional<xml::XmlNode> Representation::GetXml() {
           !(output_suppression_flags_ & kSuppressHeight),
           !(output_suppression_flags_ & kSuppressFrameRate))) {
     LOG(ERROR) << "Failed to add video info to Representation XML.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (has_audio_info &&
       !representation.AddAudioInfo(media_info_.audio_info())) {
     LOG(ERROR) << "Failed to add audio info to Representation XML.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!representation.AddContentProtectionElements(
           content_protection_elements_)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (HasVODOnlyFields(media_info_) &&
@@ -300,21 +311,21 @@ base::Optional<xml::XmlNode> Representation::GetXml() {
           media_info_, mpd_options_.mpd_params.use_segment_list,
           mpd_options_.mpd_params.target_segment_duration)) {
     LOG(ERROR) << "Failed to add VOD info.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (HasLiveOnlyFields(media_info_) &&
       !representation.AddLiveOnlyInfo(
-          media_info_, segment_infos_, start_number_,
+          media_info_, segment_infos_,
           mpd_options_.mpd_params.low_latency_dash_mode)) {
     LOG(ERROR) << "Failed to add Live info.";
-    return base::nullopt;
+    return std::nullopt;
   }
   // TODO(rkuroiwa): It is likely that all representations have the exact same
   // SegmentTemplate. Optimize and propagate the tag up to AdaptationSet level.
 
   output_suppression_flags_ = 0;
-  return std::move(representation);
+  return representation;
 }
 
 void Representation::SuppressOnce(SuppressFlag flag) {
@@ -381,7 +392,9 @@ bool Representation::HasRequiredMediaInfoFields() const {
   return true;
 }
 
-void Representation::AddSegmentInfo(int64_t start_time, int64_t duration) {
+void Representation::AddSegmentInfo(int64_t start_time,
+                                    int64_t duration,
+                                    int64_t segment_number) {
   const uint64_t kNoRepeat = 0;
   const int64_t adjusted_duration = AdjustDuration(duration);
 
@@ -404,7 +417,8 @@ void Representation::AddSegmentInfo(int64_t start_time, int64_t duration) {
       } else {
         segment_infos_.push_back(
             {previous_segment_end_time,
-             actual_segment_end_time - previous_segment_end_time, kNoRepeat});
+             actual_segment_end_time - previous_segment_end_time, kNoRepeat,
+             segment_number});
       }
       return;
     }
@@ -429,8 +443,8 @@ void Representation::AddSegmentInfo(int64_t start_time, int64_t duration) {
           << previous_segment_end_time << ".";
     }
   }
-
-  segment_infos_.push_back({start_time, adjusted_duration, kNoRepeat});
+  segment_infos_.push_back(
+      {start_time, adjusted_duration, kNoRepeat, segment_number});
 }
 
 void Representation::UpdateSegmentInfo(int64_t duration) {
@@ -496,7 +510,6 @@ void Representation::SlideWindow() {
            current_buffer_depth_ - last->duration >= time_shift_buffer_depth) {
       current_buffer_depth_ -= last->duration;
       RemoveOldSegment(&*last);
-      start_number_++;
     }
     if (last->repeat >= 0)
       break;
@@ -508,13 +521,15 @@ void Representation::RemoveOldSegment(SegmentInfo* segment_info) {
   int64_t segment_start_time = segment_info->start_time;
   segment_info->start_time += segment_info->duration;
   segment_info->repeat--;
+  int64_t start_number = segment_info->start_segment_number;
+  segment_info->start_segment_number++;
 
   if (mpd_options_.mpd_params.preserved_segments_outside_live_window == 0)
     return;
 
   segments_to_be_removed_.push_back(
       media::GetSegmentName(media_info_.segment_template(), segment_start_time,
-                            start_number_ - 1, media_info_.bandwidth()));
+                            start_number, media_info_.bandwidth()));
   while (segments_to_be_removed_.size() >
          mpd_options_.mpd_params.preserved_segments_outside_live_window) {
     VLOG(2) << "Deleting " << segments_to_be_removed_.front();
@@ -567,24 +582,24 @@ std::string Representation::GetTextMimeType() const {
 }
 
 std::string Representation::RepresentationAsString() const {
-  std::string s = base::StringPrintf("Representation (id=%d,", id_);
+  std::string s = absl::StrFormat("Representation (id=%d,", id_);
   if (media_info_.has_video_info()) {
     const MediaInfo_VideoInfo& video_info = media_info_.video_info();
-    base::StringAppendF(&s, "codec='%s',width=%d,height=%d",
-                        video_info.codec().c_str(), video_info.width(),
-                        video_info.height());
+    absl::StrAppendFormat(&s, "codec='%s',width=%d,height=%d",
+                          video_info.codec().c_str(), video_info.width(),
+                          video_info.height());
   } else if (media_info_.has_audio_info()) {
     const MediaInfo_AudioInfo& audio_info = media_info_.audio_info();
-    base::StringAppendF(
+    absl::StrAppendFormat(
         &s, "codec='%s',frequency=%d,language='%s'", audio_info.codec().c_str(),
         audio_info.sampling_frequency(), audio_info.language().c_str());
   } else if (media_info_.has_text_info()) {
     const MediaInfo_TextInfo& text_info = media_info_.text_info();
-    base::StringAppendF(&s, "codec='%s',language='%s'",
-                        text_info.codec().c_str(),
-                        text_info.language().c_str());
+    absl::StrAppendFormat(&s, "codec='%s',language='%s'",
+                          text_info.codec().c_str(),
+                          text_info.language().c_str());
   }
-  base::StringAppendF(&s, ")");
+  absl::StrAppendFormat(&s, ")");
   return s;
 }
 

@@ -1,16 +1,19 @@
-// Copyright 2017 Google Inc. All rights reserved.
+// Copyright 2017 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/chunking/chunking_handler.h"
+#include <packager/media/chunking/chunking_handler.h>
 
 #include <algorithm>
 
-#include "packager/base/logging.h"
-#include "packager/media/base/media_sample.h"
-#include "packager/status_macros.h"
+#include <absl/log/check.h>
+#include <absl/log/log.h>
+
+#include <packager/macros/logging.h>
+#include <packager/macros/status.h>
+#include <packager/media/base/media_sample.h>
 
 namespace shaka {
 namespace media {
@@ -31,6 +34,7 @@ bool IsNewSegmentIndex(int64_t new_index, int64_t current_index) {
 ChunkingHandler::ChunkingHandler(const ChunkingParams& chunking_params)
     : chunking_params_(chunking_params) {
   CHECK_NE(chunking_params.segment_duration_in_seconds, 0u);
+  segment_number_ = chunking_params.start_segment_number;
 }
 
 Status ChunkingHandler::InitializeInternal() {
@@ -59,7 +63,7 @@ Status ChunkingHandler::Process(std::unique_ptr<StreamData> stream_data) {
   }
 }
 
-Status ChunkingHandler::OnFlushRequest(size_t input_stream_index) {
+Status ChunkingHandler::OnFlushRequest(size_t /*input_stream_index*/) {
   RETURN_IF_ERROR(EndSegmentIfStarted());
   return FlushDownstream(kStreamIndex);
 }
@@ -79,7 +83,7 @@ Status ChunkingHandler::OnCueEvent(std::shared_ptr<const CueEvent> event) {
   RETURN_IF_ERROR(DispatchCueEvent(kStreamIndex, std::move(event)));
 
   // Force start new segment after cue event.
-  segment_start_time_ = base::nullopt;
+  segment_start_time_ = std::nullopt;
   // |cue_offset_| will be applied to sample timestamp so the segment after cue
   // point have duration ~= |segment_duration_|.
   cue_offset_ = event_time_in_seconds * time_scale_;
@@ -160,17 +164,20 @@ Status ChunkingHandler::OnMediaSample(
   return DispatchMediaSample(kStreamIndex, std::move(sample));
 }
 
-Status ChunkingHandler::EndSegmentIfStarted() const {
+Status ChunkingHandler::EndSegmentIfStarted() {
   if (!segment_start_time_)
     return Status::OK;
 
   auto segment_info = std::make_shared<SegmentInfo>();
   segment_info->start_timestamp = segment_start_time_.value();
   segment_info->duration = max_segment_time_ - segment_start_time_.value();
+  segment_info->segment_number = segment_number_++;
+
   if (chunking_params_.low_latency_dash_mode) {
     segment_info->is_chunk = true;
     segment_info->is_final_chunk_in_seg = true;
   }
+
   return DispatchSegmentInfo(kStreamIndex, std::move(segment_info));
 }
 

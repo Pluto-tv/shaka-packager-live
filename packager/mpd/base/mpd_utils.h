@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2014 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -9,10 +9,11 @@
 #ifndef MPD_BASE_MPD_UTILS_H_
 #define MPD_BASE_MPD_UTILS_H_
 
-#include <libxml/tree.h>
-
+#include <cstdint>
 #include <list>
 #include <string>
+
+#include <libxml/tree.h>
 
 namespace shaka {
 
@@ -26,6 +27,7 @@ const char kEncryptedMp4Scheme[] = "urn:mpeg:dash:mp4protection:2011";
 const char kPsshElementName[] = "cenc:pssh";
 const char kMsproElementName[] = "mspr:pro";
 const uint32_t kTransferFunctionPQ = 16;
+const uint32_t kTransferFunctionHLG = 18;
 
 bool HasVODOnlyFields(const MediaInfo& media_info);
 
@@ -44,12 +46,18 @@ std::string GetLanguage(const MediaInfo& media_info);
 // comma.
 std::string GetCodecs(const MediaInfo& media_info);
 
+std::string GetSupplementalCodecs(const MediaInfo& media_info);
+
+std::string GetSupplementalProfiles(const MediaInfo& media_info);
+
 // Returns a codec string without variants. For example, "mp4a" instead of
 // "mp4a.40.2". May return a format for text streams.
 std::string GetBaseCodec(const MediaInfo& media_info);
 
 // Returns a key made from the characteristics that separate AdaptationSets.
 std::string GetAdaptationSetKey(const MediaInfo& media_info, bool ignore_codec);
+
+std::string FloatToXmlString(double number);
 
 std::string SecondsToXmlDuration(double seconds);
 

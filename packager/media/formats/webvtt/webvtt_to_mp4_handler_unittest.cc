@@ -1,15 +1,17 @@
-// Copyright 2017 Google Inc. All rights reserved.
+// Copyright 2017 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
+#include <packager/media/formats/webvtt/webvtt_to_mp4_handler.h>
+
+#include <absl/log/check.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "packager/media/base/media_handler_test_base.h"
-#include "packager/media/formats/webvtt/webvtt_to_mp4_handler.h"
-#include "packager/status_test_util.h"
+#include <packager/media/base/media_handler_test_base.h>
+#include <packager/status/status_test_util.h>
 
 using testing::_;
 using testing::AllOf;
@@ -21,6 +23,7 @@ namespace {
 const size_t kStreamIndex = 0;
 const bool kSubSegment = true;
 const bool kEncrypted = true;
+const int64_t kSegmentNumber = 1;
 
 const char* kId1 = "sample-id-1";
 const char* kId2 = "sample-id-2";
@@ -93,7 +96,8 @@ class WebVttToMp4HandlerTest : public MediaHandlerTestBase {
     const bool kIsSubSegment = true;
     int64_t duration = end_time - start_time;
 
-    auto segment = GetSegmentInfo(start_time, duration, !kIsSubSegment);
+    auto segment =
+        GetSegmentInfo(start_time, duration, !kIsSubSegment, kSegmentNumber);
     return In()->Dispatch(
         StreamData::FromSegmentInfo(kStreamIndex, std::move(segment)));
   }

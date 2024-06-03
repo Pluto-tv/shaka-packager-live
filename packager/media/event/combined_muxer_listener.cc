@@ -1,10 +1,10 @@
-// Copyright 2017 Google Inc. All rights reserved.
+// Copyright 2017 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/event/combined_muxer_listener.h"
+#include <packager/media/event/combined_muxer_listener.h>
 
 namespace shaka {
 namespace media {
@@ -71,9 +71,11 @@ void CombinedMuxerListener::OnMediaEnd(const MediaRanges& media_ranges,
 void CombinedMuxerListener::OnNewSegment(const std::string& file_name,
                                          int64_t start_time,
                                          int64_t duration,
-                                         uint64_t segment_file_size) {
+                                         uint64_t segment_file_size,
+                                         int64_t segment_number) {
   for (auto& listener : muxer_listeners_) {
-    listener->OnNewSegment(file_name, start_time, duration, segment_file_size);
+    listener->OnNewSegment(file_name, start_time, duration, segment_file_size,
+                           segment_number);
   }
 }
 

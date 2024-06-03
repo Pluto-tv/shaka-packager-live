@@ -1,12 +1,14 @@
-// Copyright 2017 Google Inc. All rights reserved.
+// Copyright 2017 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/chunking/text_chunker.h"
+#include <packager/media/chunking/text_chunker.h>
 
-#include "packager/status_macros.h"
+#include <absl/log/check.h>
+
+#include <packager/macros/status.h>
 
 namespace shaka {
 namespace media {
@@ -14,8 +16,10 @@ namespace {
 const size_t kStreamIndex = 0;
 }  // namespace
 
-TextChunker::TextChunker(double segment_duration_in_seconds)
-    : segment_duration_in_seconds_(segment_duration_in_seconds){};
+TextChunker::TextChunker(double segment_duration_in_seconds,
+                         int64_t start_segment_number)
+    : segment_duration_in_seconds_(segment_duration_in_seconds),
+      segment_number_(start_segment_number){};
 
 Status TextChunker::Process(std::unique_ptr<StreamData> data) {
   switch (data->stream_data_type) {
@@ -31,7 +35,7 @@ Status TextChunker::Process(std::unique_ptr<StreamData> data) {
   }
 }
 
-Status TextChunker::OnFlushRequest(size_t input_stream_index) {
+Status TextChunker::OnFlushRequest(size_t /*input_stream_index*/) {
   // Keep outputting segments until all the samples leave the system. Calling
   // |DispatchSegment| will remove samples over time.
   while (samples_in_current_segment_.size()) {
@@ -58,14 +62,12 @@ Status TextChunker::OnCueEvent(std::shared_ptr<const CueEvent> event) {
 
   // Convert the event's time to be scaled to the time of each sample.
   const int64_t event_time = ScaleTime(event->time_in_seconds);
-
   // Output all full segments before the segment that the cue event interupts.
   while (segment_start_ + segment_duration_ < event_time) {
     RETURN_IF_ERROR(DispatchSegment(segment_duration_));
   }
 
   const int64_t shorten_duration = event_time - segment_start_;
-
   RETURN_IF_ERROR(DispatchSegment(shorten_duration));
   return DispatchCueEvent(kStreamIndex, std::move(event));
 }
@@ -107,6 +109,8 @@ Status TextChunker::DispatchSegment(int64_t duration) {
   std::shared_ptr<SegmentInfo> info = std::make_shared<SegmentInfo>();
   info->start_timestamp = segment_start_;
   info->duration = duration;
+  info->segment_number = segment_number_++;
+
   RETURN_IF_ERROR(DispatchSegmentInfo(kStreamIndex, std::move(info)));
 
   // Move onto the next segment.

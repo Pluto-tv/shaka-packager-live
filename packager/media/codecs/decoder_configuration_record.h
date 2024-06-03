@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All rights reserved.
+// Copyright 2016 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -9,9 +9,11 @@
 
 #include <vector>
 
-#include "packager/base/logging.h"
-#include "packager/base/macros.h"
-#include "packager/media/codecs/nalu_reader.h"
+#include <absl/log/check.h>
+#include <absl/log/log.h>
+
+#include <packager/macros/classes.h>
+#include <packager/media/codecs/nalu_reader.h>
 
 namespace shaka {
 namespace media {
@@ -46,6 +48,12 @@ class DecoderConfigurationRecord {
   /// @return Transfer characteristics of the config.
   uint8_t transfer_characteristics() const { return transfer_characteristics_; }
 
+  /// @return Colour Primaries of the config.
+  uint8_t color_primaries() const { return color_primaries_; }
+
+  /// @return Matrix Coeffs of the config.
+  uint8_t matrix_coefficients() const { return matrix_coefficients_; }
+
  protected:
   DecoderConfigurationRecord();
 
@@ -69,6 +77,15 @@ class DecoderConfigurationRecord {
     transfer_characteristics_ = transfer_characteristics;
   }
 
+  /// Sets the colour primaries.
+  void set_color_primaries(uint8_t color_primaries) {
+    color_primaries_ = color_primaries;
+  }
+  /// Sets the matrix coeffs.
+  void set_matrix_coefficients(uint8_t matrix_coefficients) {
+    matrix_coefficients_ = matrix_coefficients;
+  }
+
  private:
   // Performs the actual parsing of the data.
   virtual bool ParseInternal() = 0;
@@ -83,6 +100,9 @@ class DecoderConfigurationRecord {
   // picture, which can be used to determine whether the video is HDR or SDR.
   // The parameter is extracted from SPS.
   uint8_t transfer_characteristics_ = 0;
+
+  uint8_t color_primaries_ = 0;
+  uint8_t matrix_coefficients_ = 0;
 
   DISALLOW_COPY_AND_ASSIGN(DecoderConfigurationRecord);
 };

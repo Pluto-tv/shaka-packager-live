@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2014 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include "packager/media/base/encryption_config.h"
+#include <packager/media/base/encryption_config.h>
 
 namespace shaka {
 namespace media {
@@ -41,6 +41,7 @@ enum Codec {
   kCodecAAC = kCodecAudio,
   kCodecAC3,
   kCodecAC4,
+  kCodecALAC,
   // TODO(kqyang): Use kCodecDTS and a kDtsStreamFormat for the various DTS
   // streams.
   kCodecDTSC,
@@ -49,6 +50,7 @@ enum Codec {
   kCodecDTSL,
   kCodecDTSM,
   kCodecDTSP,
+  kCodecDTSX,
   kCodecEAC3,
   kCodecFlac,
   kCodecOpus,

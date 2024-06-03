@@ -1,18 +1,18 @@
-// Copyright 2017 Google Inc. All rights reserved.
+// Copyright 2017 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/trick_play/trick_play_handler.h"
+#include <packager/media/trick_play/trick_play_handler.h>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "packager/media/base/audio_stream_info.h"
-#include "packager/media/base/media_handler_test_base.h"
-#include "packager/media/base/video_stream_info.h"
-#include "packager/status_test_util.h"
+#include <packager/media/base/audio_stream_info.h>
+#include <packager/media/base/media_handler_test_base.h>
+#include <packager/media/base/video_stream_info.h>
+#include <packager/status/status_test_util.h>
 
 using ::testing::_;
 
@@ -24,6 +24,7 @@ const size_t kOutputCount = 1;
 const size_t kInputIndex = 0;
 const size_t kOutputIndex = 0;
 const size_t kStreamIndex = 0;
+const int64_t kSegmentNumber = 1;
 
 // This value does not matter as trick play does not use it, but it is needed
 // to create the audio and video info.
@@ -54,7 +55,8 @@ class TrickPlayHandlerTest : public MediaHandlerTestBase {
   Status DispatchSegment(int64_t start_time, int64_t duration) {
     const bool kSubSegment = true;
 
-    auto info = GetSegmentInfo(start_time, duration, !kSubSegment);
+    auto info =
+        GetSegmentInfo(start_time, duration, !kSubSegment, kSegmentNumber);
     auto data = StreamData::FromSegmentInfo(kStreamIndex, std::move(info));
     return Input(kInputIndex)->Dispatch(std::move(data));
   }

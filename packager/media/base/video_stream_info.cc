@@ -1,16 +1,16 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2014 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/base/video_stream_info.h"
+#include <packager/media/base/video_stream_info.h>
 
-#include "packager/base/logging.h"
-#include "packager/base/strings/string_number_conversions.h"
-#include "packager/base/strings/string_util.h"
-#include "packager/base/strings/stringprintf.h"
-#include "packager/media/base/limits.h"
+#include <absl/log/log.h>
+#include <absl/strings/str_format.h>
+
+#include <packager/macros/logging.h>
+#include <packager/media/base/limits.h>
 
 namespace shaka {
 namespace media {
@@ -46,10 +46,12 @@ VideoStreamInfo::VideoStreamInfo(int track_id,
                                  const std::string& codec_string,
                                  const uint8_t* codec_config,
                                  size_t codec_config_size,
-                                 uint16_t width,
-                                 uint16_t height,
+                                 uint32_t width,
+                                 uint32_t height,
                                  uint32_t pixel_width,
                                  uint32_t pixel_height,
+                                 uint8_t color_primaries,
+                                 uint8_t matrix_coefficients,
                                  uint8_t transfer_characteristics,
                                  uint32_t trick_play_factor,
                                  uint8_t nalu_length_size,
@@ -71,6 +73,8 @@ VideoStreamInfo::VideoStreamInfo(int track_id,
       pixel_width_(pixel_width),
       pixel_height_(pixel_height),
       transfer_characteristics_(transfer_characteristics),
+      color_primaries_(color_primaries),
+      matrix_coefficients_(matrix_coefficients),
       trick_play_factor_(trick_play_factor),
       nalu_length_size_(nalu_length_size) {}
 
@@ -84,7 +88,7 @@ bool VideoStreamInfo::IsValidConfig() const {
 }
 
 std::string VideoStreamInfo::ToString() const {
-  return base::StringPrintf(
+  return absl::StrFormat(
       "%s codec: %s\n width: %d\n height: %d\n pixel_aspect_ratio: %d:%d\n "
       "trick_play_factor: %d\n nalu_length_size: %d\n",
       StreamInfo::ToString().c_str(), VideoCodecToString(codec()).c_str(),

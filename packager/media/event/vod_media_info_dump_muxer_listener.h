@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2014 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -15,9 +15,9 @@
 #include <string>
 #include <vector>
 
-#include "packager/base/macros.h"
-#include "packager/media/base/muxer_options.h"
-#include "packager/media/event/muxer_listener.h"
+#include <packager/macros/classes.h>
+#include <packager/media/base/muxer_options.h>
+#include <packager/media/event/muxer_listener.h>
 
 namespace shaka {
 
@@ -49,7 +49,8 @@ class VodMediaInfoDumpMuxerListener : public MuxerListener {
   void OnNewSegment(const std::string& file_name,
                     int64_t start_time,
                     int64_t duration,
-                    uint64_t segment_file_size) override;
+                    uint64_t segment_file_size,
+                    int64_t segment_number) override;
   void OnKeyFrame(int64_t timestamp,
                   uint64_t start_byte_offset,
                   uint64_t size) override;

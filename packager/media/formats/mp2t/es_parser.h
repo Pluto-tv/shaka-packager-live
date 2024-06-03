@@ -5,9 +5,9 @@
 #ifndef PACKAGER_MEDIA_FORMATS_MP2T_ES_PARSER_H_
 #define PACKAGER_MEDIA_FORMATS_MP2T_ES_PARSER_H_
 
-#include <stdint.h>
-
-#include "packager/base/callback.h"
+#include <cstdint>
+#include <functional>
+#include <memory>
 
 namespace shaka {
 namespace media {
@@ -20,9 +20,9 @@ namespace mp2t {
 
 class EsParser {
  public:
-  typedef base::Callback<void(std::shared_ptr<StreamInfo>)> NewStreamInfoCB;
-  typedef base::Callback<void(std::shared_ptr<MediaSample>)> EmitSampleCB;
-  typedef base::Callback<void(std::shared_ptr<TextSample>)> EmitTextSampleCB;
+  typedef std::function<void(std::shared_ptr<StreamInfo>)> NewStreamInfoCB;
+  typedef std::function<void(std::shared_ptr<MediaSample>)> EmitSampleCB;
+  typedef std::function<void(std::shared_ptr<TextSample>)> EmitTextSampleCB;
 
   EsParser(uint32_t pid) : pid_(pid) {}
   virtual ~EsParser() {}

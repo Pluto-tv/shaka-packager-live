@@ -2,13 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "packager/media/formats/webm/webm_video_client.h"
+#include <packager/media/formats/webm/webm_video_client.h>
 
-#include "packager/base/logging.h"
-#include "packager/media/base/video_util.h"
-#include "packager/media/codecs/av1_codec_configuration_record.h"
-#include "packager/media/codecs/vp_codec_configuration_record.h"
-#include "packager/media/formats/webm/webm_constants.h"
+#include <absl/log/log.h>
+
+#include <packager/macros/logging.h>
+#include <packager/media/base/video_util.h>
+#include <packager/media/codecs/av1_codec_configuration_record.h>
+#include <packager/media/codecs/vp_codec_configuration_record.h>
+#include <packager/media/formats/webm/webm_constants.h>
 
 namespace {
 
@@ -123,8 +125,8 @@ std::shared_ptr<VideoStreamInfo> WebMVideoClient::GetVideoStreamInfo(
   return std::make_shared<VideoStreamInfo>(
       track_num, kWebMTimeScale, 0, video_codec, H26xStreamFormat::kUnSpecified,
       codec_string, codec_private.data(), codec_private.size(),
-      width_after_crop, height_after_crop, pixel_width, pixel_height, 0, 0,
-      0 /* transfer_characteristics */, std::string(), is_encrypted);
+      width_after_crop, height_after_crop, pixel_width, pixel_height, 0, 0, 0,
+      0, 0, std::string(), is_encrypted);
 }
 
 VPCodecConfigurationRecord WebMVideoClient::GetVpCodecConfig(
@@ -254,12 +256,14 @@ bool WebMVideoClient::OnUInt(int id, int64_t val) {
   return true;
 }
 
-bool WebMVideoClient::OnBinary(int id, const uint8_t* data, int size) {
+bool WebMVideoClient::OnBinary(int /*id*/,
+                               const uint8_t* /*data*/,
+                               int /*size*/) {
   // Accept binary fields we don't care about for now.
   return true;
 }
 
-bool WebMVideoClient::OnFloat(int id, double val) {
+bool WebMVideoClient::OnFloat(int /*id*/, double /*val*/) {
   // Accept float fields we don't care about for now.
   return true;
 }

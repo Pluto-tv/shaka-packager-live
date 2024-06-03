@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All rights reserved.
+// Copyright 2015 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -9,9 +9,10 @@
 
 #include <memory>
 
-#include "packager/media/formats/webm/mkv_writer.h"
-#include "packager/media/formats/webm/segmenter.h"
-#include "packager/status.h"
+#include <packager/macros/classes.h>
+#include <packager/media/formats/webm/mkv_writer.h>
+#include <packager/media/formats/webm/segmenter.h>
+#include <packager/status.h>
 
 namespace shaka {
 namespace media {
@@ -31,7 +32,8 @@ class MultiSegmentSegmenter : public Segmenter {
   /// @{
   Status FinalizeSegment(int64_t start_timestamp,
                          int64_t duration_timestamp,
-                         bool is_subsegment) override;
+                         bool is_subsegment,
+                         int64_t segment_number) override;
   bool GetInitRangeStartAndEnd(uint64_t* start, uint64_t* end) override;
   bool GetIndexRangeStartAndEnd(uint64_t* start, uint64_t* end) override;
   std::vector<Range> GetSegmentRanges() override;

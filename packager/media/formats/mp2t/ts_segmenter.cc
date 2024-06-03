@@ -1,21 +1,23 @@
-// Copyright 2016 Google Inc. All rights reserved.
+// Copyright 2016 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/formats/mp2t/ts_segmenter.h"
+#include <packager/media/formats/mp2t/ts_segmenter.h>
 
 #include <memory>
 
-#include "packager/media/base/audio_stream_info.h"
-#include "packager/media/base/muxer_util.h"
-#include "packager/media/base/video_stream_info.h"
-#include "packager/media/event/muxer_listener.h"
-#include "packager/media/formats/mp2t/pes_packet.h"
-#include "packager/media/formats/mp2t/program_map_table_writer.h"
-#include "packager/status.h"
-#include "packager/status_macros.h"
+#include <absl/log/check.h>
+
+#include <packager/macros/status.h>
+#include <packager/media/base/audio_stream_info.h>
+#include <packager/media/base/muxer_util.h>
+#include <packager/media/base/video_stream_info.h>
+#include <packager/media/event/muxer_listener.h>
+#include <packager/media/formats/mp2t/pes_packet.h>
+#include <packager/media/formats/mp2t/program_map_table_writer.h>
+#include <packager/status.h>
 
 namespace shaka {
 namespace media {
@@ -35,8 +37,7 @@ bool IsVideoCodec(Codec codec) {
 }  // namespace
 
 TsSegmenter::TsSegmenter(const MuxerOptions& options, MuxerListener* listener)
-    : muxer_options_(options),
-      listener_(listener),
+    : listener_(listener),
       transport_stream_timestamp_offset_(
           options.transport_stream_timestamp_offset_ms * kTsTimescale / 1000),
       pes_packet_generator_(
@@ -45,8 +46,6 @@ TsSegmenter::TsSegmenter(const MuxerOptions& options, MuxerListener* listener)
 TsSegmenter::~TsSegmenter() {}
 
 Status TsSegmenter::Initialize(const StreamInfo& stream_info) {
-  if (muxer_options_.segment_template.empty())
-    return Status(error::MUXER_FAILURE, "Segment template not specified.");
   if (!pes_packet_generator_->Initialize(stream_info)) {
     return Status(error::MUXER_FAILURE,
                   "Failed to initialize PesPacketGenerator.");
@@ -170,40 +169,6 @@ Status TsSegmenter::FinalizeSegment(int64_t start_timestamp, int64_t duration) {
   Status status = WritePesPackets();
   if (!status.ok())
     return status;
-
-  // This method may be called from Finalize() so segment_started_ could
-  // be false.
-  if (!segment_started_)
-    return Status::OK;
-  std::string segment_path =
-        GetSegmentName(muxer_options_.segment_template, segment_start_timestamp_,
-                       segment_number_++, muxer_options_.bandwidth);
-
-  const int64_t file_size = segment_buffer_.Size();
-  std::unique_ptr<File, FileCloser> segment_file;
-  segment_file.reset(File::Open(segment_path.c_str(), "w"));
-  if (!segment_file) {
-    return Status(error::FILE_FAILURE,
-                  "Cannot open file for write " + segment_path);
-  }
-
-  RETURN_IF_ERROR(segment_buffer_.WriteToFile(segment_file.get()));
-
-  if (!segment_file.release()->Close()) {
-    return Status(
-        error::FILE_FAILURE,
-        "Cannot close file " + segment_path +
-        ", possibly file permission issue or running out of disk space.");
-  }
-
-  if (listener_) {
-    listener_->OnNewSegment(segment_path,
-                            start_timestamp * timescale_scale_ +
-                                transport_stream_timestamp_offset_,
-                            duration * timescale_scale_, file_size);
-  }
-  segment_started_ = false;
-
   return Status::OK;
 }
 

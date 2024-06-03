@@ -1,4 +1,4 @@
-// Copyright 2015 Google Inc. All rights reserved.
+// Copyright 2015 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -7,15 +7,15 @@
 #ifndef MPD_BASE_MOCK_MPD_BUILDER_H_
 #define MPD_BASE_MOCK_MPD_BUILDER_H_
 
+#include <absl/synchronization/mutex.h>
 #include <gmock/gmock.h>
 
-#include "packager/base/compiler_specific.h"
-#include "packager/base/synchronization/lock.h"
-#include "packager/mpd/base/adaptation_set.h"
-#include "packager/mpd/base/content_protection_element.h"
-#include "packager/mpd/base/mpd_builder.h"
-#include "packager/mpd/base/period.h"
-#include "packager/mpd/base/representation.h"
+#include <packager/macros/classes.h>
+#include <packager/mpd/base/adaptation_set.h>
+#include <packager/mpd/base/content_protection_element.h>
+#include <packager/mpd/base/mpd_builder.h>
+#include <packager/mpd/base/period.h>
+#include <packager/mpd/base/representation.h>
 
 namespace shaka {
 
@@ -75,8 +75,11 @@ class MockRepresentation : public Representation {
                void(const ContentProtectionElement& element));
   MOCK_METHOD2(UpdateContentProtectionPssh,
                void(const std::string& drm_uuid, const std::string& pssh));
-  MOCK_METHOD3(AddNewSegment,
-               void(int64_t start_time, int64_t duration, uint64_t size));
+  MOCK_METHOD4(AddNewSegment,
+               void(int64_t start_time,
+                    int64_t duration,
+                    uint64_t size,
+                    int64_t segment_number));
   MOCK_METHOD0(SetSegmentDuration, void());
   MOCK_METHOD0(SetAvailabilityTimeOffset, void());
   MOCK_METHOD1(SetSampleDuration, void(int32_t sample_duration));

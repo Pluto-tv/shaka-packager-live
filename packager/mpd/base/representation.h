@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All rights reserved.
+// Copyright 2017 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -9,16 +9,15 @@
 #ifndef PACKAGER_MPD_BASE_REPRESENTATION_H_
 #define PACKAGER_MPD_BASE_REPRESENTATION_H_
 
-#include <stdint.h>
-
+#include <cstdint>
 #include <list>
 #include <memory>
+#include <optional>
 
-#include "packager/base/optional.h"
-#include "packager/mpd/base/bandwidth_estimator.h"
-#include "packager/mpd/base/media_info.pb.h"
-#include "packager/mpd/base/segment_info.h"
-#include "packager/mpd/base/xml/xml_node.h"
+#include <packager/mpd/base/bandwidth_estimator.h>
+#include <packager/mpd/base/media_info.pb.h>
+#include <packager/mpd/base/segment_info.h>
+#include <packager/mpd/base/xml/xml_node.h>
 
 namespace shaka {
 
@@ -100,9 +99,11 @@ class Representation {
   /// @param size of the segment in bytes. In the low latency case, this size is
   /// that of the
   ///        first chunk because the full size is not yet known.
+  /// @param segment_number is the current segment number.
   virtual void AddNewSegment(int64_t start_time,
                              int64_t duration,
-                             uint64_t size);
+                             uint64_t size,
+                             int64_t segment_number);
 
   /// Update a media segment in the Representation.
   /// In the low latency case, the segment duration will not be ready until the
@@ -125,7 +126,7 @@ class Representation {
   virtual const MediaInfo& GetMediaInfo() const;
 
   /// @return Copy of <Representation>.
-  base::Optional<xml::XmlNode> GetXml();
+  std::optional<xml::XmlNode> GetXml();
 
   /// By calling this methods, the next time GetXml() is
   /// called, the corresponding attributes will not be set.
@@ -199,7 +200,9 @@ class Representation {
 
   // Add a SegmentInfo. This function may insert an adjusted SegmentInfo if
   // |allow_approximate_segment_timeline_| is set.
-  void AddSegmentInfo(int64_t start_time, int64_t duration);
+  void AddSegmentInfo(int64_t start_time,
+                      int64_t duration,
+                      int64_t segment_number);
 
   // Update the current SegmentInfo. This method is used to update the duration
   // value after a low latency segment is complete, and the full segment
@@ -246,12 +249,10 @@ class Representation {
   const uint32_t id_;
   std::string mime_type_;
   std::string codecs_;
+  std::string supplemental_codecs_;
+  std::string supplemental_profiles_;
   BandwidthEstimator bandwidth_estimator_;
   const MpdOptions& mpd_options_;
-
-  // startNumber attribute for SegmentTemplate.
-  // Starts from 1.
-  uint32_t start_number_ = 1;
 
   // If this is not null, then Representation is responsible for calling the
   // right methods at right timings.

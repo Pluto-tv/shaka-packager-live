@@ -1,17 +1,20 @@
-// Copyright 2015 Google Inc. All rights reserved.
+// Copyright 2015 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/formats/webm/multi_segment_segmenter.h"
+#include <packager/media/formats/webm/multi_segment_segmenter.h>
 
-#include "packager/media/base/muxer_options.h"
-#include "packager/media/base/muxer_util.h"
-#include "packager/media/base/stream_info.h"
-#include "packager/media/event/muxer_listener.h"
-#include "packager/status_macros.h"
-#include "packager/third_party/libwebm/src/mkvmuxer.hpp"
+#include <absl/log/check.h>
+#include <mkvmuxer/mkvmuxer.h>
+
+#include <packager/macros/logging.h>
+#include <packager/macros/status.h>
+#include <packager/media/base/muxer_options.h>
+#include <packager/media/base/muxer_util.h>
+#include <packager/media/base/stream_info.h>
+#include <packager/media/event/muxer_listener.h>
 
 namespace shaka {
 namespace media {
@@ -24,17 +27,18 @@ MultiSegmentSegmenter::~MultiSegmentSegmenter() {}
 
 Status MultiSegmentSegmenter::FinalizeSegment(int64_t start_timestamp,
                                               int64_t duration_timestamp,
-                                              bool is_subsegment) {
+                                              bool is_subsegment,
+                                              int64_t segment_number) {
   CHECK(cluster());
   RETURN_IF_ERROR(Segmenter::FinalizeSegment(
-      start_timestamp, duration_timestamp, is_subsegment));
+      start_timestamp, duration_timestamp, is_subsegment, segment_number));
   if (!cluster()->Finalize())
     return Status(error::FILE_FAILURE, "Error finalizing segment.");
 
   if (!is_subsegment) {
     std::string segment_name =
         GetSegmentName(options().segment_template, start_timestamp,
-                       num_segment_, options().bandwidth);
+                       segment_number, options().bandwidth);
 
     // Close the file, which also does flushing, to make sure the file is
     // written before manifest is updated.
@@ -51,20 +55,20 @@ Status MultiSegmentSegmenter::FinalizeSegment(int64_t start_timestamp,
     if (muxer_listener()) {
       const uint64_t size = cluster()->Size();
       muxer_listener()->OnNewSegment(segment_name, start_timestamp,
-                                     duration_timestamp, size);
+                                     duration_timestamp, size, segment_number);
     }
     VLOG(1) << "WEBM file '" << segment_name << "' finalized.";
   }
   return Status::OK;
 }
 
-bool MultiSegmentSegmenter::GetInitRangeStartAndEnd(uint64_t* start,
-                                                    uint64_t* end) {
+bool MultiSegmentSegmenter::GetInitRangeStartAndEnd(uint64_t* /*start*/,
+                                                    uint64_t* /*end*/) {
   return false;
 }
 
-bool MultiSegmentSegmenter::GetIndexRangeStartAndEnd(uint64_t* start,
-                                                     uint64_t* end) {
+bool MultiSegmentSegmenter::GetIndexRangeStartAndEnd(uint64_t* /*start*/,
+                                                     uint64_t* /*end*/) {
   return false;
 }
 

@@ -1,25 +1,29 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2014 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/event/muxer_listener_internal.h"
+#include <packager/media/event/muxer_listener_internal.h>
 
+#include <cmath>
+
+#include <absl/log/check.h>
+#include <absl/log/log.h>
+#include <absl/strings/escaping.h>
 #include <google/protobuf/util/message_differencer.h>
-#include <math.h>
 
-#include "packager/base/logging.h"
-#include "packager/base/strings/string_number_conversions.h"
-#include "packager/base/strings/string_util.h"
-#include "packager/media/base/audio_stream_info.h"
-#include "packager/media/base/muxer_options.h"
-#include "packager/media/base/protection_system_specific_info.h"
-#include "packager/media/base/text_stream_info.h"
-#include "packager/media/base/video_stream_info.h"
-#include "packager/media/codecs/ec3_audio_util.h"
-#include "packager/media/codecs/ac4_audio_util.h"
-#include "packager/mpd/base/media_info.pb.h"
+#include <packager/macros/logging.h>
+#include <packager/media/base/audio_stream_info.h>
+#include <packager/media/base/muxer_options.h>
+#include <packager/media/base/protection_system_specific_info.h>
+#include <packager/media/base/text_stream_info.h>
+#include <packager/media/base/video_stream_info.h>
+#include <packager/media/codecs/ac4_audio_util.h>
+#include <packager/media/codecs/dts_audio_specific_config.h>
+#include <packager/media/codecs/ec3_audio_util.h>
+#include <packager/mpd/base/media_info.pb.h>
+#include <packager/utils/bytes_to_string_view.h>
 
 using ::google::protobuf::util::MessageDifferencer;
 
@@ -60,7 +64,7 @@ void SetMediaInfoContainerType(MuxerListener::ContainerType container_type,
       media_info->set_container_type(MediaInfo::CONTAINER_TEXT);
       break;
     default:
-      NOTREACHED() << "Unknown container type " << container_type;
+      NOTIMPLEMENTED() << "Unknown container type " << container_type;
   }
 }
 
@@ -69,6 +73,8 @@ void AddVideoInfo(const VideoStreamInfo* video_stream_info,
   DCHECK(video_stream_info);
   DCHECK(media_info);
   MediaInfo_VideoInfo* video_info = media_info->mutable_video_info();
+  video_info->set_supplemental_codec(video_stream_info->supplemental_codec());
+  video_info->set_compatible_brand(video_stream_info->compatible_brand());
   video_info->set_codec(video_stream_info->codec_string());
   video_info->set_width(video_stream_info->width());
   video_info->set_height(video_stream_info->height());
@@ -91,6 +97,13 @@ void AddVideoInfo(const VideoStreamInfo* video_stream_info,
   if (video_stream_info->transfer_characteristics() > 0) {
     video_info->set_transfer_characteristics(
         video_stream_info->transfer_characteristics());
+  }
+  if (video_stream_info->color_primaries() > 0) {
+    video_info->set_color_primaries(video_stream_info->color_primaries());
+  }
+  if (video_stream_info->matrix_coefficients() > 0) {
+    video_info->set_matrix_coefficients(
+        video_stream_info->matrix_coefficients());
   }
 }
 
@@ -161,6 +174,16 @@ void AddAudioInfo(const AudioStreamInfo* audio_stream_info,
     }
     codec_data->set_ac4_ims_flag(ac4_ims_flag);
     codec_data->set_ac4_cbi_flag(ac4_cbi_flag);
+  }
+
+  if (audio_stream_info->codec() == kCodecDTSX) {
+    auto* codec_data = audio_info->mutable_codec_specific_data();
+    uint32_t channel_mask;
+    if (!GetDTSXChannelMask(codec_config, channel_mask)) {
+      LOG(ERROR) << "Failed to parse DTSX channel mask.";
+      return;
+    }
+    codec_data->set_channel_mask(channel_mask);
   }
 }
 
@@ -309,8 +332,8 @@ void SetContentProtectionFields(
 
 std::string CreateUUIDString(const std::vector<uint8_t>& data) {
   DCHECK_EQ(16u, data.size());
-  std::string uuid =
-      base::ToLowerASCII(base::HexEncode(data.data(), data.size()));
+  std::string uuid = absl::AsciiStrToLower(
+      absl::BytesToHexString(byte_vector_to_string_view(data)));
   uuid.insert(20, "-");
   uuid.insert(16, "-");
   uuid.insert(12, "-");

@@ -1,56 +1,48 @@
-// Copyright 2017 Google Inc. All rights reserved.
+// Copyright 2017 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/packager.h"
+#include <packager/packager.h>
 
 #include <algorithm>
+#include <chrono>
+#include <optional>
 
-#include "packager/app/job_manager.h"
-#include "packager/app/libcrypto_threading.h"
-#include "packager/app/muxer_factory.h"
-#include "packager/app/packager_util.h"
-#include "packager/app/single_thread_job_manager.h"
-#include "packager/app/stream_descriptor.h"
-#include "packager/base/at_exit.h"
-#include "packager/base/files/file_path.h"
-#include "packager/base/logging.h"
-#include "packager/base/optional.h"
-#include "packager/base/path_service.h"
-#include "packager/base/strings/string_util.h"
-#include "packager/base/strings/stringprintf.h"
-#include "packager/base/threading/simple_thread.h"
-#include "packager/base/time/clock.h"
-#include "packager/file/file.h"
-#include "packager/hls/base/hls_notifier.h"
-#include "packager/hls/base/simple_hls_notifier.h"
-#include "packager/media/base/cc_stream_filter.h"
-#include "packager/media/base/container_names.h"
-#include "packager/media/base/fourccs.h"
-#include "packager/media/base/key_source.h"
-#include "packager/media/base/language_utils.h"
-#include "packager/media/base/muxer.h"
-#include "packager/media/base/muxer_options.h"
-#include "packager/media/base/muxer_util.h"
-#include "packager/media/chunking/chunking_handler.h"
-#include "packager/media/chunking/cue_alignment_handler.h"
-#include "packager/media/chunking/text_chunker.h"
-#include "packager/media/crypto/encryption_handler.h"
-#include "packager/media/demuxer/demuxer.h"
-#include "packager/media/event/muxer_listener_factory.h"
-#include "packager/media/event/vod_media_info_dump_muxer_listener.h"
-#include "packager/media/formats/ttml/ttml_to_mp4_handler.h"
-#include "packager/media/formats/webvtt/text_padder.h"
-#include "packager/media/formats/webvtt/webvtt_to_mp4_handler.h"
-#include "packager/media/replicator/replicator.h"
-#include "packager/media/trick_play/trick_play_handler.h"
-#include "packager/mpd/base/media_info.pb.h"
-#include "packager/mpd/base/mpd_builder.h"
-#include "packager/mpd/base/simple_mpd_notifier.h"
-#include "packager/status_macros.h"
-#include "packager/version/version.h"
+#include <absl/log/check.h>
+#include <absl/log/log.h>
+#include <absl/strings/match.h>
+#include <absl/strings/str_format.h>
+
+#include <packager/app/job_manager.h>
+#include <packager/app/muxer_factory.h>
+#include <packager/app/packager_util.h>
+#include <packager/app/single_thread_job_manager.h>
+#include <packager/file.h>
+#include <packager/hls/base/hls_notifier.h>
+#include <packager/hls/base/simple_hls_notifier.h>
+#include <packager/macros/logging.h>
+#include <packager/macros/status.h>
+#include <packager/media/base/cc_stream_filter.h>
+#include <packager/media/base/language_utils.h>
+#include <packager/media/base/muxer.h>
+#include <packager/media/base/muxer_util.h>
+#include <packager/media/chunking/chunking_handler.h>
+#include <packager/media/chunking/cue_alignment_handler.h>
+#include <packager/media/chunking/text_chunker.h>
+#include <packager/media/crypto/encryption_handler.h>
+#include <packager/media/demuxer/demuxer.h>
+#include <packager/media/event/muxer_listener_factory.h>
+#include <packager/media/event/vod_media_info_dump_muxer_listener.h>
+#include <packager/media/formats/ttml/ttml_to_mp4_handler.h>
+#include <packager/media/formats/webvtt/text_padder.h>
+#include <packager/media/formats/webvtt/webvtt_to_mp4_handler.h>
+#include <packager/media/replicator/replicator.h>
+#include <packager/media/trick_play/trick_play_handler.h>
+#include <packager/mpd/base/media_info.pb.h>
+#include <packager/mpd/base/simple_mpd_notifier.h>
+#include <packager/version/version.h>
 
 namespace shaka {
 
@@ -67,8 +59,6 @@ namespace {
 
 const char kMediaInfoSuffix[] = ".media_info";
 
-const int64_t kDefaultTextZeroBiasMs = 10 * 60 * 1000;  // 10 minutes
-
 MuxerListenerFactory::StreamData ToMuxerListenerData(
     const StreamDescriptor& stream) {
   MuxerListenerFactory::StreamData data;
@@ -79,11 +69,15 @@ MuxerListenerFactory::StreamData ToMuxerListenerData(
   data.hls_playlist_name = stream.hls_playlist_name;
   data.hls_iframe_playlist_name = stream.hls_iframe_playlist_name;
   data.hls_characteristics = stream.hls_characteristics;
+  data.forced_subtitle = stream.forced_subtitle;
   data.hls_only = stream.hls_only;
 
   data.dash_accessiblities = stream.dash_accessiblities;
   data.dash_roles = stream.dash_roles;
   data.dash_only = stream.dash_only;
+  data.index = stream.index;
+  data.dash_label = stream.dash_label;
+  data.input_format = stream.input_format;
   return data;
 };
 
@@ -129,8 +123,8 @@ MediaContainerName GetOutputFormat(const StreamDescriptor& descriptor) {
     return format;
   }
 
-  base::Optional<MediaContainerName> format_from_output;
-  base::Optional<MediaContainerName> format_from_segment;
+  std::optional<MediaContainerName> format_from_output;
+  std::optional<MediaContainerName> format_from_segment;
   if (!descriptor.output.empty()) {
     format_from_output = DetermineContainerFromFileName(descriptor.output);
     if (format_from_output.value() == CONTAINER_UNKNOWN) {
@@ -169,12 +163,10 @@ MediaContainerName GetTextOutputCodec(const StreamDescriptor& descriptor) {
     return output_container;
 
   const auto input_container = DetermineContainerFromFileName(descriptor.input);
-  if (base::EqualsCaseInsensitiveASCII(descriptor.output_format, "vtt+mp4") ||
-      base::EqualsCaseInsensitiveASCII(descriptor.output_format,
-                                       "webvtt+mp4")) {
+  if (absl::AsciiStrToLower(descriptor.output_format) == "vtt+mp4" ||
+      absl::AsciiStrToLower(descriptor.output_format) == "webvtt+mp4") {
     return CONTAINER_WEBVTT;
-  } else if (!base::EqualsCaseInsensitiveASCII(descriptor.output_format,
-                                               "ttml+mp4") &&
+  } else if (absl::AsciiStrToLower(descriptor.output_format) != "ttml+mp4" &&
              input_container == CONTAINER_WEBVTT) {
     // With WebVTT input, default to WebVTT output.
     return CONTAINER_WEBVTT;
@@ -187,9 +179,9 @@ MediaContainerName GetTextOutputCodec(const StreamDescriptor& descriptor) {
 bool IsTextStream(const StreamDescriptor& stream) {
   if (stream.stream_selector == "text")
     return true;
-  if (base::EqualsCaseInsensitiveASCII(stream.output_format, "vtt+mp4") ||
-      base::EqualsCaseInsensitiveASCII(stream.output_format, "webvtt+mp4") ||
-      base::EqualsCaseInsensitiveASCII(stream.output_format, "ttml+mp4")) {
+  if (absl::AsciiStrToLower(stream.output_format) == "vtt+mp4" ||
+      absl::AsciiStrToLower(stream.output_format) == "webvtt+mp4" ||
+      absl::AsciiStrToLower(stream.output_format) == "ttml+mp4") {
     return true;
   }
 
@@ -233,33 +225,17 @@ Status ValidateStreamDescriptor(bool dump_stream_info,
   if (output_format == CONTAINER_UNKNOWN) {
     return Status(error::INVALID_ARGUMENT, "Unsupported output format.");
   }
-  if (output_format == MediaContainerName::CONTAINER_MPEG2TS) {
-    if (stream.segment_template.empty()) {
-      return Status(
-          error::INVALID_ARGUMENT,
-          "Please specify 'segment_template'. Single file TS output is "
-          "not supported.");
-    }
 
-    // Right now the init segment is saved in |output| for multi-segment
-    // content. However, for TS all segments must be self-initializing so
-    // there cannot be an init segment.
-    if (stream.output.length()) {
-      return Status(error::INVALID_ARGUMENT,
-                    "All TS segments must be self-initializing. Stream "
-                    "descriptors 'output' or 'init_segment' are not allowed.");
-    }
-  } else if (output_format == CONTAINER_WEBVTT ||
-             output_format == CONTAINER_TTML ||
-             output_format == CONTAINER_AAC || output_format == CONTAINER_MP3 ||
-             output_format == CONTAINER_AC3 ||
-             output_format == CONTAINER_EAC3) {
+  if (output_format == CONTAINER_WEBVTT || output_format == CONTAINER_TTML ||
+      output_format == CONTAINER_AAC || output_format == CONTAINER_MP3 ||
+      output_format == CONTAINER_AC3 || output_format == CONTAINER_EAC3 ||
+      output_format == CONTAINER_MPEG2TS) {
     // There is no need for an init segment when outputting because there is no
     // initialization data.
     if (stream.segment_template.length() && stream.output.length()) {
       return Status(
           error::INVALID_ARGUMENT,
-          "Segmented subtitles or PackedAudio output cannot have an init "
+          "Segmented subtitles, PackedAudio or TS output cannot have an init "
           "segment.  Do not specify stream descriptors 'output' or "
           "'init_segment' when using 'segment_template'.");
     }
@@ -299,6 +275,11 @@ Status ValidateParams(const PackagingParams& packaging_params,
                   "subsegment_sap_aligned to true is not allowed.");
   }
 
+  if (packaging_params.chunking_params.start_segment_number < 0) {
+    return Status(error::INVALID_ARGUMENT,
+                  "Negative --start_segment_number is not allowed.");
+  }
+
   if (stream_descriptors.empty()) {
     return Status(error::INVALID_ARGUMENT,
                   "Stream descriptors cannot be empty.");
@@ -321,8 +302,7 @@ Status ValidateParams(const PackagingParams& packaging_params,
     RETURN_IF_ERROR(ValidateStreamDescriptor(
         packaging_params.test_params.dump_stream_info, descriptor));
 
-    if (base::StartsWith(descriptor.input, "udp://",
-                         base::CompareCase::SENSITIVE)) {
+    if (absl::StartsWith(descriptor.input, "udp://")) {
       const HlsParams& hls_params = packaging_params.hls_params;
       if (!hls_params.master_playlist_output.empty() &&
           hls_params.playlist_type == HlsPlaylistType::kVod) {
@@ -419,9 +399,11 @@ bool StreamDescriptorCompareFn(const StreamDescriptor& a,
 
 // A fake clock that always return time 0 (epoch). Should only be used for
 // testing.
-class FakeClock : public base::Clock {
+class FakeClock : public Clock {
  public:
-  base::Time Now() override { return base::Time(); }
+  time_point now() noexcept override {
+    return std::chrono::system_clock::time_point(std::chrono::seconds(0));
+  }
 };
 
 bool StreamInfoToTextMediaInfo(const StreamDescriptor& stream_descriptor,
@@ -439,6 +421,10 @@ bool StreamInfoToTextMediaInfo(const StreamDescriptor& stream_descriptor,
   const std::string& language = stream_descriptor.language;
   if (!language.empty()) {
     text_info->set_language(language);
+  }
+
+  if (stream_descriptor.index.has_value()) {
+    text_media_info->set_index(stream_descriptor.index.value());
   }
 
   text_media_info->set_media_file_name(stream_descriptor.output);
@@ -471,6 +457,7 @@ Status CreateDemuxer(const StreamDescriptor& stream,
                      std::shared_ptr<Demuxer>* new_demuxer) {
   std::shared_ptr<Demuxer> demuxer = std::make_shared<Demuxer>(stream.input);
   demuxer->set_dump_stream_info(packaging_params.test_params.dump_stream_info);
+  demuxer->set_input_format(stream.input_format);
 
   if (packaging_params.decryption_params.key_provider != KeyProvider::kNone) {
     std::unique_ptr<KeySource> decryption_key_source(
@@ -535,8 +522,8 @@ std::unique_ptr<MediaHandler> CreateTextChunker(
     const ChunkingParams& chunking_params) {
   const float segment_length_in_seconds =
       chunking_params.segment_duration_in_seconds;
-  return std::unique_ptr<MediaHandler>(
-      new TextChunker(segment_length_in_seconds));
+  return std::unique_ptr<MediaHandler>(new TextChunker(
+      segment_length_in_seconds, chunking_params.start_segment_number));
 }
 
 Status CreateTtmlJobs(
@@ -568,7 +555,7 @@ Status CreateTtmlJobs(
     if (!stream.output.empty()) {
       if (!File::Copy(stream.input.c_str(), stream.output.c_str())) {
         std::string error;
-        base::StringAppendF(
+        absl::StrAppendFormat(
             &error, "Failed to copy the input file (%s) to output file (%s).",
             stream.input.c_str(), stream.output.c_str());
         return Status(error::FILE_FAILURE, error);
@@ -671,8 +658,8 @@ Status CreateAudioVideoJobs(
 
       std::vector<std::shared_ptr<MediaHandler>> handlers;
       if (is_text) {
-        handlers.emplace_back(
-            std::make_shared<TextPadder>(kDefaultTextZeroBiasMs));
+        handlers.emplace_back(std::make_shared<TextPadder>(
+            packaging_params.default_text_zero_bias_ms));
       }
       if (sync_points) {
         handlers.emplace_back(cue_aligner);
@@ -818,7 +805,7 @@ Status CreateAllJobs(const std::vector<StreamDescriptor>& stream_descriptors,
 }  // namespace media
 
 struct Packager::PackagerInternal {
-  media::FakeClock fake_clock;
+  std::shared_ptr<media::FakeClock> fake_clock;
   std::unique_ptr<KeySource> encryption_key_source;
   std::unique_ptr<MpdNotifier> mpd_notifier;
   std::unique_ptr<hls::HlsNotifier> hls_notifier;
@@ -833,10 +820,6 @@ Packager::~Packager() {}
 Status Packager::Initialize(
     const PackagingParams& packaging_params,
     const std::vector<StreamDescriptor>& stream_descriptors) {
-  // Needed by base::WorkedPool used in ThreadedIoFile.
-  static base::AtExitManager exit;
-  static media::LibcryptoThreading libcrypto_threading;
-
   if (internal_)
     return Status(error::INVALID_ARGUMENT, "Already initialized.");
 
@@ -955,7 +938,8 @@ Status Packager::Initialize(
 
   media::MuxerFactory muxer_factory(packaging_params);
   if (packaging_params.test_params.inject_fake_clock) {
-    muxer_factory.OverrideClock(&internal->fake_clock);
+    internal->fake_clock.reset(new media::FakeClock());
+    muxer_factory.OverrideClock(internal->fake_clock);
   }
 
   media::MuxerListenerFactory muxer_listener_factory(

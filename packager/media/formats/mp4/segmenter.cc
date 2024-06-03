@@ -1,26 +1,28 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2014 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#include "packager/media/formats/mp4/segmenter.h"
+#include <packager/media/formats/mp4/segmenter.h>
 
 #include <algorithm>
 
-#include "packager/base/logging.h"
-#include "packager/media/base/buffer_writer.h"
-#include "packager/media/base/id3_tag.h"
-#include "packager/media/base/media_sample.h"
-#include "packager/media/base/muxer_options.h"
-#include "packager/media/base/muxer_util.h"
-#include "packager/media/base/stream_info.h"
-#include "packager/media/chunking/chunking_handler.h"
-#include "packager/media/event/progress_listener.h"
-#include "packager/media/formats/mp4/box_definitions.h"
-#include "packager/media/formats/mp4/fragmenter.h"
-#include "packager/media/formats/mp4/key_frame_info.h"
-#include "packager/version/version.h"
+#include <absl/log/check.h>
+#include <absl/log/log.h>
+
+#include <packager/media/base/buffer_writer.h>
+#include <packager/media/base/id3_tag.h>
+#include <packager/media/base/media_sample.h>
+#include <packager/media/base/muxer_options.h>
+#include <packager/media/base/muxer_util.h>
+#include <packager/media/base/stream_info.h>
+#include <packager/media/chunking/chunking_handler.h>
+#include <packager/media/event/progress_listener.h>
+#include <packager/media/formats/mp4/box_definitions.h>
+#include <packager/media/formats/mp4/fragmenter.h>
+#include <packager/media/formats/mp4/key_frame_info.h>
+#include <packager/version/version.h>
 
 namespace shaka {
 namespace media {
@@ -139,8 +141,12 @@ Status Segmenter::AddSample(size_t stream_id, const MediaSample& sample) {
   if (!status.ok())
     return status;
 
-  if (sample_duration_ == 0)
-    sample_duration_ = sample.duration();
+  // The duration of the first sample may have been adjusted, so use
+  // the duration of the second sample instead.
+  if (num_samples_ < 2) {
+    sample_durations_[num_samples_] = sample.duration();
+    num_samples_++;
+  }
   stream_durations_[stream_id] += sample.duration();
   return Status::OK;
 }
@@ -154,9 +160,9 @@ Status Segmenter::FinalizeSegment(size_t stream_id,
   }
 
   DCHECK_LT(stream_id, fragmenters_.size());
-  Fragmenter* fragmenter = fragmenters_[stream_id].get();
-  DCHECK(fragmenter);
-  Status status = fragmenter->FinalizeFragment();
+  Fragmenter* specified_fragmenter = fragmenters_[stream_id].get();
+  DCHECK(specified_fragmenter);
+  Status status = specified_fragmenter->FinalizeFragment();
   if (!status.ok())
     return status;
 
@@ -228,14 +234,15 @@ Status Segmenter::FinalizeSegment(size_t stream_id,
 
   if (segment_info.is_chunk) {
     // Finalize the completed chunk for the LL-DASH case.
-    Status status = DoFinalizeChunk();
+    status = DoFinalizeChunk(segment_info.segment_number);
     if (!status.ok())
       return status;
   }
 
   if (!segment_info.is_subsegment || segment_info.is_final_chunk_in_seg) {
     // Finalize the segment.
-    Status status = DoFinalizeSegment();
+    status = DoFinalizeSegment(segment_info.segment_number);
+
     // Reset segment information to initial state.
     sidx_->references.clear();
     key_frame_infos_.clear();

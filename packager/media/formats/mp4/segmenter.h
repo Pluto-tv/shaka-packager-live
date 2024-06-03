@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2014 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -9,13 +9,14 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <vector>
 
-#include "packager/base/optional.h"
-#include "packager/media/base/fourccs.h"
-#include "packager/media/base/range.h"
-#include "packager/media/formats/mp4/box_definitions.h"
-#include "packager/status.h"
+#include <packager/macros/classes.h>
+#include <packager/media/base/fourccs.h>
+#include <packager/media/base/range.h>
+#include <packager/media/formats/mp4/box_definitions.h>
+#include <packager/status.h>
 
 namespace shaka {
 namespace media {
@@ -77,7 +78,7 @@ class Segmenter {
   Status FinalizeSegment(size_t stream_id, const SegmentInfo& segment_info);
 
   // TODO(rkuroiwa): Change these Get*Range() methods to return
-  // base::Optional<Range> as well.
+  // std::optional<Range> as well.
   /// @return true if there is an initialization range, while setting @a offset
   ///         and @a size; or false if initialization range does not apply.
   virtual bool GetInitRange(size_t* offset, size_t* size) = 0;
@@ -98,7 +99,9 @@ class Segmenter {
 
   /// @return The sample duration in the timescale of the media.
   ///         Returns 0 if no samples are added yet.
-  int32_t sample_duration() const { return sample_duration_; }
+  int64_t sample_duration() const {
+    return sample_durations_[num_samples_ < 2 ? 0 : 1];
+  }
 
  protected:
   /// Update segmentation progress using ProgressListener.
@@ -124,9 +127,8 @@ class Segmenter {
  private:
   virtual Status DoInitialize() = 0;
   virtual Status DoFinalize() = 0;
-  virtual Status DoFinalizeSegment() = 0;
-
-  virtual Status DoFinalizeChunk() { return Status::OK; }
+  virtual Status DoFinalizeSegment(int64_t segment_number) = 0;
+  virtual Status DoFinalizeChunk(int64_t segment_number) { return Status::OK; }
 
   uint32_t GetReferenceStreamId();
 
@@ -146,7 +148,8 @@ class Segmenter {
   ProgressListener* progress_listener_ = nullptr;
   uint64_t progress_target_ = 0u;
   uint64_t accumulated_progress_ = 0u;
-  int32_t sample_duration_ = 0;
+  int64_t sample_durations_[2] = {0, 0};
+  size_t num_samples_ = 0;
   std::vector<uint64_t> stream_durations_;
   std::vector<KeyFrameInfo> key_frame_infos_;
 

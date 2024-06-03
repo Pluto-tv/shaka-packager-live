@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All rights reserved.
+// Copyright 2017 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -11,11 +11,11 @@
 
 #include <list>
 #include <map>
+#include <optional>
 
-#include "packager/base/optional.h"
-#include "packager/mpd/base/adaptation_set.h"
-#include "packager/mpd/base/media_info.pb.h"
-#include "packager/mpd/base/xml/xml_node.h"
+#include <packager/mpd/base/adaptation_set.h>
+#include <packager/mpd/base/media_info.pb.h>
+#include <packager/mpd/base/xml/xml_node.h>
 
 namespace shaka {
 
@@ -46,7 +46,7 @@ class Period {
   /// Generates <Period> xml element with its child AdaptationSet elements.
   /// @return On success returns a non-NULL scoped_xml_ptr. Otherwise returns a
   ///         NULL scoped_xml_ptr.
-  base::Optional<xml::XmlNode> GetXml(bool output_period_duration);
+  std::optional<xml::XmlNode> GetXml(bool output_period_duration);
 
   /// @return The list of AdaptationSets in this Period.
   const std::list<AdaptationSet*> GetAdaptationSets() const;
@@ -133,33 +133,6 @@ class Period {
   // grouping key. These AdaptationSets still have not found reference
   // AdaptationSet.
   std::map<std::string, std::list<AdaptationSet*>> trickplay_cache_;
-
-  // Tracks ProtectedContent in AdaptationSet.
-  class ProtectedAdaptationSetMap {
-   public:
-    ProtectedAdaptationSetMap() = default;
-    // Register the |adaptation_set| with associated |media_info| in the map.
-    void Register(const AdaptationSet& adaptation_set,
-                  const MediaInfo& media_info);
-    // Check if the protected content associated with |adaptation_set| matches
-    // with the one in |media_info|.
-    bool Match(const AdaptationSet& adaptation_set,
-               const MediaInfo& media_info,
-               bool content_protection_in_adaptation_set);
-    // Check if the two adaptation sets are switchable.
-    bool Switchable(const AdaptationSet& adaptation_set_a,
-                    const AdaptationSet& adaptation_set_b);
-
-   private:
-    ProtectedAdaptationSetMap(const ProtectedAdaptationSetMap&) = delete;
-    ProtectedAdaptationSetMap& operator=(const ProtectedAdaptationSetMap&) =
-        delete;
-
-    // AdaptationSet => ProtectedContent map.
-    std::map<const AdaptationSet*, MediaInfo::ProtectedContent>
-        protected_content_map_;
-  };
-  ProtectedAdaptationSetMap protected_adaptation_set_map_;
 };
 
 }  // namespace shaka
