@@ -38,7 +38,7 @@ bool IsVideoCodec(Codec codec) {
 }  // namespace
 
 TsSegmenter::TsSegmenter(const MuxerOptions& options, MuxerListener* listener)
-    : muxer_options_(options), 
+    : muxer_options_(options),
       listener_(listener),
       transport_stream_timestamp_offset_(
           options.transport_stream_timestamp_offset_ms * kTsTimescale / 1000),

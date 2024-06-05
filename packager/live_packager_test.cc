@@ -10,7 +10,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <fstream>
 
 #include <absl/log/log.h>
 #include <absl/strings/str_format.h>

@@ -23,7 +23,7 @@ TextChunker::TextChunker(double segment_duration_in_seconds,
     : segment_duration_in_seconds_(segment_duration_in_seconds),
       segment_start_(timed_text_decode_time),
       segment_number_(start_segment_number),
-      adjust_sample_boundaries_(adjust_sample_boundaries){};
+      adjust_sample_boundaries_(adjust_sample_boundaries) {};
 
 Status TextChunker::Process(std::unique_ptr<StreamData> data) {
   switch (data->stream_data_type) {

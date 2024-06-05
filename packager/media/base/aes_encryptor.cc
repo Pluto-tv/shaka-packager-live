@@ -204,7 +204,6 @@ bool AesCbcEncryptor::CryptInternal(const uint8_t* plaintext,
            residual_ciphertext_block - AES_BLOCK_SIZE, residual_block_size);
     memcpy(residual_ciphertext_block - AES_BLOCK_SIZE, residual_block.data(),
            AES_BLOCK_SIZE);
-
   }
   return true;
 }
