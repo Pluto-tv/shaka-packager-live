@@ -685,7 +685,8 @@ class PackagerFunctionalTest(PackagerAppTest):
 
     assert_regex(
         self.packager.Version(), '^packager(.exe)? version '
-        r'((?P<tag>[A-Za-z\d\.-]+)-)?(?P<hash>[a-f\d]+)-(debug|release)[\r\n]+.*$')
+        r'((?P<tag>[A-Za-z\d\.-]+)-)?(?P<hash>[a-f\d]+)'
+        r'-(debug|release)[\r\n]+.*$')
 
 
   def testDumpStreamInfo(self):
