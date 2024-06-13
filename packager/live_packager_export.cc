@@ -1,8 +1,10 @@
+#include <cstring>
+#include <memory>
+#include <mutex>
+
 #include <packager/live_packager.h>
 #include <packager/live_packager_export.h>
-#include <cstring>
-
-#include <memory>
+#include <packager/live_packager_logging.h>
 
 struct LivePackager_instance_s {
   std::unique_ptr<shaka::LivePackager> inner;
@@ -125,4 +127,82 @@ LivePackagerStatus_t livepackager_package_timedtext(LivePackager_t lp,
 
   dest->inner->AppendData(out.SegmentData(), out.SegmentSize());
   return LivePackagerStatus_s{nullptr, status.ok()};
+}
+
+//
+// Logging
+//
+static std::unique_ptr<shaka::pluto::live::LogCollectorSink> custom_sink;
+static std::mutex sink_mutex;
+
+void lp_initializeLog(LogSeverity_t sev) {
+  shaka::pluto::live::InitializeLog(static_cast<absl::LogSeverityAtLeast>(sev));
+}
+
+void lp_installCustomLogSink() {
+  std::lock_guard<std::mutex> lock(sink_mutex);
+  if (!custom_sink) {
+    custom_sink = std::make_unique<shaka::pluto::live::LogCollectorSink>();
+    shaka::pluto::live::InstallCustomLogSink(*custom_sink);
+  }
+}
+
+void lp_removeCustomLogSink() {
+  std::lock_guard<std::mutex> lock(sink_mutex);
+  if (custom_sink) {
+    shaka::pluto::live::RemoveCustomLogSink(*custom_sink);
+    custom_sink.reset();
+  }
+}
+
+char** lp_getErrorMessages(int* num_messages) {
+  std::lock_guard<std::mutex> lock(sink_mutex);
+  *num_messages = 0;
+  if (!custom_sink) {
+    return nullptr;
+  }
+
+  const auto& messages = custom_sink->GetMessages();
+
+  if (messages.empty()) {
+    return nullptr;
+  }
+
+  char** out_messages = (char**)malloc(messages.size() * sizeof(char*));
+  if (!out_messages) {
+    return nullptr;
+  }
+
+  for (size_t i(0); i < messages.size(); ++i) {
+    const auto& msg = messages[i];
+    out_messages[i] = strdup(msg.c_str());
+
+    if (!out_messages[i]) {
+      // free memory allocated for earlier strings
+      for (size_t j(0); j < i; ++j) {
+        free(out_messages[j]);
+      }
+      free(out_messages);
+      return nullptr;
+    }
+  }
+
+  *num_messages = messages.size();
+  return out_messages;
+}
+
+void lp_freeErrorMessages(char** messages, int num_messages) {
+  if (!messages) {
+    return;
+  }
+
+  for (int i(0); i < num_messages; ++i) {
+    if (messages[i]) {
+      free(messages[i]);
+      messages[i] = nullptr;
+    }
+  }
+
+  free(messages);
+  messages = nullptr;
 }

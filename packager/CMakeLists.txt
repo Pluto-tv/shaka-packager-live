@@ -99,6 +99,8 @@ set(libpackager_sources
   packager.cc
   live_packager.cc
   live_packager_export.cc
+  live_packager_logging.h
+  live_packager_logging.cc
   ../include/packager/packager.h
   ../include/packager/live_packager.h
   ../include/packager/live_packager_export.h
@@ -218,6 +220,11 @@ target_link_libraries(packager_test
 
 # Disabled by default, otherwise build live packager unit tests if BUILD_LIVE_TEST is on.
 if(BUILD_LIVE_TEST AND NOT MSVC)
+  set(IS_DEBUG_BUILD CMAKE_BUILD_TYPE STREQUAL "Debug")
+  # Indication to the code that this is a debug build
+  if (${IS_DEBUG_BUILD})
+    add_compile_definitions(__DEBUG__)
+  endif ()
   add_executable(live_packager_test
           live_packager_test.cc
   )

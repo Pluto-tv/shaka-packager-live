@@ -17,6 +17,7 @@
 #include <packager/crypto_params.h>
 #include <packager/file.h>
 #include <packager/live_packager.h>
+#include <packager/live_packager_export.h>
 #include <packager/media/base/aes_decryptor.h>
 #include <packager/media/base/aes_pattern_cryptor.h>
 #include <packager/media/base/byte_queue.h>
@@ -53,6 +54,7 @@ const uint8_t kIv[]{
 };
 
 const char kKeyIdHex[] = "00000000621f2afe7ab2c868d5fd2e2e";
+const char kBogusKeyIdHex[] = "A0000000621f2afe7ab2c868d5fd2e2e";
 const char kKeyHex[] = "1af987fa084ff3c0f4ad35a6bdab98e2";
 
 std::vector<uint8_t> HexStringToVector(const std::string& hex_str) {
@@ -1534,6 +1536,58 @@ INSTANTIATE_TEST_CASE_P(
             0,
         }));
 
+TEST(LivePackagerLoggingTest, InvalidDecryptKeyID) {
+  lp_initializeLog(WARNING);
+  lp_installCustomLogSink();
+
+  std::vector<uint8_t> init_segment_buffer =
+      ReadTestDataFile("encrypted/prd_data/init.mp4");
+  ASSERT_FALSE(init_segment_buffer.empty());
+
+  std::string segment_num = absl::StrFormat("encrypted/prd_data/%05d.m4s", 1);
+  std::vector<uint8_t> segment_buffer = ReadTestDataFile(segment_num);
+  ASSERT_FALSE(segment_buffer.empty());
+
+  SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
+  SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+
+  LiveConfig live_config;
+  live_config.format = LiveConfig::OutputFormat::FMP4;
+  live_config.track_type = LiveConfig::TrackType::VIDEO;
+  live_config.decryption_key = HexStringToVector(kKeyHex);
+  live_config.decryption_key_id = HexStringToVector(kBogusKeyIdHex);
+  live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
+
+  LivePackager live_packager(live_config);
+  SegmentBuffer out;
+  ASSERT_NE(Status::OK, live_packager.Package(init_seg, media_seg, out));
+
+#ifdef __DEBUG__
+  const std::vector<std::string> expected_errors = {
+      "(ERROR): Error retrieving decryption key: 14 (INTERNAL_ERROR): Key for "
+      "key_id=00000000621f2afe7ab2c868d5fd2e2e was not found.",
+      "(ERROR): Cannot decrypt samples.",
+      "(ERROR): Error while parsing MP4",
+  };
+#else
+  const std::vector<std::string> expected_errors = {
+      "(ERROR): Error retrieving decryption key: 14 (INTERNAL_ERROR): Key for "
+      "key_id=00000000621f2afe7ab2c868d5fd2e2e was not found.",
+      "(ERROR): Cannot decrypt samples.",
+  };
+#endif
+
+  int num_errors = 0;
+  const auto messages = lp_getErrorMessages(&num_errors);
+  ASSERT_EQ(expected_errors.size(), num_errors);
+  for (int i(0); i < num_errors; ++i) {
+    ASSERT_NE(nullptr, messages[i]);
+    EXPECT_EQ(expected_errors[i], std::string(messages[i]));
+  }
+  lp_freeErrorMessages(messages, num_errors);
+  lp_removeCustomLogSink();
+}
+
 // Exercise edge case found in webvtt_to_mp4_handler for large decode times.
 // Issue was a narrow conversion from int64_t to int (32 bit) for segment_start.
 // Valid decode times can be int64_t.
@@ -1566,3 +1620,9 @@ TEST_F(LivePackagerBaseTest, TestCmafTimedText) {
 }
 
 }  // namespace shaka
+
+int main(int argc, char** argv) {
+  absl::SetMinLogLevel(absl::LogSeverityAtLeast::kWarning);
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
