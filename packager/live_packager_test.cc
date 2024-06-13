@@ -1562,11 +1562,20 @@ TEST(LivePackagerLoggingTest, InvalidDecryptKeyID) {
   SegmentBuffer out;
   ASSERT_NE(Status::OK, live_packager.Package(init_seg, media_seg, out));
 
+#ifdef __DEBUG__
   const std::vector<std::string> expected_errors = {
-    "(ERROR): Error retrieving decryption key: 14 (INTERNAL_ERROR): Key for key_id=00000000621f2afe7ab2c868d5fd2e2e was not found.",
-    "(ERROR): Cannot decrypt samples.",
-    "(ERROR): Error while parsing MP4",
+      "(ERROR): Error retrieving decryption key: 14 (INTERNAL_ERROR): Key for "
+      "key_id=00000000621f2afe7ab2c868d5fd2e2e was not found.",
+      "(ERROR): Cannot decrypt samples.",
+      "(ERROR): Error while parsing MP4",
   };
+#else
+  const std::vector<std::string> expected_errors = {
+      "(ERROR): Error retrieving decryption key: 14 (INTERNAL_ERROR): Key for "
+      "key_id=00000000621f2afe7ab2c868d5fd2e2e was not found.",
+      "(ERROR): Cannot decrypt samples.",
+  };
+#endif
 
   int num_errors = 0;
   const auto messages = lp_getErrorMessages(&num_errors);

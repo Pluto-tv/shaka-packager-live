@@ -138,7 +138,6 @@ typedef enum LogSeverity {
   FATAL = 3,
 } LogSeverity_t;
 
-
 /// Enable general logging
 void lp_initializeLog(LogSeverity_t sev);
 /// Capture detailed logging messages
