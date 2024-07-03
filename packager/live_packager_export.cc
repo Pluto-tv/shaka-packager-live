@@ -191,6 +191,12 @@ char** lp_getErrorMessages(int* num_messages) {
   return out_messages;
 }
 
+void lp_flushMessage() {
+  if (custom_sink) {
+    custom_sink->Flush();
+  }
+}
+
 void lp_freeErrorMessages(char** messages, int num_messages) {
   if (!messages) {
     return;

@@ -15,6 +15,8 @@ class LogCollectorSink : public absl::LogSink {
 
   virtual void Send(const absl::LogEntry& entry) override;
 
+  virtual void Flush() override;
+
   const std::vector<std::string>& GetMessages() const;
 
  private:

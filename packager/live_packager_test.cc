@@ -1562,7 +1562,7 @@ TEST(LivePackagerLoggingTest, InvalidDecryptKeyID) {
   SegmentBuffer out;
   ASSERT_NE(Status::OK, live_packager.Package(init_seg, media_seg, out));
 
-#ifdef __DEBUG__
+#ifdef NDEBUG
   const std::vector<std::string> expected_errors = {
       "(ERROR): Error retrieving decryption key: 14 (INTERNAL_ERROR): Key for "
       "key_id=00000000621f2afe7ab2c868d5fd2e2e was not found.",
@@ -1579,12 +1579,18 @@ TEST(LivePackagerLoggingTest, InvalidDecryptKeyID) {
 
   int num_errors = 0;
   const auto messages = lp_getErrorMessages(&num_errors);
+  ASSERT_TRUE(messages);
   ASSERT_EQ(expected_errors.size(), num_errors);
   for (int i(0); i < num_errors; ++i) {
     ASSERT_NE(nullptr, messages[i]);
     EXPECT_EQ(expected_errors[i], std::string(messages[i]));
   }
   lp_freeErrorMessages(messages, num_errors);
+
+  lp_flushMessage();
+  const auto empty_messages = lp_getErrorMessages(&num_errors);
+  ASSERT_EQ(0, num_errors);
+  ASSERT_TRUE(!empty_messages);
   lp_removeCustomLogSink();
 }
 

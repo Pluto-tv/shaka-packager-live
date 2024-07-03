@@ -21,6 +21,10 @@ void LogCollectorSink::Send(const absl::LogEntry& entry) {
   }
 }
 
+void LogCollectorSink::Flush() {
+  messages_.clear();
+}
+
 const std::vector<std::string>& LogCollectorSink::GetMessages() const {
   return messages_;
 }
@@ -41,6 +45,7 @@ void InstallCustomLogSink(absl::LogSink& sink) {
 }
 
 void RemoveCustomLogSink(absl::LogSink& sink) {
+  absl::FlushLogSinks();
   absl::RemoveLogSink(&sink);
 }
 

@@ -146,6 +146,7 @@ void lp_removeCustomLogSink();
 
 /// When the return value is not NULL, clients will need to free this memory
 char** lp_getErrorMessages(int* num_messages);
+void lp_flushMessage();
 void lp_freeErrorMessages(char** messages, int num_messages);
 
 #ifdef __cplusplus
