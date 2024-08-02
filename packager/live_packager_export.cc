@@ -192,6 +192,7 @@ char** lp_getErrorMessages(int* num_messages) {
 }
 
 void lp_flushMessage() {
+  std::lock_guard<std::mutex> lock(sink_mutex);
   if (custom_sink) {
     custom_sink->Flush();
   }
