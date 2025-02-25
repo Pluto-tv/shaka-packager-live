@@ -65,7 +65,6 @@ jobs:
           const os = include.map((config) => config.os);
 
           // Output JSON objects consumed by the build matrix below.
-          const fs = require('fs');
           fs.writeFileSync(process.env.GITHUB_OUTPUT,
               [
                 `INCLUDE=${ JSON.stringify(include) }`,
