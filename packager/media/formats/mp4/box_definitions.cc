@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <limits>
+#include <utility>
+#include <vector>
 
 #include <absl/flags/flag.h>
 #include <absl/log/check.h>
@@ -74,6 +76,10 @@ bool IsIvSizeValid(uint8_t per_sample_iv_size) {
 // bit(1) ReservedBoxPresent // 0 = none
 // bit(5) Reserved // 0
 const uint8_t kDdtsExtraData[] = {0xe4, 0x7c, 0, 4, 0, 0x0f, 0};
+
+const std::vector<uint8_t> kTfxdBoxUUID = {0x6d, 0x1d, 0x9b, 0x05, 0x42, 0xd5,
+                                           0x44, 0xe6, 0x80, 0xe2, 0x14, 0x1d,
+                                           0xaf, 0xf7, 0x57, 0xb2};
 
 // Utility functions to check if the 64bit integers can fit in 32bit integer.
 bool IsFitIn32Bits(uint64_t a) {
@@ -2600,6 +2606,35 @@ size_t TrackFragmentDecodeTime::ComputeSizeInternal() {
   return HeaderSize() + sizeof(uint32_t) * (1 + version);
 }
 
+SmoothUUID::SmoothUUID() = default;
+SmoothUUID::~SmoothUUID() = default;
+
+FourCC SmoothUUID::BoxType() const {
+  return FOURCC_uuid;
+}
+
+bool SmoothUUID::ReadWriteInternal(BoxBuffer* buffer) {
+  // Read and compare 16-bytes of uuid to check for existence a 'tfxd' box
+  std::vector<uint8_t> uuid(kTfxdBoxUUID.size());
+  if (!buffer->ReadWriteVector(&uuid, uuid.size()) && (kTfxdBoxUUID != uuid)) {
+    return true;
+  }
+
+  RCHECK(ReadWriteHeaderInternal(buffer));
+  size_t num_bytes = (version == 1) ? sizeof(uint64_t) : sizeof(uint32_t);
+
+  RCHECK(buffer->ReadWriteUInt64NBytes(&time, num_bytes));
+  RCHECK(buffer->ReadWriteUInt64NBytes(&duration, num_bytes));
+  tfxd_exists = true;
+
+  return true;
+}
+
+size_t SmoothUUID::ComputeSizeInternal() {
+  version = IsFitIn32Bits(duration) ? 0 : 1;
+  return HeaderSize() + sizeof(uint32_t) * (1 + version);
+}
+
 MovieFragmentHeader::MovieFragmentHeader() = default;
 MovieFragmentHeader::~MovieFragmentHeader() = default;
 
@@ -2759,6 +2794,13 @@ bool TrackFragmentRun::ReadWriteInternal(BoxBuffer* buffer) {
       RCHECK(buffer->ReadWriteUInt32(&sample_flags[i]));
 
     if (sample_composition_time_offsets_present) {
+// TODO: MediaLive produces negative composition time offsets in box version 0.
+// This is a workaround for that.
+#ifdef USE_WORKAROUND_FOR_TRUN_VERSION_0
+      int32_t sample_offset = sample_composition_time_offsets[i];
+      RCHECK(buffer->ReadWriteInt32(&sample_offset));
+      sample_composition_time_offsets[i] = sample_offset;
+#else
       if (version == 0) {
         uint32_t sample_offset = sample_composition_time_offsets[i];
         RCHECK(buffer->ReadWriteUInt32(&sample_offset));
@@ -2768,6 +2810,7 @@ bool TrackFragmentRun::ReadWriteInternal(BoxBuffer* buffer) {
         RCHECK(buffer->ReadWriteInt32(&sample_offset));
         sample_composition_time_offsets[i] = sample_offset;
       }
+#endif
     }
   }
 
@@ -2809,15 +2852,27 @@ bool TrackFragment::ReadWriteInternal(BoxBuffer* buffer) {
          buffer->ReadWriteChild(&header));
   if (buffer->Reading()) {
     DCHECK(buffer->reader());
-    decode_time_absent = !buffer->reader()->ChildExist(&decode_time);
-    if (!decode_time_absent)
-      RCHECK(buffer->ReadWriteChild(&decode_time));
+    uuid_exists = buffer->reader()->ChildExist(&smooth_uuid);
+    decode_time_absent =
+        !buffer->reader()->ChildExist(&decode_time) && !uuid_exists;
+    if (!decode_time_absent) {
+      if (uuid_exists) {
+        RCHECK(buffer->ReadWriteChild(&smooth_uuid));
+      } else {
+        RCHECK(buffer->ReadWriteChild(&decode_time));
+      }
+    }
     RCHECK(buffer->reader()->TryReadChildren(&runs) &&
            buffer->reader()->TryReadChildren(&sample_group_descriptions) &&
            buffer->reader()->TryReadChildren(&sample_to_groups));
   } else {
-    if (!decode_time_absent)
-      RCHECK(buffer->ReadWriteChild(&decode_time));
+    if (!decode_time_absent) {
+      if (uuid_exists) {
+        RCHECK(buffer->ReadWriteChild(&smooth_uuid));
+      } else {
+        RCHECK(buffer->ReadWriteChild(&decode_time));
+      }
+    }
     for (uint32_t i = 0; i < runs.size(); ++i)
       RCHECK(buffer->ReadWriteChild(&runs[i]));
     for (uint32_t i = 0; i < sample_to_groups.size(); ++i)
@@ -3109,6 +3164,36 @@ size_t VTTCueBox::ComputeSizeInternal() {
   return HeaderSize() + cue_source_id.ComputeSize() + cue_id.ComputeSize() +
          cue_time.ComputeSize() + cue_settings.ComputeSize() +
          cue_payload.ComputeSize();
+}
+
+DASHEventMessageBox::DASHEventMessageBox() = default;
+DASHEventMessageBox::~DASHEventMessageBox() = default;
+
+FourCC DASHEventMessageBox::BoxType() const {
+  return FOURCC_emsg;
+}
+
+size_t DASHEventMessageBox::ComputeSizeInternal() {
+  const static uint8_t kNull_sz = 1;
+  const static uint8_t kNumUint32s_v0 = 4;
+  size_t size = HeaderSize() + scheme_id_uri.size() + kNull_sz + value.size() +
+                kNull_sz + (kNumUint32s_v0 * sizeof(uint32_t)) +
+                message_data.size();
+  return size;
+}
+
+bool DASHEventMessageBox::ReadWriteInternal(BoxBuffer* buffer) {
+  uint8_t num_bytes = (version == 1) ? sizeof(uint64_t) : sizeof(uint32_t);
+  RCHECK(
+      ReadWriteHeaderInternal(buffer) &&
+      buffer->ReadWriteCString(&scheme_id_uri) &&
+      buffer->ReadWriteCString(&value) && buffer->ReadWriteUInt32(&timescale) &&
+      buffer->ReadWriteUInt64NBytes(&presentation_time_delta, num_bytes) &&
+      buffer->ReadWriteUInt32(&event_duration) && buffer->ReadWriteUInt32(&id));
+
+  size_t size = buffer->Reading() ? buffer->BytesLeft() : message_data.size();
+  RCHECK(buffer->ReadWriteVector(&message_data, size));
+  return true;
 }
 
 }  // namespace mp4

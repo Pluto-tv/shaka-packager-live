@@ -239,13 +239,19 @@ const uint64_t kNanosecondsPerSecond = 1000000000ull;
 
 }  // namespace
 
-MP4MediaParser::MP4MediaParser()
+MP4MediaParser::MP4MediaParser(bool cts_offset_adjustment)
     : state_(kWaitingForInit),
       decryption_key_source_(NULL),
       moof_head_(0),
-      mdat_tail_(0) {}
+      mdat_tail_(0),
+      cts_offset_adjustment_(cts_offset_adjustment) {}
 
 MP4MediaParser::~MP4MediaParser() {}
+
+void MP4MediaParser::SetEventMessageBoxCB(
+    const DASHEventMessageBoxCB& event_message_cb) {
+  event_message_cb_ = event_message_cb;
+}
 
 void MP4MediaParser::Init(const InitCB& init_cb,
                           const NewMediaSampleCB& new_media_sample_cb,
@@ -321,7 +327,7 @@ bool MP4MediaParser::LoadMoov(const std::string& file_path) {
   }
   if (!file->Seek(0)) {
     LOG(WARNING) << "Filesystem does not support seeking on file '" << file_path
-               << "'";
+                 << "'";
     return false;
   }
 
@@ -376,7 +382,7 @@ bool MP4MediaParser::LoadMoov(const std::string& file_path) {
       }
       queue_.Reset();  // So that we don't need to adjust data offsets.
       mdat_tail_ = 0;  // So it will skip boxes until mdat.
-      break;  // Done.
+      break;           // Done.
     }
     file_position += box_size;
     if (!file->Seek(file_position)) {
@@ -422,6 +428,8 @@ bool MP4MediaParser::ParseBox(bool* err) {
 
   if (reader->type() == FOURCC_moov) {
     *err = !ParseMoov(reader.get());
+  } else if (reader->type() == FOURCC_emsg) {
+    *err = !ParseEmsg(reader.get());
   } else if (reader->type() == FOURCC_moof) {
     moof_head_ = queue_.head();
     *err = !ParseMoof(reader.get());
@@ -437,6 +445,15 @@ bool MP4MediaParser::ParseBox(bool* err) {
 
   queue_.Pop(static_cast<int>(reader->size()));
   return !(*err);
+}
+
+bool MP4MediaParser::ParseEmsg(BoxReader* reader) {
+  if (event_message_cb_) {
+    auto emsg_box = std::make_shared<DASHEventMessageBox>();
+    RCHECK(emsg_box->Parse(reader));
+    event_message_cb_(emsg_box);
+  }
+  return true;
 }
 
 bool MP4MediaParser::ParseMoov(BoxReader* reader) {
@@ -458,13 +475,16 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
 
     // Calculate duration (based on timescale).
     int64_t duration = 0;
+    int64_t default_fragment_duration = 0;
     if (track->media.header.duration > 0) {
       duration = track->media.header.duration;
     } else if (moov_->extends.header.fragment_duration > 0) {
       DCHECK(moov_->header.timescale != 0);
       duration = Rescale(moov_->extends.header.fragment_duration,
-                         moov_->header.timescale,
-                         timescale);
+                         moov_->header.timescale, timescale);
+      if (duration > 0) {
+        default_fragment_duration = duration;
+      }
     } else if (moov_->header.duration > 0 &&
                moov_->header.duration != std::numeric_limits<uint64_t>::max()) {
       DCHECK(moov_->header.timescale != 0);
@@ -657,6 +677,20 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
           num_channels, sampling_frequency, seek_preroll_ns, codec_delay_ns,
           max_bitrate, avg_bitrate, track->media.header.language.code,
           is_encrypted));
+      streams.back()->set_default_fragment_duration(default_fragment_duration);
+
+      const EditList& edit_list = track->edit.list;
+      if (edit_list.edits.size() == 1u) {
+        streams.back()->set_media_time(edit_list.edits.front().media_time);
+      }
+
+      for (const auto& trex : moov_->extends.tracks) {
+        if (trex.track_id == track->header.track_id) {
+          streams.back()->set_default_sample_duration(
+              trex.default_sample_duration);
+          break;
+        }
+      }
     }
 
     if (samp_descr.type == kVideo) {
@@ -871,6 +905,21 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
                                              pssh_raw_data.size());
       }
 
+      const EditList& edit_list = track->edit.list;
+      if (edit_list.edits.size() == 1u) {
+        video_stream_info->set_media_time(edit_list.edits.front().media_time);
+      }
+
+      for (const auto& trex : moov_->extends.tracks) {
+        if (trex.track_id == track->header.track_id) {
+          video_stream_info->set_default_sample_duration(
+              trex.default_sample_duration);
+          break;
+        }
+      }
+      video_stream_info->set_default_fragment_duration(
+          default_fragment_duration);
+
       streams.push_back(video_stream_info);
     }
   }
@@ -878,7 +927,7 @@ bool MP4MediaParser::ParseMoov(BoxReader* reader) {
   init_cb_(streams);
   if (!FetchKeysIfNecessary(moov_->pssh))
     return false;
-  runs_.reset(new TrackRunIterator(moov_.get()));
+  runs_.reset(new TrackRunIterator(moov_.get(), cts_offset_adjustment_));
   RCHECK(runs_->Init());
   ChangeState(kEmittingSamples);
   return true;
@@ -890,7 +939,7 @@ bool MP4MediaParser::ParseMoof(BoxReader* reader) {
   MovieFragment moof;
   RCHECK(moof.Parse(reader));
   if (!runs_)
-    runs_.reset(new TrackRunIterator(moov_.get()));
+    runs_.reset(new TrackRunIterator(moov_.get(), cts_offset_adjustment_));
   RCHECK(runs_->Init(moof));
   if (!FetchKeysIfNecessary(moof.pssh))
     return false;
@@ -968,8 +1017,8 @@ bool MP4MediaParser::EnqueueSample(bool* err) {
   queue_.PeekAt(sample_offset, &buf, &buf_size);
   if (buf_size < runs_->sample_size()) {
     if (sample_offset < queue_.head()) {
-      LOG(ERROR) << "Incorrect sample offset " << sample_offset
-                 << " < " << queue_.head();
+      LOG(ERROR) << "Incorrect sample offset " << sample_offset << " < "
+                 << queue_.head();
       *err = true;
     }
     return false;
@@ -1019,10 +1068,8 @@ bool MP4MediaParser::EnqueueSample(bool* err) {
   stream_sample->set_duration(runs_->duration());
 
   DVLOG(3) << "Pushing frame: "
-           << ", key=" << runs_->is_keyframe()
-           << ", dur=" << runs_->duration()
-           << ", dts=" << runs_->dts()
-           << ", cts=" << runs_->cts()
+           << ", key=" << runs_->is_keyframe() << ", dur=" << runs_->duration()
+           << ", dts=" << runs_->dts() << ", cts=" << runs_->cts()
            << ", size=" << runs_->sample_size();
 
   if (!new_sample_cb_(runs_->track_id(), stream_sample)) {

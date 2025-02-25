@@ -65,6 +65,7 @@ jobs:
           const os = include.map((config) => config.os);
 
           // Output JSON objects consumed by the build matrix below.
+          const fs = require('fs');
           fs.writeFileSync(process.env.GITHUB_OUTPUT,
               [
                 `INCLUDE=${ JSON.stringify(include) }`,
@@ -109,7 +110,7 @@ jobs:
         # that may be greater than what is available in Ubuntu, so we set up
         # the official CMake PPA first.
         run: |
-          kitware_key_url="http://apt.kitware.com/keys/kitware-archive-latest.asc"
+          kitware_key_url="https://apt.kitware.com/keys/kitware-archive-latest.asc"
           kitware_key_path="/usr/share/keyrings/kitware-archive-keyring.gpg"
           kitware_sources_path="/etc/apt/sources.list.d/kitware.list"
 
@@ -118,7 +119,7 @@ jobs:
 
           . /etc/lsb-release  # Defines $DISTRIB_CODENAME (jammy, focal, etc)
 
-          echo "deb [signed-by=$kitware_key_path] http://apt.kitware.com/ubuntu/ $DISTRIB_CODENAME main" \
+          echo "deb [signed-by=$kitware_key_path] https://apt.kitware.com/ubuntu/ $DISTRIB_CODENAME main" \
               | sudo tee "$kitware_sources_path" >/dev/null
 
           sudo apt update
@@ -160,8 +161,10 @@ jobs:
 
           if [[ "${{ matrix.lib_type }}" == "shared" ]]; then
             BUILD_SHARED_LIBS="ON"
+            BUILD_LIVE_TEST="ON"
           else
             BUILD_SHARED_LIBS="OFF"
+            BUILD_LIVE_TEST="OFF"
           fi
 
           # If set, override the default generator for the platform.
@@ -202,6 +205,7 @@ jobs:
             -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
             -DBUILD_SHARED_LIBS="$BUILD_SHARED_LIBS" \
             -DFULLY_STATIC="$FULLY_STATIC" \
+            -DBUILD_LIVE_TEST="$BUILD_LIVE_TEST" \
             -S . \
             -B build/
 

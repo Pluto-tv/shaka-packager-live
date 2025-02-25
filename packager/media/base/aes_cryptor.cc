@@ -43,7 +43,8 @@ bool AesCryptor::Crypt(const std::vector<uint8_t>& text,
   // Save text size to make it work for in-place conversion, since the
   // next statement will update the text size.
   const size_t text_size = text.size();
-  crypt_text->resize(text_size + NumPaddingBytes(text_size));
+  // mbedtls requires an extra block's worth of output buffer available.
+  crypt_text->resize(text_size + NumPaddingBytes(text_size) + AES_BLOCK_SIZE);
   size_t crypt_text_size = crypt_text->size();
   if (!Crypt(text.data(), text_size, crypt_text->data(), &crypt_text_size)) {
     return false;
@@ -57,7 +58,8 @@ bool AesCryptor::Crypt(const std::string& text, std::string* crypt_text) {
   // Save text size to make it work for in-place conversion, since the
   // next statement will update the text size.
   const size_t text_size = text.size();
-  crypt_text->resize(text_size + NumPaddingBytes(text_size));
+  // mbedtls requires an extra block's worth of output buffer available.
+  crypt_text->resize(text_size + NumPaddingBytes(text_size) + AES_BLOCK_SIZE);
   size_t crypt_text_size = crypt_text->size();
   if (!Crypt(reinterpret_cast<const uint8_t*>(text.data()), text_size,
              reinterpret_cast<uint8_t*>(&(*crypt_text)[0]), &crypt_text_size))

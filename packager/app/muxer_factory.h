@@ -13,6 +13,7 @@
 #include <packager/media/base/container_names.h>
 #include <packager/mp4_output_params.h>
 #include <packager/mpd/base/mpd_builder.h>
+#include "packager/media/formats/mp4/dash_event_message_handler.h"
 
 namespace shaka {
 struct PackagingParams;
@@ -32,8 +33,10 @@ class MuxerFactory {
 
   /// Create a new muxer using the factory's settings for the given
   /// stream.
-  std::shared_ptr<Muxer> CreateMuxer(MediaContainerName output_format,
-                                     const StreamDescriptor& stream);
+  std::shared_ptr<Muxer> CreateMuxer(
+      MediaContainerName output_format,
+      const StreamDescriptor& stream,
+      std::shared_ptr<mp4::DashEventMessageHandler> dash_handler);
 
   /// For testing, if you need to replace the clock that muxers work with
   /// this will replace the clock for all muxers created after this call.
@@ -50,6 +53,11 @@ class MuxerFactory {
   const Mp4OutputParams mp4_params_;
   const std::string temp_dir_;
   int32_t transport_stream_timestamp_offset_ms_ = 0;
+  bool init_segment_only_;
+
+  // enable null TS packet stuffing
+  bool enable_null_ts_packet_stuffing_;
+
   std::shared_ptr<Clock> clock_ = nullptr;
 };
 

@@ -33,7 +33,8 @@ namespace media {
 AesCtrEncryptor::AesCtrEncryptor()
     : AesCryptor(kDontUseConstantIv),
       block_offset_(0),
-      encrypted_counter_(AES_BLOCK_SIZE, 0) {}
+      // mbedtls requires an extra output block.
+      encrypted_counter_(AES_BLOCK_SIZE * 2, 0) {}
 
 AesCtrEncryptor::~AesCtrEncryptor() {}
 
@@ -144,10 +145,19 @@ bool AesCbcEncryptor::CryptInternal(const uint8_t* plaintext,
                << required_ciphertext_size << " bytes.";
     return false;
   }
+  // TODO: note the change in RequiredOutputSize where we no longer include the
+  // addition of AES_BLOCK_SIZE
   *ciphertext_size = required_ciphertext_size;
 
   // Encrypt everything but the residual block using CBC.
   const size_t cbc_size = plaintext_size - residual_block_size;
+
+  // Copy the residual block early, since mbedtls may overwrite one extra block
+  // of the output, and input and output may be the same buffer.
+  std::vector<uint8_t> residual_block(plaintext + cbc_size,
+                                      plaintext + plaintext_size);
+  DCHECK_EQ(residual_block.size(), residual_block_size);
+
   if (cbc_size != 0) {
     CbcEncryptBlocks(plaintext, cbc_size, ciphertext, internal_iv_.data());
   } else if (padding_scheme_ == kCtsPadding) {
@@ -166,11 +176,7 @@ bool AesCbcEncryptor::CryptInternal(const uint8_t* plaintext,
     return true;
   }
 
-  std::vector<uint8_t> residual_block(plaintext + cbc_size,
-                                      plaintext + plaintext_size);
-  DCHECK_EQ(residual_block.size(), residual_block_size);
   uint8_t* residual_ciphertext_block = ciphertext + cbc_size;
-
   if (padding_scheme_ == kPkcs5Padding) {
     DCHECK_EQ(num_padding_bytes, AES_BLOCK_SIZE - residual_block_size);
 

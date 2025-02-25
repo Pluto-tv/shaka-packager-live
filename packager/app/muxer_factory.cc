@@ -8,12 +8,14 @@
 
 #include <packager/media/base/muxer.h>
 #include <packager/media/formats/mp2t/ts_muxer.h>
+#include <packager/media/formats/mp4/mp4_init_muxer.h>
 #include <packager/media/formats/mp4/mp4_muxer.h>
 #include <packager/media/formats/packed_audio/packed_audio_writer.h>
 #include <packager/media/formats/ttml/ttml_muxer.h>
 #include <packager/media/formats/webm/webm_muxer.h>
 #include <packager/media/formats/webvtt/webvtt_muxer.h>
 #include <packager/packager.h>
+#include "packager/media/formats/mp4/dash_event_message_handler.h"
 
 namespace shaka {
 namespace media {
@@ -22,11 +24,15 @@ MuxerFactory::MuxerFactory(const PackagingParams& packaging_params)
     : mp4_params_(packaging_params.mp4_output_params),
       temp_dir_(packaging_params.temp_dir),
       transport_stream_timestamp_offset_ms_(
-          packaging_params.transport_stream_timestamp_offset_ms) {}
+          packaging_params.transport_stream_timestamp_offset_ms),
+      init_segment_only_(packaging_params.init_segment_only),
+      enable_null_ts_packet_stuffing_(
+          packaging_params.enable_null_ts_packet_stuffing) {}
 
 std::shared_ptr<Muxer> MuxerFactory::CreateMuxer(
     MediaContainerName output_format,
-    const StreamDescriptor& stream) {
+    const StreamDescriptor& stream,
+    std::shared_ptr<mp4::DashEventMessageHandler> dash_handler) {
   MuxerOptions options;
   options.mp4_params = mp4_params_;
   options.transport_stream_timestamp_offset_ms =
@@ -35,6 +41,7 @@ std::shared_ptr<Muxer> MuxerFactory::CreateMuxer(
   options.output_file_name = stream.output;
   options.segment_template = stream.segment_template;
   options.bandwidth = stream.bandwidth;
+  options.enable_null_ts_packet_stuffing = enable_null_ts_packet_stuffing_;
 
   std::shared_ptr<Muxer> muxer;
 
@@ -58,7 +65,13 @@ std::shared_ptr<Muxer> MuxerFactory::CreateMuxer(
       muxer = std::make_shared<mp2t::TsMuxer>(options);
       break;
     case CONTAINER_MOV:
+      if (init_segment_only_) {
+        muxer = std::make_shared<mp4::MP4InitMuxer>(options);
+        break;
+      }
       muxer = std::make_shared<mp4::MP4Muxer>(options);
+      dynamic_cast<mp4::MP4Muxer*>(muxer.get())
+          ->SetDashEventMessageHandler(dash_handler);
       break;
     default:
       LOG(ERROR) << "Cannot support muxing to " << output_format;

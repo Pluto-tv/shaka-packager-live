@@ -183,7 +183,6 @@ bool EsParserTeletext::ParseInternal(const uint8_t* data,
       break;
     }
 
-
     RCHECK(reader.SkipBits(16));
 
     uint16_t address_bits;

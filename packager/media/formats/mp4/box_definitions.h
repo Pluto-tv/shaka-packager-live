@@ -246,6 +246,21 @@ struct ID3v2 : FullBox {
   std::vector<uint8_t> id3v2_data;
 };
 
+// DASHEventMessageBox v0 and v1
+struct DASHEventMessageBox : FullBox {
+  DECLARE_BOX_METHODS(DASHEventMessageBox);
+
+  inline uint32_t GetID() const { return id; }
+
+  std::string scheme_id_uri;
+  std::string value;
+  uint32_t timescale = 0u;
+  uint64_t presentation_time_delta = 0u;
+  uint32_t event_duration = 0u;
+  uint32_t id = 0u;
+  std::vector<uint8_t> message_data;
+};
+
 struct Metadata : FullBox {
   DECLARE_BOX_METHODS(Metadata);
 
@@ -742,6 +757,14 @@ struct TrackFragmentDecodeTime : FullBox {
   uint64_t decode_time = 0u;
 };
 
+struct SmoothUUID : FullBox {
+  DECLARE_BOX_METHODS(SmoothUUID);
+
+  uint64_t time = 0u;
+  uint64_t duration = 0u;
+  bool tfxd_exists = false;
+};
+
 struct MovieFragmentHeader : FullBox {
   DECLARE_BOX_METHODS(MovieFragmentHeader);
 
@@ -806,6 +829,8 @@ struct TrackFragment : Box {
   std::vector<TrackFragmentRun> runs;
   bool decode_time_absent = false;
   TrackFragmentDecodeTime decode_time;
+  SmoothUUID smooth_uuid;
+  bool uuid_exists = false;
   std::vector<SampleGroupDescription> sample_group_descriptions;
   std::vector<SampleToGroup> sample_to_groups;
   SampleAuxiliaryInformationSize auxiliary_size;

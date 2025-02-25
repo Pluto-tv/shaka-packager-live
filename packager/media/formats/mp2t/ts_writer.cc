@@ -161,10 +161,12 @@ bool WritePesToBuffer(const PesPacket& pes,
 
 }  // namespace
 
-TsWriter::TsWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer)
-    : pmt_writer_(std::move(pmt_writer)) {}
+TsWriter::TsWriter(std::unique_ptr<ProgramMapTableWriter> pmt_writer,
+                   unsigned int segment_number)
+    : pat_continuity_counter_(segment_number),
+      pmt_writer_(std::move(pmt_writer)) {}
 
-TsWriter::~TsWriter() {}
+TsWriter::~TsWriter() = default;
 
 bool TsWriter::NewSegment(BufferWriter* buffer) {
   BufferWriter psi;

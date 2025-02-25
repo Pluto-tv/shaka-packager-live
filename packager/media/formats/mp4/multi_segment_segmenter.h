@@ -9,6 +9,7 @@
 
 #include <packager/macros/classes.h>
 #include <packager/media/formats/mp4/segmenter.h>
+#include "dash_event_message_handler.h"
 
 namespace shaka {
 namespace media {
@@ -35,6 +36,9 @@ class MultiSegmentSegmenter : public Segmenter {
   std::vector<Range> GetSegmentRanges() override;
   /// @}
 
+  void SetDashEventMessageHandler(
+      const std::shared_ptr<mp4::DashEventMessageHandler>& handler);
+
  private:
   // Segmenter implementation overrides.
   Status DoInitialize() override;
@@ -46,6 +50,7 @@ class MultiSegmentSegmenter : public Segmenter {
   Status WriteSegment(int64_t segment_number);
 
   std::unique_ptr<SegmentType> styp_;
+  std::shared_ptr<mp4::DashEventMessageHandler> emsg_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(MultiSegmentSegmenter);
 };

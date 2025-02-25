@@ -35,6 +35,7 @@
 #include <packager/media/demuxer/demuxer.h>
 #include <packager/media/event/muxer_listener_factory.h>
 #include <packager/media/event/vod_media_info_dump_muxer_listener.h>
+#include <packager/media/formats/mp4/dash_event_message_handler.h>
 #include <packager/media/formats/ttml/ttml_to_mp4_handler.h>
 #include <packager/media/formats/webvtt/text_padder.h>
 #include <packager/media/formats/webvtt/webvtt_to_mp4_handler.h>
@@ -349,9 +350,10 @@ Status ValidateParams(const PackagingParams& packaging_params,
       !packaging_params.mpd_params.mpd_output.empty() &&
       !packaging_params.mp4_output_params.generate_sidx_in_media_segments &&
       !packaging_params.mpd_params.use_segment_list) {
-    return Status(error::UNIMPLEMENTED,
-                  "--generate_sidx_in_media_segments is required for DASH "
-                  "on-demand profile (not using segment_template or segment list).");
+    return Status(
+        error::UNIMPLEMENTED,
+        "--generate_sidx_in_media_segments is required for DASH "
+        "on-demand profile (not using segment_template or segment list).");
   }
 
   if (packaging_params.chunking_params.low_latency_dash_mode &&
@@ -452,11 +454,22 @@ bool StreamInfoToTextMediaInfo(const StreamDescriptor& stream_descriptor,
 /// Create a new demuxer handler for the given stream. If a demuxer cannot be
 /// created, an error will be returned. If a demuxer can be created, this
 /// |new_demuxer| will be set and Status::OK will be returned.
-Status CreateDemuxer(const StreamDescriptor& stream,
-                     const PackagingParams& packaging_params,
-                     std::shared_ptr<Demuxer>* new_demuxer) {
+Status CreateDemuxer(
+    const StreamDescriptor& stream,
+    const PackagingParams& packaging_params,
+    std::shared_ptr<Demuxer>* new_demuxer,
+    std::shared_ptr<mp4::DashEventMessageHandler>* new_emsg_handler) {
+  if (packaging_params.emsg_processing) {
+    std::shared_ptr<mp4::DashEventMessageHandler> emsg_handler =
+        std::make_shared<mp4::DashEventMessageHandler>();
+    *new_emsg_handler = std::move(emsg_handler);
+  }
+
   std::shared_ptr<Demuxer> demuxer = std::make_shared<Demuxer>(stream.input);
   demuxer->set_dump_stream_info(packaging_params.test_params.dump_stream_info);
+  demuxer->set_cts_offset_adjustment(packaging_params.cts_offset_adjustment);
+  demuxer->set_webvtt_header_only_output_segment(
+      packaging_params.webvtt_header_only_output_segment);
   demuxer->set_input_format(stream.input_format);
 
   if (packaging_params.decryption_params.key_provider != KeyProvider::kNone) {
@@ -523,7 +536,9 @@ std::unique_ptr<MediaHandler> CreateTextChunker(
   const float segment_length_in_seconds =
       chunking_params.segment_duration_in_seconds;
   return std::unique_ptr<MediaHandler>(new TextChunker(
-      segment_length_in_seconds, chunking_params.start_segment_number));
+      segment_length_in_seconds, chunking_params.start_segment_number,
+      chunking_params.timed_text_decode_time,
+      chunking_params.adjust_sample_boundaries));
 }
 
 Status CreateTtmlJobs(
@@ -605,6 +620,8 @@ Status CreateAudioVideoJobs(
   // order.
   std::map<std::string, std::shared_ptr<Demuxer>> sources;
   std::map<std::string, std::shared_ptr<MediaHandler>> cue_aligners;
+  std::map<std::string, std::shared_ptr<mp4::DashEventMessageHandler>>
+      emsg_handlers;
 
   for (const StreamDescriptor& stream : streams) {
     bool seen_input_before = sources.find(stream.input) != sources.end();
@@ -612,8 +629,9 @@ Status CreateAudioVideoJobs(
       continue;
     }
 
-    RETURN_IF_ERROR(
-        CreateDemuxer(stream, packaging_params, &sources[stream.input]));
+    RETURN_IF_ERROR(CreateDemuxer(stream, packaging_params,
+                                  &sources[stream.input],
+                                  &emsg_handlers[stream.input]));
     cue_aligners[stream.input] =
         sync_points ? std::make_shared<CueAlignmentHandler>(sync_points)
                     : nullptr;
@@ -634,6 +652,7 @@ Status CreateAudioVideoJobs(
     // Get the demuxer for this stream.
     auto& demuxer = sources[stream.input];
     auto& cue_aligner = cue_aligners[stream.input];
+    auto& emsg_handler = emsg_handlers[stream.input];
 
     const bool new_input_file = stream.input != previous_input;
     const bool new_stream =
@@ -678,10 +697,12 @@ Status CreateAudioVideoJobs(
       RETURN_IF_ERROR(demuxer->SetHandler(stream.stream_selector, handlers[0]));
     }
 
+    demuxer->SetDashEventMessageHandler(emsg_handler);
+
     // Create the muxer (output) for this track.
     const auto output_format = GetOutputFormat(stream);
     std::shared_ptr<Muxer> muxer =
-        muxer_factory->CreateMuxer(output_format, stream);
+        muxer_factory->CreateMuxer(output_format, stream, emsg_handler);
     if (!muxer) {
       return Status(error::INVALID_ARGUMENT, "Failed to create muxer for " +
                                                  stream.input + ":" +
