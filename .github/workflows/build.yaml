@@ -125,14 +125,12 @@ jobs:
           sudo apt install -y \
               cmake \
               ninja-build \
-              libpsl-dev
 
       - name: Install Mac deps
         if: runner.os == 'macOS'
         # NOTE: GitHub Actions VMs on Mac do not install ninja by default.
         run: |
           brew install ninja
-          brew install libpsl
 
       - name: Check Mac CPU architecture
         if: runner.os == 'macOS'
@@ -155,6 +153,9 @@ jobs:
             sysctl machdep.cpu
             exit 1
           fi
+
+      - name: Configure CMake without libpsl
+        run: cmake -DWITH_LIBPSL=OFF ..    
 
       - name: Generate build files
         run: |
