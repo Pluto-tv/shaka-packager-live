@@ -94,6 +94,9 @@ jobs:
         # have the correct line endings.
         run: git config --global core.autocrlf false
 
+      - name: Install dependencies
+        run: sudo apt update && sudo apt install -y libpsl-dev
+   
       - name: Checkout code
         uses: actions/checkout@v4
         with:
