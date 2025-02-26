@@ -94,10 +94,6 @@ jobs:
         # have the correct line endings.
         run: git config --global core.autocrlf false
 
-      - name: Install LIBPSL
-        run: 
-            sudo apt install --no-install-recommends -y libpsl-dev
-   
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -128,7 +124,8 @@ jobs:
           sudo apt update
           sudo apt install -y \
               cmake \
-              ninja-build
+              ninja-build \
+              libpsl-dev
 
       - name: Install Mac deps
         if: runner.os == 'macOS'
