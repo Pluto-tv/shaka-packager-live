@@ -95,7 +95,8 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: Install LIBPSL
-        run: sudo apt update
+        run: 
+             sudo apt update
              sudo apt install --no-install-recommends -y libpsl-dev
    
       - name: Checkout code
