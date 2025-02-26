@@ -96,8 +96,7 @@ jobs:
 
       - name: Install LIBPSL
         run: 
-             sudo apt update
-             sudo apt install --no-install-recommends -y libpsl-dev
+            sudo apt install --no-install-recommends -y libpsl-dev
    
       - name: Checkout code
         uses: actions/checkout@v4
