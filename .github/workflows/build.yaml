@@ -154,9 +154,6 @@ jobs:
             exit 1
           fi
 
-      - name: Configure CMake without libpsl
-        run: cmake -DWITH_LIBPSL=OFF ..    
-
       - name: Generate build files
         run: |
           mkdir -p build/
@@ -205,12 +202,13 @@ jobs:
 
           cmake \
             -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
+            -DWITH_LIBPSL=OFF \
             -DBUILD_SHARED_LIBS="$BUILD_SHARED_LIBS" \
             -DFULLY_STATIC="$FULLY_STATIC" \
             -DBUILD_LIVE_TEST="$BUILD_LIVE_TEST" \
             -S . \
             -B build/
-
+    
       - name: Build
         # This is a universal build command, which will call make on Linux and
         # Visual Studio on Windows.  Note that the VS generator is what cmake
