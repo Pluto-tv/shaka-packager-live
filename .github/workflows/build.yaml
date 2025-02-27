@@ -126,7 +126,7 @@ jobs:
               cmake \
               ninja-build \
               libbrotli-dev \
-              glibc-headers \
+              libc6-dev-i386 \
 
       - name: Install Mac deps
         if: runner.os == 'macOS'
