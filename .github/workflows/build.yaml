@@ -125,6 +125,7 @@ jobs:
           sudo apt install -y \
               cmake \
               ninja-build \
+              libbrotli-dev \
 
       - name: Install Mac deps
         if: runner.os == 'macOS'
