@@ -132,6 +132,7 @@ jobs:
         # NOTE: GitHub Actions VMs on Mac do not install ninja by default.
         run: |
           brew install ninja
+          brew install brotli
 
       - name: Check Mac CPU architecture
         if: runner.os == 'macOS'
