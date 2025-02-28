@@ -7,15 +7,15 @@ RUN zypper addrepo \
 RUN zypper --no-gpg-checks refresh
 
 # Install libc - the latest version
-RUN ldd --version
+# RUN ldd --version
 
-RUN curl -O https://rpmfind.net/linux/opensuse/distribution/leap/15.6/repo/oss/x86_64/glibc-2.38-150600.12.1.x86_64.rpm
-RUN zypper --non-interactive install glibc-2.38-150600.12.1.x86_64.rpm
+# RUN curl -O https://rpmfind.net/linux/opensuse/distribution/leap/15.6/repo/oss/x86_64/glibc-2.38-150600.12.1.x86_64.rpm
+# RUN zypper --non-interactive install glibc-2.38-150600.12.1.x86_64.rpm
 
 # RUN zypper refresh
 # RUN zypper --non-interactive install glibc
 
-RUN ldd --version
+# RUN ldd --version
 
 # Install utilities, libraries, and dev tools.
 RUN zypper in -y \
