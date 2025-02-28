@@ -16,7 +16,7 @@ set(CURL_USE_LIBSSH2 OFF)
 set(CURL_ZLIB OFF CACHE STRING "Force curl not to search for system zlib")
 set(BUILD_CURL_EXE OFF)
 set(CURL_USE_LIBPSL OFF) 
-set(CURL_BROTLI ON)
+# set(CURL_BROTLI ON)
 set(CURL_USE_OPENSSL OFF)
 
 if(UNIX AND NOT APPLE)
@@ -48,5 +48,5 @@ add_subdirectory(source)
 # Our enabling of c-ares doesn't automatically set a dependency between libcurl
 # and c-ares.  Fix that now.
 if(USE_ARES)
-  target_link_libraries(libcurl_static PUBLIC c-ares)
+  target_link_libraries(libcurl c-ares)
 endif()
