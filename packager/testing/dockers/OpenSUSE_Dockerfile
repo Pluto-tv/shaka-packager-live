@@ -10,7 +10,7 @@ RUN zypper --no-gpg-checks refresh
 RUN ldd --version
 RUN zypper refresh
 RUN zypper search glibc
-RUN zypper install --non-interactive glibc
+RUN zypper --non-interactive install glibc
 RUN ldd --version
 
 # Install utilities, libraries, and dev tools.
