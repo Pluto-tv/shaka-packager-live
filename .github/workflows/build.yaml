@@ -127,6 +127,7 @@ jobs:
               ninja-build \
               libbrotli-dev \
               libc6-dev \
+              glibc-devel \
 
       - name: Install Mac deps
         if: runner.os == 'macOS'
