@@ -16,6 +16,7 @@ set(CURL_USE_LIBSSH2 OFF)
 set(CURL_ZLIB OFF CACHE STRING "Force curl not to search for system zlib")
 set(BUILD_CURL_EXE OFF)
 set(CURL_USE_LIBPSL OFF) 
+set(CURL_BROTLI OFF)
 
 if(UNIX AND NOT APPLE)
   # Use c-ares to fix static linking on Linux.  Set USE_ARES directly, not the
