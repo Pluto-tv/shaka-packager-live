@@ -7,6 +7,7 @@
 [submodule "packager/third_party/curl/source"]
 	path = packager/third_party/curl/source
 	url = https://github.com/curl/curl
+	branch = 83bedbd730d62b83744cc26fa0433d3f6e2e4cd6
 [submodule "packager/third_party/json/source"]
 	path = packager/third_party/json/source
 	url = https://github.com/nlohmann/json
