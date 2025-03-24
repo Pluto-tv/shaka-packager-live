@@ -20,7 +20,7 @@ jobs:
   build_matrix_config:
     name: Matrix configuration
     runs-on: ubuntu-latest
-    container: gcc:12.4.0
+    container: ubuntu:focal
     outputs:
       INCLUDE: ${{ steps.configure.outputs.INCLUDE }}
       OS: ${{ steps.configure.outputs.OS }}
