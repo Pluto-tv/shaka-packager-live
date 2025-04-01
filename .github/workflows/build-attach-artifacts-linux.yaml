@@ -3,7 +3,6 @@
 name: Build and attach release artifacts (Linux only)
 
 on:
-  pull_request:
   workflow_dispatch:
     inputs:
       tag:
@@ -29,6 +28,9 @@ jobs:
     container:
       image: ubuntu:20.04
     steps:
+      - name: Update
+        run: |
+          apt update && apt upgrade -y
       - name: Checkout code
         uses: actions/checkout@v4
         with:
