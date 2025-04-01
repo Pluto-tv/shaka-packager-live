@@ -1,0 +1,123 @@
+# Copyright 2025 Pluto TV
+
+name: Build and attach release artifacts (Linux only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release ref'
+        required: true
+        type: string
+
+# By default, run all commands in a bash shell.  On Windows, the default would
+# otherwise be powershell.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [ "Release" ]
+        lib_type: [ "shared", "static" ]
+    name: linux x64 ${{ matrix.build_type }} ${{ matrix.lib_type }}
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          submodules: recursive
+
+      - name: Generate build files
+        run: |
+          mkdir -p build/
+          
+          if [[ "${{ matrix.lib_type }}" == "shared" ]]; then
+            cmake \
+              -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+              -DBUILD_SHARED_LIBS=1 \
+              -DUSE_WORKAROUND_FOR_TRUN_VERSION_0=1 \
+              -S . \
+              -B build/
+          else
+            cmake \
+              -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+              -DBUILD_SHARED_LIBS=0 \
+              -DUSE_WORKAROUND_FOR_TRUN_VERSION_0=1 \
+              -S . \
+              -B build/
+          fi
+
+      - name: Build
+        run: cmake --build build/ --parallel $(getconf _NPROCESSORS_ONLN)
+
+      - name: Prepare artifacts
+        run: |
+          echo "::group::Prepare artifacts folder"
+          mkdir artifacts
+          ARTIFACTS="$GITHUB_WORKSPACE/artifacts"
+          cd build/packager
+          echo "::endgroup::"
+
+          SUFFIX="-linux-x64"
+          LIB_SUFFIX="$SUFFIX.so"
+
+          if [[ "${{ matrix.lib_type }}" == "shared" ]]; then
+            echo "::group::Copy libpackager"
+            cp libpackager.so $ARTIFACTS/libpackager$LIB_SUFFIX
+            echo "::endgroup::"
+          else
+            echo "::group::Copy packager"
+            cp packager $ARTIFACTS/packager$SUFFIX
+            echo "::endgroup::"
+          fi
+
+      - name: Upload release build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-linux-x64-${{ matrix.lib_type }}
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 5
+
+  update_release:
+    needs: [build]
+    name: Update release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          submodules: recursive
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      # Debug
+      - name: Display structure of downloaded files
+        run: ls -la
+
+      - name: Attach artifact
+        id: attach_artifact
+        uses: ncipollo/release-action@v1.13.0
+        with:
+          allowUpdates: true
+          replacesArtifacts: true
+          artifacts: |
+            artifacts/*
+            include/packager/live_packager_export.h
+          token: ${{ secrets.GITHUB_TOKEN }}
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
+          tag: ${{ inputs.tag }}
+          draft: false
