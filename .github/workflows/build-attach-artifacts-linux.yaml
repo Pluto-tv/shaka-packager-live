@@ -30,7 +30,9 @@ jobs:
     steps:
       - name: Update
         run: |
-          apt update && apt upgrade -y
+          apt update 
+          apt upgrade -y
+          apt install -y --no-install-recommends git gcc libc-dev wget openssh-client make
       - name: Checkout code
         uses: actions/checkout@v4
         with:
