@@ -3,6 +3,7 @@
 name: Build and attach release artifacts (Linux only)
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       tag:
