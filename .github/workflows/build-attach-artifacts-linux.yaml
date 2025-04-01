@@ -34,7 +34,7 @@ jobs:
         run: |
           apt update 
           apt upgrade -y
-          apt install -y --no-install-recommends git gcc libc-dev wget openssh-client make ca-certificates
+          apt install -y --no-install-recommends git gcc libc-dev wget openssh-client make ca-certificates cmake
       - name: Checkout code
         uses: actions/checkout@v4
         with:
