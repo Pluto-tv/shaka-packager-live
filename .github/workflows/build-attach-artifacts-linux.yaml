@@ -27,12 +27,14 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ubuntu:20.04
+      ports:
+        - 8080:8080
     steps:
       - name: Update
         run: |
           apt update 
           apt upgrade -y
-          apt install -y --no-install-recommends git gcc libc-dev wget openssh-client make
+          apt install -y --no-install-recommends git gcc libc-dev wget openssh-client make ca-certificates
       - name: Checkout code
         uses: actions/checkout@v4
         with:
