@@ -60,6 +60,8 @@ class MpdBuilderTest : public ::testing::Test {
 
     AdaptationSet* adaptation_set =
         period->GetOrCreateAdaptationSet(media_info, kContentProtectionFlag);
+    if (!adaptation_set->has_id())
+        adaptation_set->set_id(next_adaptation_set_id_++);
     Representation* representation =
         adaptation_set->AddRepresentation(media_info);
     representation->AddNewSegment(
@@ -90,6 +92,7 @@ class MpdBuilderTest : public ::testing::Test {
 
  private:
   Period* period_ = nullptr;
+  uint32_t next_adaptation_set_id_ = 0;
 
   DISALLOW_COPY_AND_ASSIGN(MpdBuilderTest);
 };
