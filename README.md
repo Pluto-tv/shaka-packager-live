@@ -12,9 +12,6 @@ custom Pluto TV metadata for ID3 tags, updates to TTML generation, and other twe
 - Sync with Google main branch and make PR
 - Fix all merge conflicts
 
-# Linux Dockers
-We disabled OpenSUSE Dockerfile for now, since it is still broken on Google's side.
-
 # Submodules
 The Shaka uses cURL as submodule. Please make sure you are pointed to the correct branch (the same as original shaka branch).
 Don't update it, otherwise it will break the build.
