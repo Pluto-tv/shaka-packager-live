@@ -13,7 +13,6 @@ we disable OpenSUSE_Dockerfile for now, since it is still broken on Google's sid
  - added ID3 support
 
 # Running individual test from Python code
-
 1. change directory in the copy of Python script, located at /buil/packager/packager_test.py
 2. find the test you want to run, for example:
 ```python
