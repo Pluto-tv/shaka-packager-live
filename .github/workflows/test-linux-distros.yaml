@@ -7,11 +7,19 @@
 # A workflow to test building in various Linux distros.
 name: Test Linux Distros
 
-# Runs when called from another workflow.
 on:
+  # Runs when called from another workflow.
   workflow_call:
     inputs:
       ref:
+        required: true
+        type: string
+
+  # Runs when triggered manually by a maintainer.
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: The ref to build from.
         required: true
         type: string
 
@@ -39,13 +47,29 @@ jobs:
         shell: node {0}
         run: |
           const fs = require('fs');
-          const files = fs.readdirSync('packager/testing/dockers/');
-          var matrix = files.map((file) => {
-            return { os_name: file.replace('_Dockerfile', '') };
-          });
 
-          // remove SUSE for now - will wait for Google to fix it
-          matrix = matrix.filter((entry) => entry.os_name !== 'OpenSUSE');
+
+          const folder = 'packager/testing/dockers/';
+          const files = fs.readdirSync(folder);
+
+          const matrix = [];
+          for (const file of files) {
+            const os_name = file.replace('_Dockerfile', '');
+            matrix.push({
+              os_name,
+              docker_platform: 'linux/amd64',
+              runs_on: 'ubuntu-latest',
+            });
+
+            const contents = fs.readFileSync(folder + file);
+            if (/\bNOARM\b/.exec(contents) == null) {
+              matrix.push({
+                os_name,
+                docker_platform: 'linux/arm64',
+                runs_on: 'ubuntu-24.04-arm',
+              });
+            }
+          }
 
           // Output a JSON object consumed by the build matrix below.
           fs.writeFileSync(process.env.GITHUB_OUTPUT,
@@ -65,9 +89,9 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.docker_matrix_config.outputs.MATRIX) }}
 
-    name: ${{ matrix.os_name }}
-    runs-on: ubuntu-22.04
-
+    name: ${{ matrix.os_name }} on ${{ matrix.docker_platform }}
+    runs-on: ${{ matrix.runs_on }}
+    
     steps:
       - uses: actions/checkout@v4
         with:
