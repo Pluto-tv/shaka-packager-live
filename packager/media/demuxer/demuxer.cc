@@ -193,16 +193,7 @@ Status Demuxer::InitializeParser() {
   // Initialize media parser.
   switch (container_name_) {
     case CONTAINER_MOV:
-      parser_.reset(new mp4::MP4MediaParser(cts_offset_adjustment_));
-      dynamic_cast<mp4::MP4MediaParser*>(parser_.get())
-          ->SetEventMessageBoxCB(
-              [this](
-                  std::shared_ptr<mp4::DASHEventMessageBox_v0> emsg_box_info) {
-                if (dash_event_handler_) {
-                  dash_event_handler_->OnDashEvent(std::move(emsg_box_info));
-                }
-                return true;
-              });
+      parser_.reset(new mp4::MP4MediaParser());
       break;
     case CONTAINER_MPEG2TS:
       parser_.reset(new mp2t::Mp2tMediaParser());
@@ -283,13 +274,6 @@ void Demuxer::ParserInitEvent(
     size_t stream_index = base_stream_index;
     if (video_handler_set && stream_info->stream_type() == kStreamVideo) {
       stream_index = kBaseVideoOutputStreamIndex;
-      // Get Fragmented Duration here.
-      if (0 == stream_info->duration()) {
-        mp4::MP4Info mp4_info(file_name_, mp4::kDefaultInfoReadSize);
-        if (mp4_info.Parse()) {
-          stream_info->set_duration(mp4_info.GetVideoSamplesDuration());
-        }
-      }
       // Only for the first video stream.
       video_handler_set = false;
     }
