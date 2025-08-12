@@ -7,6 +7,8 @@
 #ifndef PACKAGER_MEDIA_FORMATS_MP2T_TS_MUXER_H_
 #define PACKAGER_MEDIA_FORMATS_MP2T_TS_MUXER_H_
 
+#include <cstdint>
+
 #include <packager/macros/classes.h>
 
 #include <packager/media/base/aes_encryptor.h>
