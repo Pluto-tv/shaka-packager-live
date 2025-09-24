@@ -96,6 +96,9 @@ struct PackagingParams {
   /// Flag used to enable parsing of EMSG (Event Message) boxes during fmp4
   /// parsing, and writing EMSG box data to output segments.
   bool emsg_processing = false;
+
+  /// Flag used to enable TS ID3 new PID insertion during TS packaging.
+  bool id3_processing = false;
 };
 
 /// Defines a single input/output stream.

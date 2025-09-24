@@ -24,6 +24,7 @@ LivePackager_t livepackager_new(LivePackagerConfig_t cfg) {
   converted.decryption_key = {};
   converted.decryption_key_id = {};
   converted.emsg_processing = cfg.emsg_processing;
+  converted.id3_processing = cfg.id3_processing;
 
   converted.protection_system |=
       static_cast<shaka::ProtectionSystem>(cfg.protection_system);

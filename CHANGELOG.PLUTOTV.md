@@ -1,3 +1,9 @@
+## [3.4.2-pluto.v9.1.5] - 2025-
+- ID3 metadata support for HLS streams
+
+## [3.4.2-pluto.v9.1.4] - 2025-08-15
+- Additional output for Apple arm64 architecture
+
 ## [3.4.2-pluto.v9.1.1] - 2025-06-26
 - Fix for AdaptationSet switching
 

@@ -47,6 +47,13 @@ typedef enum ContentProtectionSystem {
 #define KEY_SIZE 16
 #define KEY_ID_SIZE 16
 
+typedef struct ID3Metadata {
+  uint64_t pts;  // in 90kHz clock
+  uint8_t* data;
+  size_t size;
+  uint32_t id;  // ID3 frame identifier
+} ID3Metadata_t;
+
 typedef struct LivePackagerConfig {
   OutputFormat_t format;
   TrackType_t track_type;
@@ -77,6 +84,15 @@ typedef struct LivePackagerConfig {
   /// Flag used to enable parsing of EMSG (Event Message) boxes during fmp4
   /// parsing, and writing EMSG box data to output segments.
   bool emsg_processing;
+
+  /// Flag used to enable TS ID3 new PID insertion during TS packaging.
+  bool id3_processing;
+
+  /// Number of ID3 metadata entries
+  size_t id3_list_size;
+
+  /// Pointer to array of ID3 metadata to be inserted into the next segment.
+  ID3Metadata_t* id3_list;
 
   /// Decryption parameters
   bool enable_decryption;
