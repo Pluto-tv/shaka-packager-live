@@ -44,6 +44,10 @@ constexpr double DEFAULT_SEGMENT_DURATION = 5.0;
 const std::string INPUT_FNAME = "memory://input_file";
 const std::string INIT_SEGMENT_FNAME = "init.mp4";
 
+const std::string TS_TEMPLATE = "$Number$.ts";
+const std::string MP4_TEMPLATE = "$Number$.m4s";
+const std::string TTML_TEMPLATE = "$Number$.ttml";
+
 template <typename Enumeration>
 auto enum_as_integer(Enumeration const value) ->
     typename std::underlying_type<Enumeration>::type {
@@ -53,15 +57,15 @@ auto enum_as_integer(Enumeration const value) ->
 std::string getSegmentTemplate(const LiveConfig& config) {
   switch (config.format) {
     case LiveConfig::OutputFormat::TS:
-      return "$Number$.ts";
+      return TS_TEMPLATE;
     case LiveConfig::OutputFormat::TTML:
-      return "$Number$.ttml";
+      return TTML_TEMPLATE;
     case LiveConfig::OutputFormat::VTTMP4:
       FALLTHROUGH_INTENDED;
     case LiveConfig::OutputFormat::TTMLMP4:
       FALLTHROUGH_INTENDED;
     case LiveConfig::OutputFormat::FMP4:
-      return "$Number$.m4s";
+      return MP4_TEMPLATE;
     default:
       LOG(ERROR) << "Unrecognized output format: "
                  << enum_as_integer(config.format);
@@ -113,6 +117,9 @@ StreamDescriptors setupStreamDescriptors(
     default:
       break;
   }
+  // input is always mp4 for live packager, this will skip input format
+  // detection
+  desc.input_format = "mp4";
 
   desc.segment_template =
       File::MakeCallbackFileName(cb_params, getSegmentTemplate(config));
@@ -122,7 +129,7 @@ StreamDescriptors setupStreamDescriptors(
 
 class SegmentDataReader {
  public:
-  SegmentDataReader(const Segment& segment) : segment_(segment) {}
+  explicit SegmentDataReader(const Segment& segment) : segment_(segment) {}
 
   uint64_t Read(void* buffer, uint64_t size) {
     if (position_ >= segment_.Size()) {
@@ -366,6 +373,16 @@ Status LivePackager::PackageInit(const Segment& init_segment,
   return packager.Run();
 }
 
+void LivePackager::InsertID3Tag(int64_t pts, const uint8_t* data, size_t size) {
+  if (config_.id3_tags == nullptr) {
+    config_.id3_tags = std::make_shared<Id3TagList>();
+  }
+  config_.id3_tags->push_back(Id3TagData{
+      .pts = pts,
+      .data = std::vector(data, data + size),
+  });
+}
+
 Status LivePackager::Package(const Segment& init_segment,
                              const Segment& media_segment,
                              SegmentBuffer& out) {
@@ -402,6 +419,7 @@ Status LivePackager::Package(const Segment& init_segment,
   packaging_params.cts_offset_adjustment =
       config_.format == LiveConfig::OutputFormat::TS;
   packaging_params.emsg_processing = config_.emsg_processing;
+  packaging_params.id3_tags = config_.id3_tags;
 
   if (!config_.decryption_key.empty() && !config_.decryption_key_id.empty()) {
     DecryptionParams& decryption_params = packaging_params.decryption_params;

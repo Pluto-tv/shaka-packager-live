@@ -110,6 +110,8 @@ class TsSegmenter {
   std::unique_ptr<PesPacketGenerator> pes_packet_generator_;
 
   int64_t segment_start_timestamp_ = -1;
+  Id3TagList id3Tags;
+
   DISALLOW_COPY_AND_ASSIGN(TsSegmenter);
 };
 

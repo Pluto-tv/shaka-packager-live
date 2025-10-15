@@ -128,6 +128,11 @@ LivePackagerStatus_t livepackager_package_timedtext(LivePackager_t lp,
                                                     size_t seg_len,
                                                     LivePackagerBuffer_t dest);
 
+void livepackager_insert_id3_tag(LivePackager_t lp,
+                                 int64_t pts,
+                                 const uint8_t* data,
+                                 size_t size);
+
 #ifdef __cplusplus
 }
 #endif

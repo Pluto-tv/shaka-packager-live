@@ -8,6 +8,7 @@
 #define PACKAGER_PUBLIC_PACKAGER_H_
 
 #include <cstdint>
+#include <list>
 #include <memory>
 #include <optional>
 #include <string>
@@ -37,6 +38,14 @@ struct TestParams {
   /// to populate the version string in the manifests / media files.
   std::string injected_library_version;
 };
+
+struct Id3TagData {
+  int64_t pts;
+  std::vector<uint8_t> data;
+};
+
+typedef std::list<Id3TagData> Id3TagList;
+typedef std::shared_ptr<Id3TagList> Id3TagListPtr;
 
 /// Packaging parameters.
 struct PackagingParams {
@@ -96,6 +105,9 @@ struct PackagingParams {
   /// Flag used to enable parsing of EMSG (Event Message) boxes during fmp4
   /// parsing, and writing EMSG box data to output segments.
   bool emsg_processing = false;
+
+  /// ID3 tags to be inserted in the output.
+  Id3TagListPtr id3_tags;  // nil - no ID3 tags.
 };
 
 /// Defines a single input/output stream.

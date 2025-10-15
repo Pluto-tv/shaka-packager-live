@@ -14,6 +14,7 @@
 #include <packager/mp4_output_params.h>
 #include <packager/mpd/base/mpd_builder.h>
 #include "packager/media/formats/mp4/dash_event_message_handler.h"
+#include "packager/packager.h"
 
 namespace shaka {
 struct PackagingParams;
@@ -59,6 +60,8 @@ class MuxerFactory {
   bool enable_null_ts_packet_stuffing_;
 
   std::shared_ptr<Clock> clock_ = nullptr;
+
+  shaka::Id3TagListPtr id3_tags_;
 };
 
 }  // namespace media

@@ -11,6 +11,7 @@
 #include <string>
 
 #include <packager/mp4_output_params.h>
+#include <packager/packager.h>
 
 namespace shaka {
 namespace media {
@@ -47,6 +48,9 @@ struct MuxerOptions {
 
   /// Specify weather or not to enable null packet stuffing for TS segments.
   bool enable_null_ts_packet_stuffing = false;
+
+  /// List of ID3 tags to be inserted in the output file.
+  Id3TagListPtr id3_tags;  // nil - no ID3 tags.
 };
 
 }  // namespace media

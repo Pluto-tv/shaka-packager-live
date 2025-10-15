@@ -125,3 +125,10 @@ LivePackagerStatus_t livepackager_package_timedtext(LivePackager_t lp,
   dest->inner->AppendData(out.SegmentData(), out.SegmentSize());
   return LivePackagerStatus_s{nullptr, status.ok()};
 }
+
+void livepackager_insert_id3_tag(LivePackager_t lp,
+                                 int64_t pts,
+                                 const uint8_t* data,
+                                 size_t size) {
+  lp->inner->InsertID3Tag(pts, data, size);
+}

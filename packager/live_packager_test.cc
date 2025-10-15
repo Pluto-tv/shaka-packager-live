@@ -33,6 +33,7 @@
 #include <packager/media/formats/mp4/box_reader.h>
 #include <packager/media/formats/mp4/mp4_media_parser.h>
 
+#include "absl/log/initialize.h"
 #include "absl/strings/escaping.h"
 #include "packager/media/base/protection_system_ids.h"
 
@@ -614,6 +615,8 @@ TEST(GeneratePSSHData, FailsOnInvalidInput) {
 class LivePackagerBaseTest : public ::testing::Test {
  public:
   void SetUp() override {
+    absl::InitializeLog();
+
     key_.assign(kKey, kKey + std::size(kKey));
     iv_.assign(kIv, kIv + std::size(kIv));
     key_id_.assign(kKeyId, kKeyId + std::size(kKeyId));
@@ -1564,6 +1567,47 @@ TEST_F(LivePackagerBaseTest, TestCmafTimedText) {
   SegmentBuffer seg;
   seg.AppendData(out.SegmentData(), out.SegmentSize());
   CheckSegment(live_config, seg, 1000, true);
+}
+
+TEST_F(LivePackagerBaseTest, VerifyTSWithID3NoEnc) {
+  std::vector<uint8_t> init_segment_buffer = ReadTestDataFile("input/init.mp4");
+  ASSERT_FALSE(init_segment_buffer.empty());
+
+  std::vector<uint8_t> segment_buffer = ReadTestDataFile("input/0000.m4s");
+  ASSERT_FALSE(segment_buffer.empty());
+
+  SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
+  SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+
+  SegmentBuffer out;
+
+  LiveConfig live_config;
+  live_config.format = LiveConfig::OutputFormat::TS;
+  live_config.track_type = LiveConfig::TrackType::VIDEO;
+  live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
+  live_config.segment_number = 0;
+  // init id3 tag list
+  auto id3_tags = std::make_shared<Id3TagList>();
+  id3_tags->push_back(
+      Id3TagData{10000, std::vector<uint8_t>{'T', 'E', 'S', 'T', '1'}});
+  id3_tags->push_back(
+      Id3TagData{1201000, std::vector<uint8_t>{'T', 'E', 'S', 'T', '2'}});
+  id3_tags->push_back(
+      Id3TagData{1257000, std::vector<uint8_t>{'T', 'E', 'S', 'T', '3'}});
+  live_config.id3_tags = id3_tags;
+
+  SetupLivePackagerConfig(live_config);
+  ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
+  ASSERT_GT(out.Size(), 0);
+
+#if 1  // save into file for debug
+  {
+    const std::string file_name = "id3_debug_ts_0.ts";
+    File* writer(File::Open(file_name.c_str(), "w"));
+    writer->Write(out.Data(), out.Size());
+    writer->Close();
+  }
+#endif
 }
 
 }  // namespace shaka

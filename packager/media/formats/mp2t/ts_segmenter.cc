@@ -43,7 +43,11 @@ TsSegmenter::TsSegmenter(const MuxerOptions& options, MuxerListener* listener)
       transport_stream_timestamp_offset_(
           options.transport_stream_timestamp_offset_ms * kTsTimescale / 1000),
       pes_packet_generator_(
-          new PesPacketGenerator(transport_stream_timestamp_offset_)) {}
+          new PesPacketGenerator(transport_stream_timestamp_offset_)) {
+  if (options.id3_tags != nullptr) {
+    id3Tags = *options.id3_tags;  // make a copy of to remove already inserted
+  }
+}
 
 TsSegmenter::~TsSegmenter() {}
 
@@ -98,7 +102,9 @@ Status TsSegmenter::AddSample(const MediaSample& sample) {
           codec_, audio_codec_config_, segment_number));
     } else {
       DCHECK(IsVideoCodec(codec_));
-      pmt_writer.reset(new VideoProgramMapTableWriter(codec_, segment_number));
+      const bool add_metadata_stream = muxer_options_.id3_tags != nullptr;
+      pmt_writer.reset(new VideoProgramMapTableWriter(codec_, segment_number,
+                                                      add_metadata_stream));
     }
     ts_writer_.reset(new TsWriter(std::move(pmt_writer), segment_number));
   }
@@ -144,9 +150,34 @@ Status TsSegmenter::WritePesPackets() {
     std::unique_ptr<PesPacket> pes_packet =
         pes_packet_generator_->GetNextPesPacket();
 
+    const int64_t packet_pts = pes_packet->pts();
+
     Status status = StartSegmentIfNeeded(pes_packet->pts());
     if (!status.ok())
       return status;
+
+    // Check if there are any ID3 tags to insert at this timestamp
+    // id3 pes packets should be inserted before the media pes packet
+    // so that they are decoded first
+    if (muxer_options_.id3_tags != nullptr) {
+      while (!id3Tags.empty()) {
+        auto& tag = id3Tags.front();
+        if (tag.pts > packet_pts) {
+          break;
+        }
+        auto id3_pes_packet = std::make_unique<PesPacket>();
+        id3_pes_packet->set_stream_id(ProgramMapTableWriter::id3_pid);
+        id3_pes_packet->set_pts(tag.pts);
+        id3_pes_packet->mutable_data()->swap(tag.data);
+
+        if (!ts_writer_->AddId3PesPacket(std::move(id3_pes_packet),
+                                         &segment_buffer_)) {
+          return Status(error::MUXER_FAILURE, "Failed to add ID3 PES packet.");
+        }
+
+        id3Tags.pop_front();
+      }
+    }
 
     if (listener_ && IsVideoCodec(codec_) && pes_packet->is_key_frame()) {
       uint64_t start_pos = segment_buffer_.Size();
@@ -175,8 +206,8 @@ Status TsSegmenter::FinalizeSegment(int64_t start_timestamp, int64_t duration) {
 
   // Since the ending CC of the previous segment could be anything,
   // we must end all ES packets at 0xf so that the next segment can start
-  // at 0x0. This can be done by stuffing null packets at the end of the segment
-  // for each elementary stream
+  // at 0x0. This can be done by stuffing null packets at the end of the
+  // segment for each elementary stream
   if (muxer_options_.enable_null_ts_packet_stuffing) {
     ContinuityCounter& es_continuity_counter =
         ts_writer_->es_continuity_counter();

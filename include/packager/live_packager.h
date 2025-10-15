@@ -127,6 +127,8 @@ struct LiveConfig {
   /// Flag used to enable parsing of EMSG (Event Message) boxes during fmp4
   /// parsing, and writing EMSG box data to output segments.
   bool emsg_processing = false;
+
+  Id3TagListPtr id3_tags;
 };
 
 class LivePackager {
@@ -154,6 +156,8 @@ class LivePackager {
 
   LivePackager(const LivePackager&) = delete;
   LivePackager& operator=(const LivePackager&) = delete;
+
+  void InsertID3Tag(int64_t pts, const uint8_t* data, size_t size);
 
  private:
   struct LivePackagerInternal;

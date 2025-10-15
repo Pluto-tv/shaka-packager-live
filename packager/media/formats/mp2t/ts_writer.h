@@ -54,6 +54,9 @@ class TsWriter {
   virtual bool AddPesPacket(std::unique_ptr<PesPacket> pes_packet,
                             BufferWriter* buffer);
 
+  virtual bool AddId3PesPacket(std::unique_ptr<PesPacket> pes_packet,
+                               BufferWriter* buffer);
+
   ContinuityCounter& es_continuity_counter() {
     return elementary_stream_continuity_counter_;
   }
@@ -67,6 +70,7 @@ class TsWriter {
 
   ContinuityCounter pat_continuity_counter_;
   ContinuityCounter elementary_stream_continuity_counter_;
+  ContinuityCounter id3_stream_continuity_counter_;
 
   std::unique_ptr<ProgramMapTableWriter> pmt_writer_;
 };

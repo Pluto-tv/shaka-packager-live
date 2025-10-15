@@ -90,7 +90,8 @@ void WritePtsOrDts(uint8_t leading_bits,
 
 bool WritePesToBuffer(const PesPacket& pes,
                       ContinuityCounter* continuity_counter,
-                      BufferWriter* current_buffer) {
+                      BufferWriter* current_buffer,
+                      int pid) {
   // The size of the length field.
   const int kAdaptationFieldLengthSize = 1;
   // The size of the flags field.
@@ -100,7 +101,6 @@ bool WritePesToBuffer(const PesPacket& pes,
       kTsPacketMaximumPayloadSize - kAdaptationFieldLengthSize -
       kAdaptationFieldHeaderSize - kPcrFieldSize;
   const uint64_t pcr_base = pes.has_dts() ? pes.dts() : pes.pts();
-  const int pid = ProgramMapTableWriter::kElementaryPid;
 
   // This writer will hold part of PES packet after PES_packet_length field.
   BufferWriter pes_header_writer;
@@ -192,10 +192,19 @@ void TsWriter::SignalEncrypted() {
 bool TsWriter::AddPesPacket(std::unique_ptr<PesPacket> pes_packet,
                             BufferWriter* buffer) {
   if (!WritePesToBuffer(*pes_packet, &elementary_stream_continuity_counter_,
-                        buffer)) {
+                        buffer, ProgramMapTableWriter::kElementaryPid)) {
     LOG(ERROR) << "Failed to write pes to buffer.";
     return false;
   }
+
+  // No need to keep pes_packet around so not passing it anywhere.
+  return true;
+}
+
+bool TsWriter::AddId3PesPacket(std::unique_ptr<PesPacket> pes_packet,
+                               BufferWriter* buffer) {
+  WritePesToBuffer(*pes_packet, &id3_stream_continuity_counter_, buffer,
+                   ProgramMapTableWriter::id3_pid);
 
   // No need to keep pes_packet around so not passing it anywhere.
   return true;
