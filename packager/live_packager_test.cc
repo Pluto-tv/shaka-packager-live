@@ -615,8 +615,6 @@ TEST(GeneratePSSHData, FailsOnInvalidInput) {
 class LivePackagerBaseTest : public ::testing::Test {
  public:
   void SetUp() override {
-    absl::InitializeLog();
-
     key_.assign(kKey, kKey + std::size(kKey));
     iv_.assign(kIv, kIv + std::size(kIv));
     key_id_.assign(kKeyId, kKeyId + std::size(kKeyId));
