@@ -33,7 +33,6 @@
 #include <packager/media/formats/mp4/box_reader.h>
 #include <packager/media/formats/mp4/mp4_media_parser.h>
 
-#include "absl/log/initialize.h"
 #include "absl/strings/escaping.h"
 #include "packager/media/base/protection_system_ids.h"
 

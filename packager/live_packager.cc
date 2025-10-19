@@ -119,7 +119,9 @@ StreamDescriptors setupStreamDescriptors(
   }
   // input is always mp4 for live packager, this will skip input format
   // detection
-  desc.input_format = "mp4";
+  if (config.track_type != LiveConfig::TrackType::TEXT) {
+    desc.input_format = "mp4";
+  }
 
   desc.segment_template =
       File::MakeCallbackFileName(cb_params, getSegmentTemplate(config));
