@@ -1600,7 +1600,7 @@ TEST_F(LivePackagerBaseTest, VerifyTSWithID3NoEnc) {
   ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
   ASSERT_GT(out.Size(), 0);
 
-#if 1  // save into file for debug
+#if 0  // save into file for debug
   {
     const std::string file_name = "id3_debug_ts_0.ts";
     File* writer(File::Open(file_name.c_str(), "w"));
