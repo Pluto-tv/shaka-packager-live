@@ -380,8 +380,8 @@ void LivePackager::InsertID3Tag(int64_t pts, const uint8_t* data, size_t size) {
     config_.id3_tags = std::make_shared<Id3TagList>();
   }
   config_.id3_tags->push_back(Id3TagData{
-      .pts = pts,
-      .data = std::vector(data, data + size),
+      pts,
+      std::vector(data, data + size),
   });
 }
 
