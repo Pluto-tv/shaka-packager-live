@@ -78,6 +78,7 @@ jobs:
           
           if [[ "${{ matrix.lib_type }}" == "shared" ]]; then
             cmake \
+              -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
               -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
               -DBUILD_SHARED_LIBS=1 \
               -DUSE_WORKAROUND_FOR_TRUN_VERSION_0=1 \
@@ -85,6 +86,7 @@ jobs:
               -B build/
           else
             cmake \
+              -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
               -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
               -DBUILD_SHARED_LIBS=0 \
               -DUSE_WORKAROUND_FOR_TRUN_VERSION_0=1 \
@@ -129,7 +131,7 @@ jobs:
           retention-days: 5
 
   update_release:
-    needs: [build]
+    needs: [ build ]
     name: Update release
     runs-on: ubuntu-22.04
     steps:
