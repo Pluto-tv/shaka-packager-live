@@ -375,6 +375,12 @@ Status LivePackager::PackageInit(const Segment& init_segment,
   return packager.Run();
 }
 
+void LivePackager::EnableID3Tag() {
+  if (config_.id3_tags == nullptr) {
+    config_.id3_tags = std::make_shared<Id3TagList>();
+  }
+}
+
 void LivePackager::InsertID3Tag(int64_t pts, const uint8_t* data, size_t size) {
   if (config_.id3_tags == nullptr) {
     config_.id3_tags = std::make_shared<Id3TagList>();
