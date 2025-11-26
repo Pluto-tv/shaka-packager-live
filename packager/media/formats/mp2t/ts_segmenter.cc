@@ -4,6 +4,7 @@
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
+#include <packager/media/formats/mp2t/ts_section.h>
 #include <packager/media/formats/mp2t/ts_segmenter.h>
 
 #include <memory>
@@ -183,8 +184,7 @@ Status TsSegmenter::FinalizeSegment(int64_t start_timestamp, int64_t duration) {
     while (es_continuity_counter.GetCurrent() != 0) {
       const int pid = ProgramMapTableWriter::kElementaryPid;
       BufferWriter null_ts_packet_buffer;
-      // TODO(Fordyce): do the stuffing packets need a payload?
-      // null_ts_packet_buffer.AppendInt(static_cast<uint8_t>(TsSection::kPidNullPacket));
+      null_ts_packet_buffer.AppendInt(static_cast<uint8_t>(TsSection::kPidNullPacket));
       WritePayloadToBufferWriter(
           null_ts_packet_buffer.Buffer(), null_ts_packet_buffer.Size(), false,
           pid, false, 0, &es_continuity_counter, &segment_buffer_);
