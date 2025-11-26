@@ -184,7 +184,8 @@ Status TsSegmenter::FinalizeSegment(int64_t start_timestamp, int64_t duration) {
     while (es_continuity_counter.GetCurrent() != 0) {
       const int pid = ProgramMapTableWriter::kElementaryPid;
       BufferWriter null_ts_packet_buffer;
-      null_ts_packet_buffer.AppendInt(static_cast<uint8_t>(TsSection::kPidNullPacket));
+      null_ts_packet_buffer.AppendInt(
+          static_cast<uint8_t>(TsSection::kPidNullPacket));
       WritePayloadToBufferWriter(
           null_ts_packet_buffer.Buffer(), null_ts_packet_buffer.Size(), false,
           pid, false, 0, &es_continuity_counter, &segment_buffer_);
