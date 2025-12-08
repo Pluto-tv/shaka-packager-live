@@ -471,6 +471,8 @@ Status CreateDemuxer(
   demuxer->set_webvtt_header_only_output_segment(
       packaging_params.webvtt_header_only_output_segment);
   demuxer->set_input_format(stream.input_format);
+  demuxer->set_pluto_ad_event(packaging_params.mp4_output_params
+                                  .pluto_ad_event_settings.pluto_ad_event);
 
   if (packaging_params.decryption_params.key_provider != KeyProvider::kNone) {
     std::unique_ptr<KeySource> decryption_key_source(
@@ -509,8 +511,17 @@ std::shared_ptr<MediaHandler> CreateEncryptionHandler(
       GetOutputFormat(stream) == CONTAINER_AAC ||
       GetOutputFormat(stream) == CONTAINER_AC3 ||
       GetOutputFormat(stream) == CONTAINER_EAC3) {
-    VLOG(1) << "Use Apple Sample AES encryption for MPEG2TS or Packed Audio.";
-    encryption_params.protection_scheme = kAppleSampleAesProtectionScheme;
+    // PlutoTV: if we are passing
+    // --protection_scheme=aes128
+    // we wouold like to continue with AES-128 encryption
+    if (encryption_params.protection_scheme ==
+        EncryptionParams::kProtectionSchemeAes128) {
+      VLOG(1) << "Use AES-128 encryption for MPEG2TS or Packed Audio.";
+      encryption_params.protection_scheme = FOURCC_a128;
+    } else {
+      VLOG(1) << "Use Apple Sample AES encryption for MPEG2TS or Packed Audio.";
+      encryption_params.protection_scheme = kAppleSampleAesProtectionScheme;
+    }
   }
 
   if (!stream.drm_label.empty()) {
@@ -890,6 +901,17 @@ Status Packager::Initialize(
       LanguageToShortestForm(mpd_params.default_language);
   mpd_params.default_text_language =
       LanguageToShortestForm(mpd_params.default_text_language);
+  if (packaging_params.mp4_output_params.pluto_ad_event_settings
+          .pluto_ad_event) {
+    MpdParams::in_band_event_stream_video_param event_stream_param;
+    event_stream_param.event_stream_id_uri =
+        packaging_params.mp4_output_params.pluto_ad_event_settings
+            .event_stream_id_url;
+    event_stream_param.event_stream_value =
+        packaging_params.mp4_output_params.pluto_ad_event_settings
+            .event_stream_value;
+    mpd_params.in_band_event_stream_video_params.push_back(event_stream_param);
+  }
   hls_params.default_language =
       LanguageToShortestForm(hls_params.default_language);
   hls_params.default_text_language =

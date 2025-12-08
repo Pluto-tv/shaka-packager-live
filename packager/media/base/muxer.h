@@ -9,6 +9,7 @@
 #ifndef PACKAGER_MEDIA_BASE_MUXER_H_
 #define PACKAGER_MEDIA_BASE_MUXER_H_
 
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -96,9 +97,8 @@ class Muxer : public MediaHandler {
   virtual Status AddTextSample(size_t stream_id, const TextSample& sample);
 
   // Finalize the segment or subsegment.
-  virtual Status FinalizeSegment(
-      size_t stream_id,
-      const SegmentInfo& segment_info) = 0;
+  virtual Status FinalizeSegment(size_t stream_id,
+                                 const SegmentInfo& segment_info) = 0;
 
   // Re-initialize Muxer. Could be called on StreamInfo or CueEvent.
   // |timestamp| may be used to set the output file name.

@@ -7,6 +7,7 @@
 #ifndef PACKAGER_MEDIA_BASE_DEMUXER_H_
 #define PACKAGER_MEDIA_BASE_DEMUXER_H_
 
+#include <cstdint>
 #include <deque>
 #include <memory>
 #include <vector>
@@ -92,6 +93,10 @@ class Demuxer : public OriginHandler {
     input_format_ = input_format;
   }
 
+  void set_pluto_ad_event(bool pluto_ad_event) {
+    pluto_ad_event_ = pluto_ad_event;
+  }
+
  protected:
   /// @name MediaHandler implementation overrides.
   /// @{
@@ -174,6 +179,9 @@ class Demuxer : public OriginHandler {
 
   // Explicitly defined input format, for avoiding autodetection.
   std::string input_format_;
+
+  // Whether to use Pluto ad event.
+  bool pluto_ad_event_ = false;
 };
 
 }  // namespace media

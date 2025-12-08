@@ -44,6 +44,18 @@ AdaptationSet::Role RoleFromString(const std::string& role_str) {
     return AdaptationSet::Role::kRoleDub;
   if (role_str == "forced-subtitle")
     return AdaptationSet::Role::kRoleForcedSubtitle;
+  if (role_str == "karaoke")
+    return AdaptationSet::Role::kRoleKaraoke;
+  if (role_str == "sign")
+    return AdaptationSet::Role::kRoleSign;
+  if (role_str == "metadata")
+    return AdaptationSet::Role::kRoleMetadata;
+  if (role_str == "enhanced-audio-intelligibility")
+    return AdaptationSet::Role::kRoleEnhancedAudioIntelligibility;
+  if (role_str == "emergency")
+    return AdaptationSet::Role::kRoleEmergency;
+  if (role_str == "easyreader")
+    return AdaptationSet::Role::kRoleEasyreader;
   if (role_str == "description")
     return AdaptationSet::Role::kRoleDescription;
   return AdaptationSet::Role::kRoleUnknown;
@@ -148,9 +160,13 @@ std::optional<xml::XmlNode> Period::GetXml(bool output_period_duration) {
   // Also force AdaptationSets Id to incremental order, which might not
   // be the case if force_cl_index is used.
   int idx = 0;
+  for (auto& adaptation_set : adaptation_sets_) {
+    adaptation_set->set_id(idx++);
+  }
+
   for (const auto& adaptation_set : adaptation_sets_) {
     auto child = adaptation_set->GetXml();
-    if (!child || !child->SetId(idx++) || !period.AddChild(std::move(*child)))
+    if (!child || !period.AddChild(std::move(*child)))
       return std::nullopt;
   }
 

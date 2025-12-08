@@ -1,3 +1,27 @@
+<!-- PROJECT LOGO -->
+<br />
+<p align="center"><img src="docs/pluto-tv.svg" alt="PlutoTV" width="333" height="187"></p>
+
+This fork includes features that allow dynamic packaging on per-segment basis, 
+custom Pluto TV metadata for ID3 tags, updates to TTML generation, and other tweaks.
+
+# Release process
+
+# Sync with Google code
+
+- Sync with Google main branch and make PR
+- Fix all merge conflicts
+
+# Linux Dockers
+We disabled OpenSUSE Dockerfile for now, since it is still broken on Google's side.
+
+# Submodules
+The Shaka uses cURL as submodule. Please make sure you are pointed to the correct branch (the same as original shaka branch).
+Don't update it, otherwise it will break the build.
+
+If you do not see code in packager/third_party/*/source, then you should run `make submodules` to download all of the submodules in this project, otherwise you will not be able to build Shaka locally as native code or within docker.
+
+
 [comment]: # (While not ideal, absolute URLs are used here as it is the        )
 [comment]: # (simplest way to make the links work on GitHub and Docker Hub.    )
 [comment]: # (These links in cloned repositories will point back to the main   )
@@ -46,6 +70,7 @@ Shaka Packager supports:
   |       FLAC        |    I / O     |      -       |       -      |      -      |       -      |
   |       Opus        |    I / O³    |    I / O     |       -      |      -      |       -      |
   |      Vorbis       |      -       |    I / O     |       -      |      -      |       -      |
+  |       IAMF        |    I / O     |      -       |       -      |      -      |       -      |
 
   NOTES:
   - I for input and O for output.
@@ -95,7 +120,8 @@ There are several ways you can get Shaka Packager.
 - [Announcement List](https://groups.google.com/forum/#!forum/shaka-packager-users)
   (join for infrequent announcements and surveys)
 - Subscribe to releases by following
-  [instructions from this blog](https://www.jessesquires.com/blog/2020/07/30/github-tip-watching-releases/)- [Documentation](https://shaka-project.github.io/shaka-packager/html/)
+  [instructions from this blog](https://www.jessesquires.com/blog/2020/07/30/github-tip-watching-releases/)
+- [Documentation](https://shaka-project.github.io/shaka-packager/html/)
 - [Tutorials](https://shaka-project.github.io/shaka-packager/html/tutorials/tutorials.html)
 - Several open source players:
   - [DASH and HLS on Web: Shaka Player](https://github.com/shaka-project/shaka-player)
