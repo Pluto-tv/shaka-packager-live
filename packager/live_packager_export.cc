@@ -210,5 +210,4 @@ void lp_freeErrorMessages(char** messages, int num_messages) {
   }
 
   free(messages);
-  messages = nullptr;
 }
