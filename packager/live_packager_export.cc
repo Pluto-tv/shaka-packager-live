@@ -142,10 +142,10 @@ void lp_installCustomLogSink(LogSink_f sink_f) {
   std::lock_guard<std::mutex> lock(sink_mutex);
   if (!custom_sink) {
     custom_sink = std::make_unique<shaka::pluto::live::LogCollectorSink>(
-      std::function([sink_f](const absl::LogEntry& entry) {
-        sink_f(static_cast<LogSeverity_t>(entry.log_severity()),
-          entry.text_message().data(), entry.text_message().size());
-      }));
+        std::function([sink_f](const absl::LogEntry& entry) {
+          sink_f(static_cast<LogSeverity_t>(entry.log_severity()),
+            entry.text_message().data(), entry.text_message().size());
+        }));
     shaka::pluto::live::InstallCustomLogSink(*custom_sink);
   }
 }
