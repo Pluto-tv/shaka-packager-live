@@ -141,13 +141,9 @@ typedef enum LogSeverity {
 /// Enable general logging
 void lp_initializeLog(LogSeverity_t sev);
 /// Capture detailed logging messages
-void lp_installCustomLogSink();
+typedef void (*LogSink_f)(LogSeverity_t sev, const char* msg, size_t len);
+void lp_installCustomLogSink(LogSink_f sink_f);
 void lp_removeCustomLogSink();
-
-/// When the return value is not NULL, clients will need to free this memory
-char** lp_getErrorMessages(int* num_messages);
-void lp_flushMessage();
-void lp_freeErrorMessages(char** messages, int num_messages);
 
 #ifdef __cplusplus
 }

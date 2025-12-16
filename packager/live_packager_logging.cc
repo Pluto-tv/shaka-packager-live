@@ -13,20 +13,7 @@
 namespace shaka::pluto::live {
 
 void LogCollectorSink::Send(const absl::LogEntry& entry) {
-  if (messages_.size() < max_message_count_) {
-    const auto msg =
-        absl::StrFormat("(%s): %s", absl::LogSeverityName(entry.log_severity()),
-                        entry.text_message());
-    messages_.push_back(msg);
-  }
-}
-
-void LogCollectorSink::Flush() {
-  messages_.clear();
-}
-
-const std::vector<std::string>& LogCollectorSink::GetMessages() const {
-  return messages_;
+  logSink_(entry);
 }
 
 void InitializeLog(absl::LogSeverityAtLeast sev) {

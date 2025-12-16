@@ -138,10 +138,13 @@ void lp_initializeLog(LogSeverity_t sev) {
   shaka::pluto::live::InitializeLog(static_cast<absl::LogSeverityAtLeast>(sev));
 }
 
-void lp_installCustomLogSink() {
+void lp_installCustomLogSink(LogSink_f sink_f) {
   std::lock_guard<std::mutex> lock(sink_mutex);
   if (!custom_sink) {
-    custom_sink = std::make_unique<shaka::pluto::live::LogCollectorSink>();
+    custom_sink = std::make_unique<shaka::pluto::live::LogCollectorSink>(
+      std::function([sink_f](const absl::LogEntry& entry) {
+        sink_f(static_cast<LogSeverity_t>(entry.log_severity()), entry.text_message().data(), entry.text_message().size());
+      }));
     shaka::pluto::live::InstallCustomLogSink(*custom_sink);
   }
 }
@@ -152,62 +155,4 @@ void lp_removeCustomLogSink() {
     shaka::pluto::live::RemoveCustomLogSink(*custom_sink);
     custom_sink.reset();
   }
-}
-
-char** lp_getErrorMessages(int* num_messages) {
-  std::lock_guard<std::mutex> lock(sink_mutex);
-  *num_messages = 0;
-  if (!custom_sink) {
-    return nullptr;
-  }
-
-  const auto& messages = custom_sink->GetMessages();
-
-  if (messages.empty()) {
-    return nullptr;
-  }
-
-  char** out_messages = (char**)malloc(messages.size() * sizeof(char*));
-  if (!out_messages) {
-    return nullptr;
-  }
-
-  for (size_t i(0); i < messages.size(); ++i) {
-    const auto& msg = messages[i];
-    out_messages[i] = strdup(msg.c_str());
-
-    if (!out_messages[i]) {
-      // free memory allocated for earlier strings
-      for (size_t j(0); j < i; ++j) {
-        free(out_messages[j]);
-      }
-      free(out_messages);
-      return nullptr;
-    }
-  }
-
-  *num_messages = messages.size();
-  return out_messages;
-}
-
-void lp_flushMessage() {
-  std::lock_guard<std::mutex> lock(sink_mutex);
-  if (custom_sink) {
-    custom_sink->Flush();
-  }
-}
-
-void lp_freeErrorMessages(char** messages, int num_messages) {
-  if (!messages) {
-    return;
-  }
-
-  for (int i(0); i < num_messages; ++i) {
-    if (messages[i]) {
-      free(messages[i]);
-      messages[i] = nullptr;
-    }
-  }
-
-  free(messages);
 }
