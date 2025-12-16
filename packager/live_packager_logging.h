@@ -10,7 +10,8 @@ namespace shaka::pluto::live {
 
 class LogCollectorSink : public absl::LogSink {
  public:
-  LogCollectorSink(std::function<void(const absl::LogEntry&)> logSink) : logSink_(std::move(logSink)) {}
+  LogCollectorSink(std::function<void(const absl::LogEntry&)> logSink)
+      : logSink_(std::move(logSink)) {}
   ~LogCollectorSink() override = default;
 
   void Send(const absl::LogEntry& entry) override;
