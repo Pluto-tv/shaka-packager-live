@@ -18,7 +18,6 @@ class LogCollectorSink : public absl::LogSink {
 
  private:
   std::function<void(const absl::LogEntry&)> logSink_;
-  size_t max_message_count_ = 1000;
 };
 
 void InitializeLog(absl::LogSeverityAtLeast sev);
