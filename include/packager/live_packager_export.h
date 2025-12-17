@@ -141,8 +141,10 @@ typedef enum LogSeverity {
 /// Enable general logging
 void lp_initializeLog(LogSeverity_t sev);
 /// Capture detailed logging messages
-typedef void (*LogSink_f)(void* logger, LogSeverity_t sev,
-                          const char* msg, size_t len);
+typedef void (*LogSink_f)(void* logger,
+                          LogSeverity_t sev,
+                          const char* msg,
+                          size_t len);
 void lp_installCustomLogSink(LogSink_f sink_f, void* logger);
 void lp_removeCustomLogSink();
 
