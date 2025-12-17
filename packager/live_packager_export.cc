@@ -5,6 +5,7 @@
 #include <packager/live_packager.h>
 #include <packager/live_packager_export.h>
 #include <packager/live_packager_logging.h>
+#include <sys/stat.h>
 
 struct LivePackager_instance_s {
   std::unique_ptr<shaka::LivePackager> inner;
@@ -138,12 +139,12 @@ void lp_initializeLog(LogSeverity_t sev) {
   shaka::pluto::live::InitializeLog(static_cast<absl::LogSeverityAtLeast>(sev));
 }
 
-void lp_installCustomLogSink(LogSink_f sink_f) {
+void lp_installCustomLogSink(LogSink_f sink_f, void* logger) {
   std::lock_guard<std::mutex> lock(sink_mutex);
   if (!custom_sink) {
     custom_sink = std::make_unique<shaka::pluto::live::LogCollectorSink>(
-        std::function([sink_f](const absl::LogEntry& entry) {
-          sink_f(static_cast<LogSeverity_t>(entry.log_severity()),
+        std::function([sink_f, logger](const absl::LogEntry& entry) {
+          sink_f(logger, static_cast<LogSeverity_t>(entry.log_severity()),
                  entry.text_message().data(), entry.text_message().size());
         }));
     shaka::pluto::live::InstallCustomLogSink(*custom_sink);
