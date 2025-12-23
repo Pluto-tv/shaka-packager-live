@@ -1,11 +1,9 @@
-#include <cstring>
 #include <memory>
 #include <mutex>
 
 #include <packager/live_packager.h>
 #include <packager/live_packager_export.h>
 #include <packager/live_packager_logging.h>
-#include <sys/stat.h>
 
 struct LivePackager_instance_s {
   std::unique_ptr<shaka::LivePackager> inner;
