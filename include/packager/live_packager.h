@@ -9,6 +9,8 @@
 
 #include <packager/packager.h>
 
+#include "live_packager_export.h"
+
 namespace shaka {
 
 class Segment {
@@ -72,6 +74,12 @@ class FullSegmentBuffer final : public Segment {
 };
 
 struct LiveConfig {
+  enum class InputFormat {
+    FMP4,
+    TS,
+    UNSPECIFIED,
+  };
+
   enum class OutputFormat {
     FMP4,
     TS,
@@ -94,6 +102,7 @@ struct LiveConfig {
     CENC,
   };
 
+  InputFormat input_format;
   OutputFormat format;
   TrackType track_type;
 

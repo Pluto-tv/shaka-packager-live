@@ -12,6 +12,12 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+typedef enum InputFormat {
+  INPUT_FORMAT_FMP4,
+  INPUT_FORMAT_TS,
+  INPUT_FORMAT_UNSPECIFIED,
+} InputFormat_t;
+
 typedef enum OutputFormat {
   OUTPUT_FORMAT_FMP4,
   OUTPUT_FORMAT_TS,
@@ -48,6 +54,7 @@ typedef enum ContentProtectionSystem {
 #define KEY_ID_SIZE 16
 
 typedef struct LivePackagerConfig {
+  InputFormat_t input_format;
   OutputFormat_t format;
   TrackType_t track_type;
 
