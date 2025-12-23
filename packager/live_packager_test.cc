@@ -17,6 +17,7 @@
 #include <packager/crypto_params.h>
 #include <packager/file.h>
 #include <packager/live_packager.h>
+#include <packager/live_packager_export.h>
 #include <packager/media/base/aes_decryptor.h>
 #include <packager/media/base/aes_pattern_cryptor.h>
 #include <packager/media/base/byte_queue.h>
@@ -1567,3 +1568,9 @@ TEST_F(LivePackagerBaseTest, TestCmafTimedText) {
 }
 
 }  // namespace shaka
+
+int main(int argc, char** argv) {
+  absl::SetMinLogLevel(absl::LogSeverityAtLeast::kWarning);
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

@@ -1,8 +1,9 @@
+#include <memory>
+#include <mutex>
+
 #include <packager/live_packager.h>
 #include <packager/live_packager_export.h>
-#include <cstring>
-
-#include <memory>
+#include <packager/live_packager_logging.h>
 
 struct LivePackager_instance_s {
   std::unique_ptr<shaka::LivePackager> inner;
@@ -124,4 +125,34 @@ LivePackagerStatus_t livepackager_package_timedtext(LivePackager_t lp,
 
   dest->inner->AppendData(out.SegmentData(), out.SegmentSize());
   return LivePackagerStatus_s{nullptr, status.ok()};
+}
+
+//
+// Logging
+//
+static std::unique_ptr<shaka::pluto::live::LogCollectorSink> custom_sink;
+static std::mutex sink_mutex;
+
+void lp_initializeLog(LogSeverity_t sev) {
+  shaka::pluto::live::InitializeLog(static_cast<absl::LogSeverityAtLeast>(sev));
+}
+
+void lp_installCustomLogSink(LogSink_f sink_f, void* logger) {
+  std::lock_guard<std::mutex> lock(sink_mutex);
+  if (!custom_sink) {
+    custom_sink = std::make_unique<shaka::pluto::live::LogCollectorSink>(
+        std::function([sink_f, logger](const absl::LogEntry& entry) {
+          sink_f(logger, static_cast<LogSeverity_t>(entry.log_severity()),
+                 entry.text_message().data(), entry.text_message().size());
+        }));
+    shaka::pluto::live::InstallCustomLogSink(*custom_sink);
+  }
+}
+
+void lp_removeCustomLogSink() {
+  std::lock_guard<std::mutex> lock(sink_mutex);
+  if (custom_sink) {
+    shaka::pluto::live::RemoveCustomLogSink(*custom_sink);
+    custom_sink.reset();
+  }
 }

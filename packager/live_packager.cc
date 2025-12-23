@@ -279,8 +279,6 @@ struct LivePackager::LivePackagerInternal {
 
 LivePackager::LivePackager(const LiveConfig& config)
     : internal_(new LivePackagerInternal), config_(config) {
-  absl::SetMinLogLevel(absl::LogSeverityAtLeast::kWarning);
-
   if (config.protection_scheme == LiveConfig::EncryptionScheme::AES_128 &&
       config.format == LiveConfig::OutputFormat::TS) {
     internal_->segment_manager =
