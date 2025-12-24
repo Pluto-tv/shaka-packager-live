@@ -102,7 +102,7 @@ struct LiveConfig {
     CENC,
   };
 
-  InputFormat input_format;
+  InputFormat input_format = InputFormat::UNSPECIFIED;
   OutputFormat format;
   TrackType track_type;
 
