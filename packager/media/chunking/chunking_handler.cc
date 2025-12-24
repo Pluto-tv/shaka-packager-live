@@ -35,6 +35,7 @@ ChunkingHandler::ChunkingHandler(const ChunkingParams& chunking_params)
     : chunking_params_(chunking_params) {
   CHECK_NE(chunking_params.segment_duration_in_seconds, 0u);
   segment_number_ = chunking_params.start_segment_number;
+  cue_offset_ = chunking_params.cue_offset;
 }
 
 Status ChunkingHandler::InitializeInternal() {

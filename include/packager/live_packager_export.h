@@ -78,6 +78,10 @@ typedef struct LivePackagerConfig {
   /// parsing, and writing EMSG box data to output segments.
   bool emsg_processing;
 
+  // cue offset applied when packaging segments
+  // it will effect internal segment numbers calculation
+  int64_t cue_offset;
+
   /// Decryption parameters
   bool enable_decryption;
   uint8_t decryption_key[KEY_SIZE];
