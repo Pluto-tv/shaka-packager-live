@@ -13,9 +13,9 @@ extern "C" {
 #include <stdint.h>
 
 typedef enum InputFormat {
+  INPUT_FORMAT_UNSPECIFIED,
   INPUT_FORMAT_FMP4,
   INPUT_FORMAT_TS,
-  INPUT_FORMAT_UNSPECIFIED,
 } InputFormat_t;
 
 typedef enum OutputFormat {

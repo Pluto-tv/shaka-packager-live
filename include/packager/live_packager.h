@@ -75,9 +75,9 @@ class FullSegmentBuffer final : public Segment {
 
 struct LiveConfig {
   enum class InputFormat {
+    UNSPECIFIED,
     FMP4,
     TS,
-    UNSPECIFIED,
   };
 
   enum class OutputFormat {
