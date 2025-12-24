@@ -94,6 +94,20 @@ StreamDescriptors setupStreamDescriptors(
 
   desc.stream_selector = getStreamSelector(config);
 
+  switch (config.input_format) {
+    case LiveConfig::InputFormat::UNSPECIFIED:
+      desc.input_format = "";
+      break;
+    case LiveConfig::InputFormat::FMP4:
+      desc.input_format = "mp4";
+      break;
+    case LiveConfig::InputFormat::TS:
+      desc.input_format = "ts";
+      break;
+    default:
+      break;
+  }
+
   switch (config.format) {
     case LiveConfig::OutputFormat::VTTMP4:
       desc.output_format = "vtt+mp4";
@@ -109,20 +123,6 @@ StreamDescriptors setupStreamDescriptors(
       // init segment
       desc.output =
           File::MakeCallbackFileName(init_cb_params, INIT_SEGMENT_FNAME);
-      break;
-    default:
-      break;
-  }
-
-  switch (config.input_format) {
-    case LiveConfig::InputFormat::UNSPECIFIED:
-      desc.input_format = "";
-      break;
-    case LiveConfig::InputFormat::FMP4:
-      desc.input_format = "mp4";
-      break;
-    case LiveConfig::InputFormat::TS:
-      desc.input_format = "ts";
       break;
     default:
       break;

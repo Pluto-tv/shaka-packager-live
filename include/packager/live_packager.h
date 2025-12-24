@@ -9,8 +9,6 @@
 
 #include <packager/packager.h>
 
-#include "live_packager_export.h"
-
 namespace shaka {
 
 class Segment {
