@@ -11,6 +11,7 @@ struct LivePackager_instance_s {
 
 LivePackager_t livepackager_new(LivePackagerConfig_t cfg) {
   shaka::LiveConfig converted;
+  converted.input_format = shaka::LiveConfig::InputFormat(cfg.input_format);
   converted.format = shaka::LiveConfig::OutputFormat(cfg.format);
   converted.track_type = shaka::LiveConfig::TrackType(cfg.track_type);
   converted.iv = {};

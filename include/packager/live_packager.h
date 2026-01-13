@@ -72,6 +72,12 @@ class FullSegmentBuffer final : public Segment {
 };
 
 struct LiveConfig {
+  enum class InputFormat {
+    UNSPECIFIED,
+    FMP4,
+    TS,
+  };
+
   enum class OutputFormat {
     FMP4,
     TS,
@@ -94,6 +100,7 @@ struct LiveConfig {
     CENC,
   };
 
+  InputFormat input_format = InputFormat::UNSPECIFIED;
   OutputFormat format;
   TrackType track_type;
 

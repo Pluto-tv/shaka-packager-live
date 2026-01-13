@@ -36,7 +36,7 @@ jobs:
 
           // Use enableSelfHosted to decide what the build matrix below should
           // include.
-          const {hosted, selfHosted} = require("${{ github.workspace }}/.github/workflows/build-matrix.json");
+          const {hosted, selfHosted} = require("${{ github.workspace }}/build-matrix.json");
           const include = enableSelfHosted ? hosted.concat(selfHosted) : hosted;
           const os = include.map((config) => config.os);
 
