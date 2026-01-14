@@ -1,3 +1,7 @@
+## [3.4.2-pluto.v9.2.0] - 2026-01-08
+- Change ubuntu base image to 24.04 (from 22.04)
+- export cue_offset to be used by lib
+
 ## [3.4.2-pluto.v9.1.1] - 2025-06-26
 - Fix for AdaptationSet switching
 

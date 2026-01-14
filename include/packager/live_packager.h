@@ -134,6 +134,10 @@ struct LiveConfig {
   /// Flag used to enable parsing of EMSG (Event Message) boxes during fmp4
   /// parsing, and writing EMSG box data to output segments.
   bool emsg_processing = false;
+
+  // cue offset applied when packaging segments
+  // it will effect internal segment numbers calculation
+  int64_t cue_offset = 0;
 };
 
 class LivePackager {
