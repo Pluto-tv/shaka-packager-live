@@ -42,10 +42,6 @@ struct ChunkingParams {
 
   /// Indicates the startNumber in DASH SegmentTemplate and HLS segment name.
   int64_t start_segment_number = 1;
-
-  /// cue offset applied when packaging segments
-  /// it will effect internal segment numbers calculation
-  int64_t cue_offset = 0;
 };
 
 }  // namespace shaka
