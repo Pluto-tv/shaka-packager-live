@@ -42,6 +42,10 @@ struct ChunkingParams {
 
   /// Indicates the startNumber in DASH SegmentTemplate and HLS segment name.
   int64_t start_segment_number = 1;
+
+  /// When true, all samples are placed in a single segment. The segment is
+  /// only finalized on flush, producing exactly one output segment.
+  bool single_segment_mode = false;
 };
 
 }  // namespace shaka
