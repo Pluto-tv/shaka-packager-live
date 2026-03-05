@@ -299,6 +299,27 @@ class MP4MediaParserTest {
       emsg_samples_;
 };
 
+size_t CountTopLevelBoxes(const Segment& buffer, media::FourCC box_type) {
+  size_t count = 0;
+  bool err(false);
+  size_t bytes_to_read(buffer.Size());
+  const uint8_t* data(buffer.Data());
+
+  while (bytes_to_read > 0) {
+    std::unique_ptr<media::mp4::BoxReader> reader(
+        media::mp4::BoxReader::ReadBox(data, bytes_to_read, &err));
+    if (err || !reader) {
+      break;
+    }
+    if (reader->type() == box_type) {
+      count++;
+    }
+    data += reader->size();
+    bytes_to_read -= reader->size();
+  }
+  return count;
+}
+
 bool GetBox(const Segment& buffer, media::mp4::Box& out) {
   bool err(true);
   size_t bytes_to_read(buffer.Size());
@@ -905,6 +926,41 @@ TEST_F(LivePackagerBaseTest, MoovAfterRepackage) {
   }
 
   EXPECT_EQ(exp_moov.extends.tracks, act_moov.extends.tracks);
+}
+
+TEST_F(LivePackagerBaseTest, MultiFragmentProducesSingleMoof) {
+  std::vector<uint8_t> init_segment_buffer =
+      ReadTestDataFile("multi-fragment/init.mp4");
+  ASSERT_FALSE(init_segment_buffer.empty());
+
+  std::vector<uint8_t> segment_buffer =
+      ReadTestDataFile("multi-fragment/frag.m4s");
+  ASSERT_FALSE(segment_buffer.empty());
+
+  SegmentData input_frag(segment_buffer.data(), segment_buffer.size());
+  ASSERT_GT(CountTopLevelBoxes(input_frag, media::FourCC::FOURCC_moof), 1u)
+      << "Test precondition: input fragment must contain multiple moof boxes";
+
+  LiveConfig live_config;
+  live_config.format = LiveConfig::OutputFormat::FMP4;
+  live_config.track_type = LiveConfig::TrackType::AUDIO;
+  live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
+  live_config.segment_number = 1;
+  SetupLivePackagerConfig(live_config);
+
+  SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
+  SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+  SegmentBuffer out;
+
+  SegmentBuffer init_out;
+  ASSERT_EQ(Status::OK, live_packager_->PackageInit(init_seg, init_out));
+  ASSERT_GT(init_out.Size(), 0);
+
+  ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
+  ASSERT_GT(out.Size(), 0);
+
+  EXPECT_EQ(CountTopLevelBoxes(out, media::FourCC::FOURCC_moof), 1u)
+      << "Output segment must contain exactly one moof box";
 }
 
 TEST_F(LivePackagerBaseTest, EncryptionFailure) {

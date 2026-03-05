@@ -96,6 +96,22 @@ Status ChunkingHandler::OnMediaSample(
 
   const int64_t timestamp = sample->pts();
 
+  // Single-segment mode: start one segment on the first sample, never split.
+  // All samples are accumulated and the segment is finalized on flush.
+  if (chunking_params_.single_segment_mode) {
+    if (!segment_start_time_) {
+      segment_start_time_ = timestamp;
+      subsegment_start_time_ = timestamp;
+      max_segment_time_ = timestamp + sample->duration();
+    }
+    segment_start_time_ = std::min(segment_start_time_.value(), timestamp);
+    subsegment_start_time_ =
+        std::min(subsegment_start_time_.value(), timestamp);
+    max_segment_time_ =
+        std::max(max_segment_time_, timestamp + sample->duration());
+    return DispatchMediaSample(kStreamIndex, std::move(sample));
+  }
+
   bool started_new_segment = false;
   const bool can_start_new_segment =
       sample->is_key_frame() || !chunking_params_.segment_sap_aligned;
