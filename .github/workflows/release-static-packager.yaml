@@ -1,0 +1,58 @@
+# Release workflow for static-packager branch.
+# Manually triggered with a tag input. Builds all platforms,
+# creates a GitHub release, and attaches binary artifacts.
+
+name: Release Static Packager
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v3.7.0-static.1)'
+        required: true
+        type: string
+
+jobs:
+  settings:
+    name: Settings
+    uses: ./.github/workflows/settings.yaml
+
+  build:
+    name: Build
+    needs: settings
+    uses: ./.github/workflows/build.yaml
+    with:
+      ref: ${{ github.sha }}
+      self_hosted: ${{ needs.settings.outputs.self_hosted != '' }}
+      debug: ${{ needs.settings.outputs.debug != '' }}
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+    concurrency:
+      group: release-static-packager
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: artifacts-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Debug
+        run: find artifacts -ls || true
+
+      - name: Create release and upload artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh -R "${{ github.repository }}" release create \
+              "$TAG" \
+              --target ${{ github.sha }} \
+              --title "$TAG" \
+              --generate-notes \
+              -- artifacts/*
