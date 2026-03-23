@@ -4,9 +4,6 @@ name: Update Issues
 on:
   workflow_dispatch:
     # Allows for manual triggering.
-  schedule:
-    # Run every 30 minutes
-    - cron: '*/30 * * * *'
 
 jobs:
   update-issues:

@@ -1,0 +1,21 @@
+# Release workflow for dynamic-packager (shared library) builds.
+# Manually triggered with a tag input. Builds all platforms,
+# creates a GitHub release, and attaches shared library artifacts
+# plus the C header file.
+# This is a minimum placeholder to make workflow appear inside an Actions tab.
+# full definition is available in the dynamic-packager branch
+
+name: Release Dynamic Packager
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v3.7.0-dynamic.1)'
+        required: true
+        type: string
+
+jobs:
+  settings:
+    name: Settings
+    uses: ./.github/workflows/settings.yaml

@@ -1,0 +1,20 @@
+# Release workflow for static-packager branch.
+# Manually triggered with a tag input. Builds all platforms,
+# creates a GitHub release, and attaches binary artifacts.
+# This is a minimum placeholder to make workflow appear inside an Actions tab.
+# full definition is available in the static-packager branch
+
+name: Release Static Packager
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v3.7.0-static.1)'
+        required: true
+        type: string
+
+jobs:
+  settings:
+    name: Settings
+    uses: ./.github/workflows/settings.yaml
