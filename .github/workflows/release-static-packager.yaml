@@ -25,6 +25,8 @@ jobs:
       ref: ${{ github.sha }}
       self_hosted: ${{ needs.settings.outputs.self_hosted != '' }}
       debug: ${{ needs.settings.outputs.debug != '' }}
+      build_type: '["Release"]'
+      lib_type: '["static"]'
 
   release:
     name: Create Release

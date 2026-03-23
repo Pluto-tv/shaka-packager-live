@@ -25,6 +25,16 @@ on:
         required: false
         type: boolean
         default: false
+      # JSON array of build types to include in the matrix.
+      build_type:
+        required: false
+        type: string
+        default: '["Debug", "Release"]'
+      # JSON array of library types to include in the matrix.
+      lib_type:
+        required: false
+        type: string
+        default: '["static", "shared"]'
 
 # By default, run all commands in a bash shell.  On Windows, the default would
 # otherwise be powershell.
@@ -82,8 +92,8 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.build_matrix_config.outputs.INCLUDE) }}
         os: ${{ fromJSON(needs.build_matrix_config.outputs.OS) }}
-        build_type: ["Debug", "Release"]
-        lib_type: ["static", "shared"]
+        build_type: ${{ fromJSON(inputs.build_type) }}
+        lib_type: ${{ fromJSON(inputs.lib_type) }}
 
     name: ${{ matrix.os_name }} ${{ matrix.target_arch }} ${{ matrix.build_type }} ${{ matrix.lib_type }}
     runs-on: ${{ matrix.os }}
@@ -202,6 +212,7 @@ jobs:
             -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
             -DBUILD_SHARED_LIBS="$BUILD_SHARED_LIBS" \
             -DFULLY_STATIC="$FULLY_STATIC" \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -S . \
             -B build/
 
