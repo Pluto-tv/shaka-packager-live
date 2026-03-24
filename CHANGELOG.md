@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [3.7.1](https://github.com/Pluto-tv/shaka-packager-live/compare/v3.7.0...v3.7.1) (2026-03-24)
+
+
+### Bug Fixes
+
+* resolve relative paths for atomic write target ([#1564](https://github.com/Pluto-tv/shaka-packager-live/issues/1564)) ([90a392e](https://github.com/Pluto-tv/shaka-packager-live/commit/90a392ed8a30bc30697a3bec3115f4d2dff3a580))
+
 ## [3.7.0](https://github.com/shaka-project/shaka-packager/compare/v3.6.1...v3.7.0) (2026-03-19)
 
 
