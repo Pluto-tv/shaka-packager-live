@@ -15,6 +15,20 @@ include("packager/policies.cmake")
 # Project name.  May not contain spaces.  Versioning is managed elsewhere.
 project(shaka-packager VERSION "")
 
+# std::filesystem (used in packager/file) requires macOS 10.15+. CMake's Apple
+# toolchain init may still inject -mmacosx-version-min=10.9; bump so native
+# macOS builds compile and link consistently.
+if(APPLE)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum macOS version" FORCE)
+  foreach(_shaka_osx_flag IN ITEMS CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_EXE_LINKER_FLAGS
+                                    CMAKE_MODULE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS)
+    if(DEFINED ${_shaka_osx_flag})
+      string(REPLACE "-mmacosx-version-min=10.9" "-mmacosx-version-min=10.15"
+             ${_shaka_osx_flag} "${${_shaka_osx_flag}}")
+    endif()
+  endforeach()
+endif()
+
 # Whether to build a shared libpackager library.  By default, don't.
 option(BUILD_SHARED_LIBS "Build libpackager as a shared library" OFF)
 
