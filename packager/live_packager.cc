@@ -514,7 +514,8 @@ Status SegmentManager::InitializeEncryption(
       return Status(error::INVALID_ARGUMENT,
                     "invalid encryption scheme provided to LivePackager.");
   }
-  encryption_params.protection_systems = config.protection_system;
+  encryption_params.protection_systems =
+      config.protection_system | ProtectionSystem::kCommon;
 
   encryption_params.key_provider = KeyProvider::kRawKey;
   RawKeyParams::KeyInfo& key_info = encryption_params.raw_key.key_map[""];
@@ -660,10 +661,10 @@ Status GeneratePSSHData(const PSSHGeneratorInput& in, PSSHData* out) {
 
   std::vector<std::unique_ptr<media::PsshGenerator>> pssh_generators;
   pssh_generators.emplace_back(std::make_unique<media::CommonPsshGenerator>());
+  pssh_generators.emplace_back(std::make_unique<media::WidevinePsshGenerator>(
+      static_cast<media::FourCC>(in.protection_scheme)));
   pssh_generators.emplace_back(std::make_unique<media::PlayReadyPsshGenerator>(
       kNoExtraHeadersForPlayReady,
-      static_cast<media::FourCC>(in.protection_scheme)));
-  pssh_generators.emplace_back(std::make_unique<media::WidevinePsshGenerator>(
       static_cast<media::FourCC>(in.protection_scheme)));
 
   for (const auto& pssh_generator : pssh_generators) {

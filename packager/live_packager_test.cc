@@ -390,19 +390,19 @@ void CheckVideoPsshInfo(const ProtectionSystem& config,
     CHECK(ParseAndCheckType(moov, reader.get()));
 
     std::vector<std::vector<uint8_t>> expected_pssh_system_ids;
-    if (has_flag(config, ProtectionSystem::kCommon)) {
+    if (config != ProtectionSystem::kNone) {
       expected_pssh_system_ids.emplace_back(std::begin(media::kCommonSystemId),
                                             std::end(media::kCommonSystemId));
-    }
-    if (has_flag(config, ProtectionSystem::kPlayReady)) {
-      expected_pssh_system_ids.emplace_back(
-          std::begin(media::kPlayReadySystemId),
-          std::end(media::kPlayReadySystemId));
     }
     if (has_flag(config, ProtectionSystem::kWidevine)) {
       expected_pssh_system_ids.emplace_back(
           std::begin(media::kWidevineSystemId),
           std::end(media::kWidevineSystemId));
+    }
+    if (has_flag(config, ProtectionSystem::kPlayReady)) {
+      expected_pssh_system_ids.emplace_back(
+          std::begin(media::kPlayReadySystemId),
+          std::end(media::kPlayReadySystemId));
     }
 
     std::vector<uint8_t> widevine_system_id(

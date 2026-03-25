@@ -80,15 +80,15 @@ void FillPsshGenerators(
   }
 
   if (has_flag(encryption_params.protection_systems,
-               ProtectionSystem::kPlayReady)) {
-    pssh_generators->emplace_back(new PlayReadyPsshGenerator(
-        encryption_params.playready_extra_header_data,
+               ProtectionSystem::kWidevine)) {
+    pssh_generators->emplace_back(new WidevinePsshGenerator(
         static_cast<FourCC>(encryption_params.protection_scheme)));
   }
 
   if (has_flag(encryption_params.protection_systems,
-               ProtectionSystem::kWidevine)) {
-    pssh_generators->emplace_back(new WidevinePsshGenerator(
+               ProtectionSystem::kPlayReady)) {
+    pssh_generators->emplace_back(new PlayReadyPsshGenerator(
+        encryption_params.playready_extra_header_data,
         static_cast<FourCC>(encryption_params.protection_scheme)));
   }
 

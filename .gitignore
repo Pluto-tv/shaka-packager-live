@@ -27,3 +27,6 @@ junit-reports/
 packager/docs/
 .vscode/
 cmake-build-debug/
+build-linux/
+build-live/
+.cursor/*
