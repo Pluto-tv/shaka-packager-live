@@ -28,5 +28,6 @@ packager/docs/
 .vscode/
 cmake-build-debug/
 build-linux/
+build-docker/
 build-live/
 .cursor/*
