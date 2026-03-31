@@ -272,6 +272,9 @@ Status MP4Muxer::DelayInitializeMuxer() {
       if (codec_fourcc == FOURCC_iamf)
         ftyp->compatible_brands.push_back(FOURCC_iamf);
     }
+    
+    // Carry over movie extends header duration from init segment.
+    moov->extends.header.fragment_duration = streams()[0].get()->duration();
   }
 
   moov->header.creation_time = IsoTimeNow();
