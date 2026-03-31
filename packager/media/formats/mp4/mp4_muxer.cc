@@ -274,7 +274,9 @@ Status MP4Muxer::DelayInitializeMuxer() {
     }
     
     // Carry over movie extends header duration from init segment.
-    moov->extends.header.fragment_duration = streams()[0].get()->duration();
+    if (streams()[0].get()->get_default_fragment_duration() > 0)
+      moov->extends.header.fragment_duration =
+          streams()[0].get()->get_default_fragment_duration();
   }
 
   moov->header.creation_time = IsoTimeNow();
