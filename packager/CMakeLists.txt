@@ -138,6 +138,9 @@ set(libpackager_sources
   app/single_thread_job_manager.h
   packager.cc
   live_packager.cc
+  live_packager_export.cc
+  live_packager_logging.h
+  live_packager_logging.cc
   ../include/packager/packager.h
   ../include/packager/live_packager.h
 )
