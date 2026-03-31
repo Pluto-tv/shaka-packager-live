@@ -259,7 +259,7 @@ target_link_libraries(packager_test
 
 set(BUILD_LIVE_TEST ON)
 # Disabled by default, otherwise build live packager unit tests if BUILD_LIVE_TEST is on.
-if(BUILD_LIVE_TEST)
+if(BUILD_LIVE_TEST AND NOT MSVC)
   add_executable(live_packager_test
           live_packager_test.cc
   )
@@ -273,6 +273,7 @@ if(BUILD_LIVE_TEST)
     gmock
     gtest
     gtest_main)
+  add_test(NAME live_packager_test COMMAND live_packager_test)
 endif()
 
 list(APPEND packager_test_py_sources
