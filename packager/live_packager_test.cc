@@ -224,7 +224,7 @@ class MP4MediaParserTest {
     return samples_;
   }
 
-  const std::vector<std::shared_ptr<media::mp4::DASHEventMessageBox_v0>>&
+  const std::vector<std::shared_ptr<media::mp4::DASHEventMessageBox>>&
   GetEmsgSamples() {
     return emsg_samples_;
   }
@@ -286,7 +286,7 @@ class MP4MediaParserTest {
         decryption_key_source);
 
     parser_->SetEventMessageBoxCB(
-        [this](std::shared_ptr<media::mp4::DASHEventMessageBox_v0> info) {
+        [this](std::shared_ptr<media::mp4::DASHEventMessageBox> info) {
           emsg_samples_.push_back(std::move(info));
           return true;
         });
@@ -295,8 +295,7 @@ class MP4MediaParserTest {
   std::unique_ptr<media::mp4::MP4MediaParser> parser_ =
       std::make_unique<media::mp4::MP4MediaParser>();
   std::vector<std::shared_ptr<media::MediaSample>> samples_;
-  std::vector<std::shared_ptr<media::mp4::DASHEventMessageBox_v0>>
-      emsg_samples_;
+  std::vector<std::shared_ptr<media::mp4::DASHEventMessageBox>> emsg_samples_;
 };
 
 size_t CountTopLevelBoxes(const Segment& buffer, media::FourCC box_type) {
@@ -1351,8 +1350,8 @@ class LivePackagerTestReEncrypt
       std::make_unique<MP4MediaParserTest>(key_source_.get());
 };
 
-inline bool operator==(const media::mp4::DASHEventMessageBox_v0& lhs,
-                       const media::mp4::DASHEventMessageBox_v0& rhs) {
+inline bool operator==(const media::mp4::DASHEventMessageBox& lhs,
+                       const media::mp4::DASHEventMessageBox& rhs) {
   return std::tie(lhs.scheme_id_uri, lhs.value, lhs.timescale,
                   lhs.presentation_time_delta, lhs.event_duration, lhs.id,
                   lhs.message_data) ==
