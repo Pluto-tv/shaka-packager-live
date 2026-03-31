@@ -271,6 +271,11 @@ MP4MediaParser::MP4MediaParser(bool cts_offset_adjustment)
 
 MP4MediaParser::~MP4MediaParser() {}
 
+void MP4MediaParser::SetEventMessageBoxCB(
+    const DASHEventMessageBoxCB& event_message_cb) {
+  event_message_cb_ = event_message_cb;
+}
+
 void MP4MediaParser::Init(const InitCB& init_cb,
                           const NewMediaSampleCB& new_media_sample_cb,
                           const NewTextSampleCB& new_text_sample_cb,
@@ -446,6 +451,8 @@ bool MP4MediaParser::ParseBox(bool* err) {
 
   if (reader->type() == FOURCC_moov) {
     *err = !ParseMoov(reader.get());
+  } else if (reader->type() == FOURCC_emsg) {
+    *err = !ParseEmsg(reader.get());
   } else if (reader->type() == FOURCC_moof) {
     moof_head_ = queue_.head();
     *err = !ParseMoof(reader.get());
@@ -461,6 +468,15 @@ bool MP4MediaParser::ParseBox(bool* err) {
 
   queue_.Pop(static_cast<int>(reader->size()));
   return !(*err);
+}
+
+bool MP4MediaParser::ParseEmsg(BoxReader* reader) {
+  if (event_message_cb_) {
+    auto emsg_box = std::make_shared<DASHEventMessageBox>();
+    RCHECK(emsg_box->Parse(reader));
+    event_message_cb_(emsg_box);
+  }
+  return true;
 }
 
 bool MP4MediaParser::ParseMoov(BoxReader* reader) {
