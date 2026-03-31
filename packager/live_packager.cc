@@ -410,7 +410,7 @@ Status LivePackager::Package(const Segment& init_segment,
       config_.protection_system != ProtectionSystem::kNone;
   packaging_params.transport_stream_timestamp_offset_ms =
       config_.m2ts_offset_ms;
-  packaging_params.enable_null_ts_packet_stuffing = true;
+  //TODO: packaging_params.enable_null_ts_packet_stuffing = true;
   packaging_params.cts_offset_adjustment =
       config_.format == LiveConfig::OutputFormat::TS;
   packaging_params.emsg_processing = config_.emsg_processing;

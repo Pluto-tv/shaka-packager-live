@@ -48,10 +48,11 @@ TextChunker::TextChunker(double segment_duration_in_seconds,
                          bool adjust_sample_boundaries)
     : segment_duration_in_seconds_(segment_duration_in_seconds),
       segment_start_(timed_text_decode_time),
+      adjust_sample_boundaries_(adjust_sample_boundaries),
       segment_number_(start_segment_number),
       ts_ttx_heartbeat_shift_(ts_ttx_heartbeat_shift),
-      use_segment_coordinator_(use_segment_coordinator),
-      adjust_sample_boundaries_(adjust_sample_boundaries) {};
+      use_segment_coordinator_(use_segment_coordinator)
+      {};
 
 Status TextChunker::Process(std::unique_ptr<StreamData> data) {
   switch (data->stream_data_type) {
