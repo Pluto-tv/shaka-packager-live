@@ -460,6 +460,8 @@ Status CreateDemuxer(const StreamDescriptor& stream,
   std::shared_ptr<Demuxer> demuxer = std::make_shared<Demuxer>(stream.input);
   demuxer->set_dump_stream_info(packaging_params.test_params.dump_stream_info);
   demuxer->set_cts_offset_adjustment(packaging_params.cts_offset_adjustment);
+  demuxer->set_webvtt_header_only_output_segment(
+      packaging_params.webvtt_header_only_output_segment);
   demuxer->set_input_format(stream.input_format);
 
   if (packaging_params.decryption_params.key_provider != KeyProvider::kNone) {
@@ -528,7 +530,9 @@ std::unique_ptr<MediaHandler> CreateTextChunker(
       chunking_params.segment_duration_in_seconds;
   return std::unique_ptr<MediaHandler>(new TextChunker(
       segment_length_in_seconds, chunking_params.start_segment_number,
-      chunking_params.ts_ttx_heartbeat_shift, use_segment_coordinator));
+      chunking_params.ts_ttx_heartbeat_shift, use_segment_coordinator,
+      chunking_params.timed_text_decode_time,
+      chunking_params.adjust_sample_boundaries));
 }
 
 Status CreateTtmlJobs(
