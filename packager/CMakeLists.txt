@@ -250,6 +250,23 @@ target_link_libraries(packager_test
   gtest
   gtest_main)
 
+# Disabled by default, otherwise build live packager unit tests if BUILD_LIVE_TEST is on.
+if(BUILD_LIVE_TEST)
+  add_executable(live_packager_test
+          live_packager_test.cc
+  )
+  target_compile_definitions(live_packager_test
+          PRIVATE
+          # We used to build off of __FILE__, but that is not always an absolute
+          # path, depending on the version of CMake.  This is consistent.
+          TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/media/test/data/input")
+  target_link_libraries(live_packager_test
+    libpackager
+    gmock
+    gtest
+    gtest_main)
+endif()
+
 list(APPEND packager_test_py_sources
   "${CMAKE_CURRENT_SOURCE_DIR}/app/test/packager_app.py"
   "${CMAKE_CURRENT_SOURCE_DIR}/app/test/packager_test.py"
