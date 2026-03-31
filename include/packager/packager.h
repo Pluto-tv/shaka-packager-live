@@ -86,6 +86,9 @@ struct PackagingParams {
 
   /// Only use to package init segment separately.
   bool init_segment_only = false;
+
+  /// Flag used to adjust negative CTS offset values to correct PTS < DTS
+  bool cts_offset_adjustment = false;
 };
 
 /// Defines a single input/output stream.

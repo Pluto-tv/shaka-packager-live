@@ -459,6 +459,7 @@ Status CreateDemuxer(const StreamDescriptor& stream,
                      std::shared_ptr<Demuxer>* new_demuxer) {
   std::shared_ptr<Demuxer> demuxer = std::make_shared<Demuxer>(stream.input);
   demuxer->set_dump_stream_info(packaging_params.test_params.dump_stream_info);
+  demuxer->set_cts_offset_adjustment(packaging_params.cts_offset_adjustment);
   demuxer->set_input_format(stream.input_format);
 
   if (packaging_params.decryption_params.key_provider != KeyProvider::kNone) {
