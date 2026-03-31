@@ -55,6 +55,10 @@ struct ChunkingParams {
   // triggered text segments are generated later than video segments.
   // If too small, some text cues may be absent in the output.
   int64_t ts_ttx_heartbeat_shift = kDefaultTtxHeartbeatShift;
+  
+  /// When true, all samples are placed in a single segment. The segment is
+  /// only finalized on flush, producing exactly one output segment.
+  bool single_segment_mode = false;
 };
 
 }  // namespace shaka
