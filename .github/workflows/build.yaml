@@ -49,12 +49,6 @@ on:
         required: false
         type: string
         default: ''
-      # CMake build target, e.g. 'libpackager'.
-      # Empty string (default) builds all targets.
-      build_target:
-        required: false
-        type: string
-        default: ''
 
 # By default, run all commands in a bash shell.  On Windows, the default would
 # otherwise be powershell.
@@ -251,12 +245,7 @@ jobs:
         # Visual Studio on Windows.  Note that the VS generator is what cmake
         # calls a "multi-configuration" generator, and so the desired build
         # type must be specified for Windows.
-        run: |
-          BUILD_ARGS="--config ${{ matrix.build_type }} --parallel"
-          if [[ -n "${{ inputs.build_target }}" ]]; then
-            BUILD_ARGS="--target ${{ inputs.build_target }} $BUILD_ARGS"
-          fi
-          cmake --build build/ $BUILD_ARGS
+        run: cmake --build build/ --config "${{ matrix.build_type }}" --parallel
 
       - name: Test
         run: ctest -C "${{ matrix.build_type }}" -V --test-dir build/

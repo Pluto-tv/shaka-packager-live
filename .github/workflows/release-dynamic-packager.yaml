@@ -30,7 +30,6 @@ jobs:
       build_types: '["Release"]'
       lib_types: '["shared"]'
       os_filter: '["linux-x64", "osx-x64", "osx-arm64"]'
-      build_target: 'libpackager'
 
   release:
     name: Create Release
