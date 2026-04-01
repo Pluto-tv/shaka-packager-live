@@ -56,9 +56,12 @@ const uint8_t kIv[]{
 const char kKeyIdHex[] = "00000000621f2afe7ab2c868d5fd2e2e";
 const char kKeyHex[] = "1af987fa084ff3c0f4ad35a6bdab98e2";
 
-std::vector<uint8_t> HexStringToVector(const std::string& hex_str) {
-  std::string raw_str = absl::HexStringToBytes(hex_str);
-  return std::vector<uint8_t>(raw_str.begin(), raw_str.end());
+std::vector<uint8_t> unhex(const std::string& hex_str) {
+  std::string raw_str;
+  if (auto ok = absl::HexStringToBytes(hex_str, &raw_str); !ok) {
+    return {};
+  }
+  return {raw_str.begin(), raw_str.end()};
 }
 
 const int kNumSegments = 10;
@@ -102,11 +105,6 @@ std::vector<uint8_t> ReadTestDataFile(const std::string& name) {
   fclose(f);
 
   return data;
-}
-
-std::vector<uint8_t> unhex(const std::string& in) {
-  auto converted = absl::HexStringToBytes(in);
-  return {converted.begin(), converted.end()};
 }
 
 std::vector<uint8_t> unbase64(const std::string& base64_string) {
@@ -888,8 +886,8 @@ TEST_F(LivePackagerBaseTest, VerifyPrdDecryptReEncrypt) {
     live_config.track_type = LiveConfig::TrackType::VIDEO;
     live_config.protection_scheme = LiveConfig::EncryptionScheme::AES_128;
     live_config.segment_number = i;
-    live_config.decryption_key = HexStringToVector(kKeyHex);
-    live_config.decryption_key_id = HexStringToVector(kKeyIdHex);
+    live_config.decryption_key = unhex(kKeyHex);
+    live_config.decryption_key_id = unhex(kKeyIdHex);
 
     SetupLivePackagerConfig(live_config);
 
@@ -920,8 +918,8 @@ TEST_F(LivePackagerBaseTest, MoovAfterRepackage) {
   live_config.format = LiveConfig::OutputFormat::FMP4;
   live_config.track_type = LiveConfig::TrackType::VIDEO;
   live_config.protection_scheme = LiveConfig::EncryptionScheme::CENC;
-  live_config.decryption_key = HexStringToVector(kKeyHex);
-  live_config.decryption_key_id = HexStringToVector(kKeyIdHex);
+  live_config.decryption_key = unhex(kKeyHex);
+  live_config.decryption_key_id = unhex(kKeyIdHex);
   SetupLivePackagerConfig(live_config);
 
   SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
@@ -1336,8 +1334,8 @@ class LivePackagerTestReEncrypt
     live_config.track_type = GetParam().track_type;
     live_config.protection_scheme = GetParam().encryption_scheme;
     live_config.protection_system = GetParam().protection_system;
-    live_config.decryption_key = HexStringToVector(kKeyHex);
-    live_config.decryption_key_id = HexStringToVector(kKeyIdHex);
+    live_config.decryption_key = unhex(kKeyHex);
+    live_config.decryption_key_id = unhex(kKeyIdHex);
     SetupLivePackagerConfig(live_config);
   }
 
@@ -1408,8 +1406,8 @@ TEST_P(LivePackagerTestReEncrypt, VerifyReEncryption) {
     live_config.format = GetParam().output_format;
     live_config.track_type = GetParam().track_type;
     live_config.protection_scheme = GetParam().encryption_scheme;
-    live_config.decryption_key = HexStringToVector(kKeyHex);
-    live_config.decryption_key_id = HexStringToVector(kKeyIdHex);
+    live_config.decryption_key = unhex(kKeyHex);
+    live_config.decryption_key_id = unhex(kKeyIdHex);
     live_config.emsg_processing = GetParam().emsg_processing;
 
     SetupLivePackagerConfig(live_config);
