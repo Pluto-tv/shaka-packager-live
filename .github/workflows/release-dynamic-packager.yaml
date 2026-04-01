@@ -27,6 +27,10 @@ jobs:
       self_hosted: ${{ needs.settings.outputs.self_hosted != '' }}
       debug: ${{ needs.settings.outputs.debug != '' }}
       extra_cmake_args: '-DUSE_WORKAROUND_FOR_TRUN_VERSION_0=1'
+      build_types: '["Release"]'
+      lib_types: '["shared"]'
+      os_filter: '["linux-x64", "osx-x64", "osx-arm64"]'
+      build_target: 'libpackager'
 
   release:
     name: Create Release

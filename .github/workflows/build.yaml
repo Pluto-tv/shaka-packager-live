@@ -30,6 +30,31 @@ on:
         required: false
         type: string
         default: ''
+      # JSON array of build types to include, e.g. '["Release"]'.
+      # Defaults to '["Debug", "Release"]'.
+      build_types:
+        required: false
+        type: string
+        default: '["Debug", "Release"]'
+      # JSON array of library types to include, e.g. '["shared"]'.
+      # Defaults to '["static", "shared"]'.
+      lib_types:
+        required: false
+        type: string
+        default: '["static", "shared"]'
+      # JSON array of "os_name-target_arch" strings to include,
+      # e.g. '["linux-x64", "osx-x64", "osx-arm64"]'.
+      # Empty string (default) means all platforms.
+      os_filter:
+        required: false
+        type: string
+        default: ''
+      # CMake build target, e.g. 'libpackager'.
+      # Empty string (default) builds all targets.
+      build_target:
+        required: false
+        type: string
+        default: ''
 
 # By default, run all commands in a bash shell.  On Windows, the default would
 # otherwise be powershell.
@@ -66,7 +91,17 @@ jobs:
           // Use enableSelfHosted to decide what the build matrix below should
           // include.
           const {hosted, selfHosted} = buildMatrix;
-          const include = enableSelfHosted ? hosted.concat(selfHosted) : hosted;
+          let include = enableSelfHosted ? hosted.concat(selfHosted) : hosted;
+
+          // If an OS filter is provided, only keep matching platforms.
+          const osFilterInput = '${{ inputs.os_filter }}';
+          if (osFilterInput) {
+            const osFilter = JSON.parse(osFilterInput);
+            include = include.filter((config) =>
+              osFilter.includes(`${config.os_name}-${config.target_arch}`)
+            );
+          }
+
           const os = include.map((config) => config.os);
 
           // Output JSON objects consumed by the build matrix below.
@@ -78,7 +113,7 @@ jobs:
               {flag: 'a'});
 
           // Log the outputs, for the sake of debugging this script.
-          console.log({enableSelfHosted, include, os});
+          console.log({enableSelfHosted, osFilterInput, include, os});
 
   build:
     needs: build_matrix_config
@@ -87,8 +122,8 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.build_matrix_config.outputs.INCLUDE) }}
         os: ${{ fromJSON(needs.build_matrix_config.outputs.OS) }}
-        build_type: ["Debug", "Release"]
-        lib_type: ["static", "shared"]
+        build_type: ${{ fromJSON(inputs.build_types) }}
+        lib_type: ${{ fromJSON(inputs.lib_types) }}
 
     name: ${{ matrix.os_name }} ${{ matrix.target_arch }} ${{ matrix.build_type }} ${{ matrix.lib_type }}
     runs-on: ${{ matrix.os }}
@@ -216,7 +251,12 @@ jobs:
         # Visual Studio on Windows.  Note that the VS generator is what cmake
         # calls a "multi-configuration" generator, and so the desired build
         # type must be specified for Windows.
-        run: cmake --build build/ --config "${{ matrix.build_type }}" --parallel
+        run: |
+          BUILD_ARGS="--config ${{ matrix.build_type }} --parallel"
+          if [[ -n "${{ inputs.build_target }}" ]]; then
+            BUILD_ARGS="--target ${{ inputs.build_target }} $BUILD_ARGS"
+          fi
+          cmake --build build/ $BUILD_ARGS
 
       - name: Test
         run: ctest -C "${{ matrix.build_type }}" -V --test-dir build/
