@@ -83,6 +83,20 @@ struct PackagingParams {
 
   // Parameters for testing. Do not use in production.
   TestParams test_params;
+
+  /// Only use to package init segment separately.
+  bool init_segment_only = false;
+
+  /// Flag used to adjust negative CTS offset values to correct PTS < DTS
+  bool cts_offset_adjustment = false;
+
+  /// Flag used as a workaround in the case of header only input WEBVTT and the
+  /// need to produce an output segment
+  bool webvtt_header_only_output_segment = false;
+
+  /// Flag used to enable parsing of EMSG (Event Message) boxes during fmp4
+  /// parsing, and writing EMSG box data to output segments.
+  bool emsg_processing = false;
 };
 
 /// Defines a single input/output stream.

@@ -51,6 +51,10 @@ else()
   add_compile_options(-Wno-pre-c++17-compat)
 endif()
 
+if(USE_WORKAROUND_FOR_TRUN_VERSION_0)
+  add_definitions(-DUSE_WORKAROUND_FOR_TRUN_VERSION_0=1)
+endif()
+
 # Global include paths.
 # Project root, to reference internal headers as packager/foo/bar/...
 include_directories(..)
@@ -133,7 +137,12 @@ set(libpackager_sources
   app/single_thread_job_manager.cc
   app/single_thread_job_manager.h
   packager.cc
+  live_packager.cc
+  live_packager_export.cc
+  live_packager_logging.h
+  live_packager_logging.cc
   ../include/packager/packager.h
+  ../include/packager/live_packager.h
 )
 
 set(libpackager_deps
@@ -247,6 +256,25 @@ target_link_libraries(packager_test
   gmock
   gtest
   gtest_main)
+
+set(BUILD_LIVE_TEST ON)
+# Disabled by default, otherwise build live packager unit tests if BUILD_LIVE_TEST is on.
+if(BUILD_LIVE_TEST AND NOT MSVC)
+  add_executable(live_packager_test
+          live_packager_test.cc
+  )
+  target_compile_definitions(live_packager_test
+          PRIVATE
+          # We used to build off of __FILE__, but that is not always an absolute
+          # path, depending on the version of CMake.  This is consistent.
+          TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/media/test/data/live_packager_tests")
+  target_link_libraries(live_packager_test
+    libpackager
+    gmock
+    gtest
+    gtest_main)
+  add_test(NAME live_packager_test COMMAND live_packager_test)
+endif()
 
 list(APPEND packager_test_py_sources
   "${CMAKE_CURRENT_SOURCE_DIR}/app/test/packager_app.py"

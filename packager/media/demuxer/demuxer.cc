@@ -144,6 +144,11 @@ Status Demuxer::SetHandler(const std::string& stream_label,
   return MediaHandler::SetHandler(stream_index, std::move(handler));
 }
 
+void Demuxer::SetDashEventMessageHandler(
+    const std::shared_ptr<mp4::DashEventMessageHandler>& handler) {
+  dash_event_handler_ = handler;
+}
+
 void Demuxer::SetLanguageOverride(const std::string& stream_label,
                                   const std::string& language_override) {
   size_t stream_index = kInvalidStreamIndex;
@@ -187,7 +192,15 @@ Status Demuxer::InitializeParser() {
   // Initialize media parser.
   switch (container_name_) {
     case CONTAINER_MOV:
-      parser_.reset(new mp4::MP4MediaParser());
+      parser_.reset(new mp4::MP4MediaParser(cts_offset_adjustment_));
+      dynamic_cast<mp4::MP4MediaParser*>(parser_.get())
+          ->SetEventMessageBoxCB(
+              [this](std::shared_ptr<mp4::DASHEventMessageBox> emsg_box_info) {
+                if (dash_event_handler_) {
+                  dash_event_handler_->OnDashEvent(std::move(emsg_box_info));
+                }
+                return true;
+              });
       break;
     case CONTAINER_MPEG2TS:
       parser_.reset(new mp2t::Mp2tMediaParser());
@@ -206,7 +219,7 @@ Status Demuxer::InitializeParser() {
       parser_.reset(new WebMMediaParser());
       break;
     case CONTAINER_WEBVTT:
-      parser_.reset(new WebVttParser());
+      parser_.reset(new WebVttParser(webvtt_header_only_output_segment_));
       break;
     case CONTAINER_UNKNOWN: {
       const int64_t kDumpSizeLimit = 512;
