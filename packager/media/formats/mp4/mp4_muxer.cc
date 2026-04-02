@@ -173,6 +173,11 @@ Status MP4Muxer::InitializeMuxer() {
   return Status::OK;
 }
 
+void MP4Muxer::SetDashEventMessageHandler(
+    const std::shared_ptr<mp4::DashEventMessageHandler>& emsg_handler) {
+  emsg_handler_ = emsg_handler;
+}
+
 Status MP4Muxer::Finalize() {
   // This happens on streams that are not initialized, i.e. not going through
   // DelayInitializeMuxer, which can only happen if there are no samples from
@@ -267,6 +272,11 @@ Status MP4Muxer::DelayInitializeMuxer() {
       if (codec_fourcc == FOURCC_iamf)
         ftyp->compatible_brands.push_back(FOURCC_iamf);
     }
+    
+    // Carry over movie extends header duration from init segment.
+    if (streams()[0].get()->get_default_fragment_duration() > 0)
+      moov->extends.header.fragment_duration =
+          streams()[0].get()->get_default_fragment_duration();
   }
 
   moov->header.creation_time = IsoTimeNow();
@@ -285,6 +295,9 @@ Status MP4Muxer::DelayInitializeMuxer() {
     TrackExtends& trex = moov->extends.tracks[i];
     trex.track_id = trak.header.track_id;
     trex.default_sample_description_index = 1;
+    if (stream->get_default_sample_duration() != 0) {
+      trex.default_sample_duration = stream->get_default_sample_duration();
+    }
 
     bool generate_trak_result = false;
     switch (stream->stream_type()) {
@@ -309,9 +322,14 @@ Status MP4Muxer::DelayInitializeMuxer() {
 
     // Generate EditList if needed. See UpdateEditListOffsetFromSample() for
     // more information.
-    if (edit_list_offset_.value() > 0) {
+    if (edit_list_offset_.value_or(0) > 0) {
       EditListEntry entry;
       entry.media_time = edit_list_offset_.value();
+      entry.media_rate_integer = 1;
+      trak.edit.list.edits.push_back(entry);
+    } else if (stream->media_time() != 0) {
+      EditListEntry entry;
+      entry.media_time = stream->media_time();
       entry.media_rate_integer = 1;
       trak.edit.list.edits.push_back(entry);
     }
@@ -338,6 +356,8 @@ Status MP4Muxer::DelayInitializeMuxer() {
   } else {
     segmenter_.reset(
         new MultiSegmentSegmenter(options(), std::move(ftyp), std::move(moov)));
+    dynamic_cast<MultiSegmentSegmenter*>(segmenter_.get())
+        ->SetDashEventMessageHandler(emsg_handler_);
   }
 
   const Status segmenter_initialized =

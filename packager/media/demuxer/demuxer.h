@@ -14,6 +14,7 @@
 
 #include <packager/macros/classes.h>
 #include <packager/media/base/container_names.h>
+#include <packager/media/formats/mp4/dash_event_message_handler.h>
 #include <packager/media/origin/origin_handler.h>
 #include <packager/status.h>
 
@@ -64,6 +65,9 @@ class Demuxer : public OriginHandler {
   Status SetHandler(const std::string& stream_label,
                     std::shared_ptr<MediaHandler> handler);
 
+  void SetDashEventMessageHandler(
+      const std::shared_ptr<mp4::DashEventMessageHandler>& handler);
+
   /// Override the language in the specified stream. If the specified stream is
   /// a video stream or invalid, this function is a no-op.
   /// @param stream_label can be 'audio', 'video', or stream number (zero
@@ -76,8 +80,17 @@ class Demuxer : public OriginHandler {
     dump_stream_info_ = dump_stream_info;
   }
 
+  void set_cts_offset_adjustment(bool cts_offset_adjustment) {
+    cts_offset_adjustment_ = cts_offset_adjustment;
+  }
+
   void set_input_format(std::string input_format) {
     input_format_ = input_format;
+  }
+
+  void set_webvtt_header_only_output_segment(
+      bool webvtt_header_only_output_segment) {
+    webvtt_header_only_output_segment_ = webvtt_header_only_output_segment;
   }
 
  protected:
@@ -152,7 +165,14 @@ class Demuxer : public OriginHandler {
   bool cancelled_ = false;
   // Whether to dump stream info when it is received.
   bool dump_stream_info_ = false;
+  // flag used to adjust negative CTS offset values to correct PTS < DTS
+  bool cts_offset_adjustment_ = false;
+  // flag used as a workaround in the case of header only input WEBVTT and the
+  // need to produce an output segment
+  bool webvtt_header_only_output_segment_ = false;
   Status init_event_status_;
+
+  std::shared_ptr<mp4::DashEventMessageHandler> dash_event_handler_;
   // Explicitly defined input format, for avoiding autodetection.
   std::string input_format_;
 };

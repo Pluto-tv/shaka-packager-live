@@ -25,6 +25,30 @@ on:
         required: false
         type: boolean
         default: false
+      # Additional CMake arguments to pass to the configure step.
+      extra_cmake_args:
+        required: false
+        type: string
+        default: ''
+      # JSON array of build types to include, e.g. '["Release"]'.
+      # Defaults to '["Debug", "Release"]'.
+      build_types:
+        required: false
+        type: string
+        default: '["Debug", "Release"]'
+      # JSON array of library types to include, e.g. '["shared"]'.
+      # Defaults to '["static", "shared"]'.
+      lib_types:
+        required: false
+        type: string
+        default: '["static", "shared"]'
+      # JSON array of "os_name-target_arch" strings to include,
+      # e.g. '["linux-x64", "osx-x64", "osx-arm64"]'.
+      # Empty string (default) means all platforms.
+      os_filter:
+        required: false
+        type: string
+        default: ''
 
 # By default, run all commands in a bash shell.  On Windows, the default would
 # otherwise be powershell.
@@ -61,7 +85,17 @@ jobs:
           // Use enableSelfHosted to decide what the build matrix below should
           // include.
           const {hosted, selfHosted} = buildMatrix;
-          const include = enableSelfHosted ? hosted.concat(selfHosted) : hosted;
+          let include = enableSelfHosted ? hosted.concat(selfHosted) : hosted;
+
+          // If an OS filter is provided, only keep matching platforms.
+          const osFilterInput = '${{ inputs.os_filter }}';
+          if (osFilterInput) {
+            const osFilter = JSON.parse(osFilterInput);
+            include = include.filter((config) =>
+              osFilter.includes(`${config.os_name}-${config.target_arch}`)
+            );
+          }
+
           const os = include.map((config) => config.os);
 
           // Output JSON objects consumed by the build matrix below.
@@ -73,7 +107,7 @@ jobs:
               {flag: 'a'});
 
           // Log the outputs, for the sake of debugging this script.
-          console.log({enableSelfHosted, include, os});
+          console.log({enableSelfHosted, osFilterInput, include, os});
 
   build:
     needs: build_matrix_config
@@ -82,8 +116,8 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.build_matrix_config.outputs.INCLUDE) }}
         os: ${{ fromJSON(needs.build_matrix_config.outputs.OS) }}
-        build_type: ["Debug", "Release"]
-        lib_type: ["static", "shared"]
+        build_type: ${{ fromJSON(inputs.build_types) }}
+        lib_type: ${{ fromJSON(inputs.lib_types) }}
 
     name: ${{ matrix.os_name }} ${{ matrix.target_arch }} ${{ matrix.build_type }} ${{ matrix.lib_type }}
     runs-on: ${{ matrix.os }}
@@ -202,6 +236,7 @@ jobs:
             -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
             -DBUILD_SHARED_LIBS="$BUILD_SHARED_LIBS" \
             -DFULLY_STATIC="$FULLY_STATIC" \
+            ${{ inputs.extra_cmake_args }} \
             -S . \
             -B build/
 
@@ -280,11 +315,79 @@ jobs:
             echo "::endgroup::"
           fi
 
+      - name: Prepare artifacts (shared release only)
+        run: |
+          BUILD_CONFIG="${{ matrix.build_type }}-${{ matrix.lib_type }}"
+          if [[ "$BUILD_CONFIG" != "Release-shared" ]]; then
+            echo "Skipping shared artifacts for $BUILD_CONFIG."
+            exit 0
+          fi
+
+          # Only produce shared library artifacts for these platforms:
+          #   linux-x64, osx-x64, osx-arm64
+          PLATFORM="${{ matrix.os_name }}-${{ matrix.target_arch }}"
+          case "$PLATFORM" in
+            linux-x64|osx-x64|osx-arm64) ;;
+            *)
+              echo "Skipping shared artifacts for unsupported platform $PLATFORM."
+              exit 0
+              ;;
+          esac
+
+          echo "::group::Prepare artifacts folder"
+          mkdir -p artifacts
+          ARTIFACTS="$GITHUB_WORKSPACE/artifacts"
+          echo "::endgroup::"
+
+          SUFFIX="-${{ matrix.os_name }}-${{ matrix.target_arch }}"
+
+          # Find and copy the shared library
+          echo "::group::Copy shared library"
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            LIB_FILE="build/packager/libpackager.so"
+            DEST_NAME="libpackager${SUFFIX}.so"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            LIB_FILE="build/packager/libpackager.dylib"
+            DEST_NAME="libpackager${SUFFIX}.dylib"
+          fi
+
+          if [[ -f "$LIB_FILE" ]]; then
+            cp "$LIB_FILE" "$ARTIFACTS/$DEST_NAME"
+            echo "Copied $LIB_FILE -> $DEST_NAME"
+          else
+            echo "ERROR: Shared library not found at $LIB_FILE"
+            find build/packager -name "libpackager*" -ls || true
+            exit 1
+          fi
+          echo "::endgroup::"
+
+          # Copy the C header (only once, from linux-x64)
+          if [[ '${{ matrix.os_name }}' == 'linux' && '${{ matrix.target_arch }}' == 'x64' ]]; then
+            echo "::group::Copy header file"
+            cp include/packager/live_packager_export.h "$ARTIFACTS/live_packager_export.h"
+            echo "::endgroup::"
+          fi
+
       - name: Upload static release build artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         if: matrix.build_type == 'Release' && matrix.lib_type == 'static'
         with:
           name: artifacts-${{ matrix.os_name }}-${{ matrix.target_arch }}
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 5
+
+      - name: Upload shared release build artifacts
+        uses: actions/upload-artifact@v4
+        if: |
+          matrix.build_type == 'Release' && matrix.lib_type == 'shared' &&
+          (
+            (matrix.os_name == 'linux' && matrix.target_arch == 'x64') ||
+            (matrix.os_name == 'osx' && matrix.target_arch == 'x64') ||
+            (matrix.os_name == 'osx' && matrix.target_arch == 'arm64')
+          )
+        with:
+          name: artifacts-${{ matrix.os_name }}-${{ matrix.target_arch }}-shared
           path: artifacts/*
           if-no-files-found: error
           retention-days: 5
