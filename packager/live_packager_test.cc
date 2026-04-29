@@ -1645,4 +1645,70 @@ TEST_F(LivePackagerBaseTest, TestCmafTimedText) {
   CheckSegment(live_config, seg, 1000, true);
 }
 
+namespace {
+// Returns true if the TS output advertises an ID3 metadata stream type (0x15)
+// somewhere in a PMT, which is the on-the-wire signal that the metadata stream
+// was registered.
+bool HasId3StreamTypeInPmt(const uint8_t* data, size_t size) {
+  // PMT TS packets start with sync byte 0x47 and have PID 0x20 (kPmtPid).
+  // We scan TS packets looking for one whose PID matches and whose payload
+  // contains the metadata stream_type (0x15).
+  constexpr int kTsPacketSize = 188;
+  for (size_t i = 0; i + kTsPacketSize <= size; i += kTsPacketSize) {
+    if (data[i] != 0x47) {
+      return false;  // out of sync; bail.
+    }
+    const uint16_t pid = ((data[i + 1] & 0x1F) << 8) | data[i + 2];
+    if (pid != 0x20) {
+      continue;
+    }
+    for (int j = 0; j < kTsPacketSize; ++j) {
+      if (data[i + j] == 0x15) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+}  // namespace
+
+TEST_F(LivePackagerBaseTest, VerifyTSWithID3NoEnc) {
+  std::vector<uint8_t> init_segment_buffer = ReadTestDataFile("input/init.mp4");
+  ASSERT_FALSE(init_segment_buffer.empty());
+
+  std::vector<uint8_t> segment_buffer = ReadTestDataFile("input/0000.m4s");
+  ASSERT_FALSE(segment_buffer.empty());
+
+  SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
+  SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+
+  SegmentBuffer out;
+
+  LiveConfig live_config;
+  live_config.format = LiveConfig::OutputFormat::TS;
+  live_config.track_type = LiveConfig::TrackType::VIDEO;
+  live_config.protection_scheme = LiveConfig::EncryptionScheme::NONE;
+  live_config.segment_number = 0;
+
+  auto id3_tags = std::make_shared<Id3TagList>();
+  id3_tags->push_back(Id3TagData{10000, {'A', 'B', 'C'}});
+  id3_tags->push_back(Id3TagData{1201000, {'D', 'E', 'F'}});
+  id3_tags->push_back(Id3TagData{1257000, {'G', 'H', 'I'}});
+  live_config.id3_tags = id3_tags;
+
+  SetupLivePackagerConfig(live_config);
+  ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
+  ASSERT_GT(out.Size(), 0u);
+
+#if 0
+  std::string exp_segment_num = "expected/id3_seg.ts ";
+  auto bytes = std::vector<uint8_t>(out.Data(), out.Data() + out.Size());
+  WriteTestDataFile(exp_segment_num, bytes);
+#endif
+
+  // Verify the PMT advertises the ID3 metadata elementary stream.
+  EXPECT_TRUE(HasId3StreamTypeInPmt(out.Data(), out.Size()));
+}
+
 }  // namespace shaka

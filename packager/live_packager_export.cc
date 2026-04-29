@@ -157,3 +157,13 @@ void lp_removeCustomLogSink() {
     custom_sink.reset();
   }
 }
+
+void livepackager_insert_id3_tag(LivePackager_t lp,
+                                 int64_t pts,
+                                 const uint8_t* data,
+                                 size_t size) {
+  if (lp == nullptr || lp->inner == nullptr) {
+    return;
+  }
+  lp->inner->InsertID3Tag(pts, data, size);
+}

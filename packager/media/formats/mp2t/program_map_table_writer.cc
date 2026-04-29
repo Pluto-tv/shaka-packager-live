@@ -138,11 +138,54 @@ bool WriteRegistrationDescriptorForEncryptedAudio(Codec codec,
   return true;
 }
 
+// ISO/IEC 13818-1 metadata_descriptor for an Apple HLS ID3 timed-metadata
+// stream. Total size is 15 bytes (1 tag + 1 length + 13 body);
+// descriptor_length covers only the 13 body bytes.
+std::vector<uint8_t> CreateId3MetadataDescriptor() {
+  std::vector<uint8_t> buffer;
+  buffer.reserve(15);
+
+  buffer.push_back(0x26);  // metadata_descriptor tag.
+  buffer.push_back(0x0D);  // descriptor_length: 13 bytes follow.
+
+  // metadata_application_format (16 bits) = 0xFFFF (defined by identifier).
+  buffer.push_back(0xFF);
+  buffer.push_back(0xFF);
+
+  // metadata_application_format_identifier (32 bits) = 'ID3 '.
+  buffer.push_back('I');
+  buffer.push_back('D');
+  buffer.push_back('3');
+  buffer.push_back(' ');
+
+  // metadata_format (8 bits) = 0xFF (defined by identifier).
+  buffer.push_back(0xFF);
+
+  // metadata_format_identifier (32 bits) = 'ID3 '.
+  buffer.push_back('I');
+  buffer.push_back('D');
+  buffer.push_back('3');
+  buffer.push_back(' ');
+
+  // metadata_service_id (8 bits) = 0.
+  buffer.push_back(0x00);
+
+  // decoder_config_flags (3 bits) = 0, DSM-CC_flag (1 bit) = 0,
+  // reserved (4 bits) = 0xF.
+  buffer.push_back(0x0F);
+
+  return buffer;
+}
+
+const auto kId3Descriptor = CreateId3MetadataDescriptor();
+constexpr uint8_t kId3StreamType = 0x15;  // "Metadata in PES packets".
+
 void WritePmtWithParameters(uint8_t stream_type,
                             int version,
                             int current_next_indicator,
                             const uint8_t* descriptors,
                             size_t descriptors_size,
+                            bool add_metadata_stream,
                             BufferWriter* pmt) {
   DCHECK(current_next_indicator == kCurrent || current_next_indicator == kNext);
   // Body starting from program number.
@@ -176,6 +219,17 @@ void WritePmtWithParameters(uint8_t stream_type,
     pmt_body.AppendArray(descriptors, descriptors_size);
   }
 
+  // ID3 timed-metadata elementary stream entry.
+  if (add_metadata_stream) {
+    pmt_body.AppendInt(kId3StreamType);
+    pmt_body.AppendInt(
+        static_cast<uint8_t>(0xE0 | (ProgramMapTableWriter::kId3Pid >> 8)));
+    pmt_body.AppendInt(
+        static_cast<uint8_t>(ProgramMapTableWriter::kId3Pid & 0xFF));
+    pmt_body.AppendInt(static_cast<uint16_t>(0xF000 | kId3Descriptor.size()));
+    pmt_body.AppendArray(kId3Descriptor.data(), kId3Descriptor.size());
+  }
+
   pmt->Clear();
   // Pointer field is not really part of the PMT but it's there so that an extra
   // buffer isn't required to prepend the 0x00 byte.
@@ -193,7 +247,9 @@ void WritePmtWithParameters(uint8_t stream_type,
 
 }  // namespace
 
-ProgramMapTableWriter::ProgramMapTableWriter(Codec codec) : codec_(codec) {}
+ProgramMapTableWriter::ProgramMapTableWriter(Codec codec,
+                                             bool add_metadata_stream)
+    : codec_(codec), add_metadata_stream_(add_metadata_stream) {}
 
 bool ProgramMapTableWriter::EncryptedSegmentPmt(BufferWriter* writer) {
   if (encrypted_pmt_.Size() == 0) {
@@ -224,7 +280,7 @@ bool ProgramMapTableWriter::EncryptedSegmentPmt(BufferWriter* writer) {
     WritePmtWithParameters(static_cast<uint8_t>(stream_type),
                            has_clear_lead ? kVersion1 : kVersion0, kCurrent,
                            descriptors.Buffer(), descriptors.Size(),
-                           &encrypted_pmt_);
+                           add_metadata_stream_, &encrypted_pmt_);
     DCHECK_NE(encrypted_pmt_.Size(), 0u);
   }
   WritePmtToBuffer(encrypted_pmt_.Buffer(), encrypted_pmt_.Size(),
@@ -257,7 +313,8 @@ bool ProgramMapTableWriter::ClearSegmentPmt(BufferWriter* writer) {
     }
 
     WritePmtWithParameters(static_cast<uint8_t>(stream_type), kVersion0,
-                           kCurrent, nullptr, 0, &clear_pmt_);
+                           kCurrent, nullptr, 0, add_metadata_stream_,
+                           &clear_pmt_);
     DCHECK_NE(clear_pmt_.Size(), 0u);
   }
   WritePmtToBuffer(clear_pmt_.Buffer(), clear_pmt_.Size(), &continuity_counter_,
@@ -265,8 +322,9 @@ bool ProgramMapTableWriter::ClearSegmentPmt(BufferWriter* writer) {
   return true;
 }
 
-VideoProgramMapTableWriter::VideoProgramMapTableWriter(Codec codec)
-    : ProgramMapTableWriter(codec) {}
+VideoProgramMapTableWriter::VideoProgramMapTableWriter(Codec codec,
+                                                       bool add_metadata_stream)
+    : ProgramMapTableWriter(codec, add_metadata_stream) {}
 
 bool VideoProgramMapTableWriter::WriteDescriptors(
     BufferWriter* descriptors) const {

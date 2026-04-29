@@ -11,6 +11,7 @@
 #include <memory>
 
 #include <packager/file.h>
+#include <packager/id3_tag.h>
 #include <packager/macros/classes.h>
 #include <packager/media/base/muxer_options.h>
 #include <packager/media/formats/mp2t/pes_packet_generator.h>
@@ -87,6 +88,9 @@ class TsSegmenter {
   // Writes PES packets (carried in TsPackets) to a buffer.
   Status WritePesPackets();
 
+  // Emits a single ID3 timed-metadata tag as a PES packet on the metadata PID.
+  Status WriteId3PesPacket(const Id3TagData& tag);
+
   MuxerListener* const listener_;
 
   // Codec for the stream.
@@ -109,6 +113,11 @@ class TsSegmenter {
   std::unique_ptr<PesPacketGenerator> pes_packet_generator_;
 
   int64_t segment_start_timestamp_ = -1;
+
+  // ID3 timed-metadata tags to be inserted in the next segment, sorted
+  // ascending by PTS. Consumed front-to-back as media PES packets advance.
+  Id3TagList id3_tags_;
+
   DISALLOW_COPY_AND_ASSIGN(TsSegmenter);
 };
 

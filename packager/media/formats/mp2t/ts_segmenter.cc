@@ -41,7 +41,14 @@ TsSegmenter::TsSegmenter(const MuxerOptions& options, MuxerListener* listener)
       transport_stream_timestamp_offset_(
           options.transport_stream_timestamp_offset_ms * kTsTimescale / 1000),
       pes_packet_generator_(
-          new PesPacketGenerator(transport_stream_timestamp_offset_)) {}
+          new PesPacketGenerator(transport_stream_timestamp_offset_)) {
+  if (options.id3_tags != nullptr) {
+    // Take a private copy of the tag list. The shared list owned by the caller
+    // is consumed by LivePackager::Package before the muxer is constructed, so
+    // this segmenter is the sole owner of these tags.
+    id3_tags_ = *options.id3_tags;
+  }
+}
 
 TsSegmenter::~TsSegmenter() {}
 
@@ -94,7 +101,8 @@ Status TsSegmenter::AddSample(const MediaSample& sample) {
           new AudioProgramMapTableWriter(codec_, audio_codec_config_));
     } else {
       DCHECK(IsVideoCodec(codec_));
-      pmt_writer.reset(new VideoProgramMapTableWriter(codec_));
+      pmt_writer.reset(
+          new VideoProgramMapTableWriter(codec_, !id3_tags_.empty()));
     }
     ts_writer_.reset(new TsWriter(std::move(pmt_writer)));
   }
@@ -135,6 +143,21 @@ Status TsSegmenter::StartSegmentIfNeeded(int64_t next_pts) {
   return Status::OK;
 }
 
+Status TsSegmenter::WriteId3PesPacket(const Id3TagData& tag) {
+  // PID for the ID3 timed-metadata elementary stream.
+  static constexpr uint16_t kId3Pid = 0xBD;
+
+  auto id3_pes_packet = std::make_unique<PesPacket>();
+  id3_pes_packet->set_stream_id(kId3Pid);
+  id3_pes_packet->set_pts(tag.pts);
+  *id3_pes_packet->mutable_data() = tag.data;
+  if (!ts_writer_->AddId3PesPacket(std::move(id3_pes_packet),
+                                   &segment_buffer_)) {
+    return Status(error::MUXER_FAILURE, "Failed to add ID3 PES packet.");
+  }
+  return Status::OK;
+}
+
 Status TsSegmenter::WritePesPackets() {
   while (pes_packet_generator_->NumberOfReadyPesPackets() > 0u) {
     std::unique_ptr<PesPacket> pes_packet =
@@ -143,6 +166,14 @@ Status TsSegmenter::WritePesPackets() {
     Status status = StartSegmentIfNeeded(pes_packet->pts());
     if (!status.ok())
       return status;
+
+    // Insert ID3 PES packets ahead of the media packet so they decode first.
+    // The list is sorted ascending by PTS upstream (LivePackager::Package), so
+    // we stop at the first tag whose PTS exceeds the current packet.
+    while (!id3_tags_.empty() && id3_tags_.front().pts <= pes_packet->pts()) {
+      RETURN_IF_ERROR(WriteId3PesPacket(id3_tags_.front()));
+      id3_tags_.pop_front();
+    }
 
     if (listener_ && IsVideoCodec(codec_) && pes_packet->is_key_frame()) {
       uint64_t start_pos = segment_buffer_.Size();
@@ -165,9 +196,14 @@ Status TsSegmenter::FinalizeSegment(int64_t start_timestamp, int64_t duration) {
   if (!pes_packet_generator_->Flush()) {
     return Status(error::MUXER_FAILURE, "Failed to flush PesPacketGenerator.");
   }
-  Status status = WritePesPackets();
-  if (!status.ok())
-    return status;
+  RETURN_IF_ERROR(WritePesPackets());
+
+  // Flush any remaining ID3 tags whose PTS landed past the last media packet
+  // so they are not silently dropped.
+  while (!id3_tags_.empty()) {
+    RETURN_IF_ERROR(WriteId3PesPacket(id3_tags_.front()));
+    id3_tags_.pop_front();
+  }
   return Status::OK;
 }
 
