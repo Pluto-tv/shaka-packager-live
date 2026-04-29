@@ -25,7 +25,7 @@ namespace mp2t {
 /// Puts PMT into TS packets and writes them to buffer.
 class ProgramMapTableWriter {
  public:
-  explicit ProgramMapTableWriter(Codec codec);
+  explicit ProgramMapTableWriter(Codec codec, bool add_metadata_stream = false);
   virtual ~ProgramMapTableWriter() = default;
 
   /// Writes TS packets with PMT for encrypted segments.
@@ -38,10 +38,13 @@ class ProgramMapTableWriter {
 
   // The pid can be 13 bits long but 8 bits is sufficient for this library.
   // This is the minimum PID that can be used for PMT.
-  static const uint8_t kPmtPid = 0x20;
+  static constexpr uint8_t kPmtPid = 0x20;
 
   // This is arbitrary number that is not reserved by the spec.
-  static const uint8_t kElementaryPid = 0x50;
+  static constexpr uint8_t kElementaryPid = 0x50;
+
+  // PID for the ID3 timed-metadata elementary stream.
+  static constexpr uint16_t kId3Pid = 0xBD;
 
  protected:
   /// @return the underlying codec.
@@ -58,12 +61,14 @@ class ProgramMapTableWriter {
   ContinuityCounter continuity_counter_;
   BufferWriter clear_pmt_;
   BufferWriter encrypted_pmt_;
+  bool add_metadata_stream_ = false;
 };
 
 /// ProgramMapTableWriter for video codecs.
 class VideoProgramMapTableWriter : public ProgramMapTableWriter {
  public:
-  explicit VideoProgramMapTableWriter(Codec codec);
+  explicit VideoProgramMapTableWriter(Codec codec,
+                                      bool add_metadata_stream = false);
   ~VideoProgramMapTableWriter() override = default;
 
  private:

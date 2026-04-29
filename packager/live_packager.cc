@@ -378,6 +378,36 @@ Status LivePackager::PackageInit(const Segment& init_segment,
   return packager.Run();
 }
 
+void LivePackager::EnableID3Tag() {
+  if (config_.id3_tags == nullptr) {
+    config_.id3_tags = std::make_shared<Id3TagList>();
+  }
+}
+
+void LivePackager::InsertID3Tag(int64_t pts, const uint8_t* data, size_t size) {
+  if (size == 0) {
+    return;
+  }
+  if (data == nullptr) {
+    LOG(ERROR) << "InsertID3Tag called with null data and size=" << size;
+    return;
+  }
+
+  // Reasonable upper bound on the size of a single ID3v2 tag payload accepted
+  // via the public API,
+  constexpr size_t kMaxId3TagSize = 1024 * 1024;  // 1 MiB
+  if (size > kMaxId3TagSize) {
+    LOG(ERROR) << "InsertID3Tag rejected: size " << size << " exceeds limit "
+               << kMaxId3TagSize;
+    return;
+  }
+
+  if (config_.id3_tags == nullptr) {
+    config_.id3_tags = std::make_shared<Id3TagList>();
+  }
+  config_.id3_tags->push_back(Id3TagData{pts, std::vector(data, data + size)});
+}
+
 Status LivePackager::Package(const Segment& init_segment,
                              const Segment& media_segment,
                              SegmentBuffer& out) {
@@ -410,11 +440,24 @@ Status LivePackager::Package(const Segment& init_segment,
       config_.protection_system != ProtectionSystem::kNone;
   packaging_params.transport_stream_timestamp_offset_ms =
       config_.m2ts_offset_ms;
-  //TODO: packaging_params.enable_null_ts_packet_stuffing = true;
+  // TODO: packaging_params.enable_null_ts_packet_stuffing = true;
   packaging_params.cts_offset_adjustment =
       config_.format == LiveConfig::OutputFormat::TS;
   packaging_params.emsg_processing = config_.emsg_processing;
   packaging_params.chunking_params.single_segment_mode = true;
+
+  // Atomically take ownership of any queued ID3 tags for this segment. Each
+  // Package() consumes whatever has been inserted so far;
+  {
+    if (config_.id3_tags != nullptr && !config_.id3_tags->empty()) {
+      auto tags = std::make_shared<Id3TagList>(std::move(*config_.id3_tags));
+      config_.id3_tags->clear();
+      tags->sort([](const Id3TagData& a, const Id3TagData& b) {
+        return a.pts < b.pts;
+      });
+      packaging_params.id3_tags = std::move(tags);
+    }
+  }
 
   if (!config_.decryption_key.empty() && !config_.decryption_key_id.empty()) {
     DecryptionParams& decryption_params = packaging_params.decryption_params;

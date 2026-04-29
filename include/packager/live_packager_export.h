@@ -155,6 +155,11 @@ typedef void (*LogSink_f)(void* logger,
 void lp_installCustomLogSink(LogSink_f sink_f, void* logger);
 void lp_removeCustomLogSink();
 
+void livepackager_insert_id3_tag(LivePackager_t lp,
+                                 int64_t pts,
+                                 const uint8_t* data,
+                                 size_t size);
+
 #ifdef __cplusplus
 }
 #endif

@@ -14,6 +14,7 @@
 #include <packager/mp4_output_params.h>
 #include <packager/mpd/base/mpd_builder.h>
 #include "packager/media/formats/mp4/dash_event_message_handler.h"
+#include "packager/packager.h"
 
 namespace shaka {
 struct PackagingParams;
@@ -57,6 +58,8 @@ class MuxerFactory {
 
   // enable init segment packaging separately
   bool init_segment_only_;
+
+  shaka::Id3TagListPtr id3_tags_;
 };
 
 }  // namespace media

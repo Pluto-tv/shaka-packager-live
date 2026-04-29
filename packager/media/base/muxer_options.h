@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <string>
 
+#include <packager/id3_tag.h>
 #include <packager/mp4_output_params.h>
 
 namespace shaka {
@@ -44,6 +45,9 @@ struct MuxerOptions {
   /// User-specified bit rate for the media stream. If zero, the muxer will
   /// attempt to estimate.
   uint32_t bandwidth = 0;
+
+  /// List of ID3 tags to be inserted in the output file.
+  Id3TagListPtr id3_tags;  // nil - no ID3 tags.
 };
 
 }  // namespace media
