@@ -14,6 +14,7 @@
 #include <absl/strings/numbers.h>
 
 #include <packager/file.h>
+#include <packager/id3_tag.h>
 #include <packager/macros/logging.h>
 #include <packager/macros/status.h>
 #include <packager/media/base/aes_encryptor.h>
@@ -209,6 +210,55 @@ Status MP4Muxer::AddMediaSample(size_t stream_id, const MediaSample& sample) {
   return segmenter_->AddSample(stream_id, sample);
 }
 
+void MP4Muxer::EmitId3Tags(const SegmentInfo& segment_info) {
+  if (!emsg_handler_)
+    return;
+  // Only emit at full-segment boundaries. Subsegments and non-final chunks
+  // would compute presentation_time_delta against the wrong anchor.
+  if (segment_info.is_subsegment ||
+      (segment_info.is_chunk && !segment_info.is_final_chunk_in_seg)) {
+    return;
+  }
+  const auto& tags = options().id3_tags;
+  if (!tags || tags->empty())
+    return;
+  DCHECK(segmenter_);
+  const int32_t timescale = segmenter_->GetReferenceTimeScale();
+  if (timescale <= 0) {
+    LOG(WARNING) << "Cannot emit ID3 emsg: invalid reference timescale "
+                 << timescale;
+    return;
+  }
+
+  const int64_t segment_start = segment_info.start_timestamp;
+  const int64_t segment_end = segment_start + segment_info.duration;
+
+  // The caller packages exactly one segment per invocation and sorts the
+  // queue by pts before handing it off, so every queued tag is expected to
+  // fall in [segment_start, segment_end). Anything outside that range is a
+  // caller bug — log and skip. The queue is drained either way.
+  for (auto& tag : *tags) {
+    if (tag.pts < segment_start || tag.pts >= segment_end) {
+      LOG(WARNING) << "ID3 tag pts " << tag.pts << " outside segment range ["
+                   << segment_start << ", " << segment_end
+                   << "); dropping (likely caller bug)";
+      continue;
+    }
+    auto box = std::make_shared<DASHEventMessageBox>();
+    box->version = 0;
+    box->scheme_id_uri = std::move(tag.scheme_id_uri);
+    box->value = std::move(tag.value);
+    box->timescale = static_cast<uint32_t>(timescale);
+    box->presentation_time_delta =
+        static_cast<uint64_t>(tag.pts - segment_start);
+    box->event_duration = tag.event_duration;
+    box->id = tag.id;
+    box->message_data = std::move(tag.data);
+    emsg_handler_->OnDashEvent(std::move(box));
+  }
+  tags->clear();
+}
+
 Status MP4Muxer::FinalizeSegment(size_t stream_id,
                                  const SegmentInfo& segment_info) {
   DCHECK(segmenter_);
@@ -216,6 +266,7 @@ Status MP4Muxer::FinalizeSegment(size_t stream_id,
           << "segment " << segment_info.start_timestamp << " duration "
           << segment_info.duration << " segment number "
           << segment_info.segment_number;
+  EmitId3Tags(segment_info);
   return segmenter_->FinalizeSegment(stream_id, segment_info);
 }
 
@@ -356,6 +407,12 @@ Status MP4Muxer::DelayInitializeMuxer() {
   } else {
     segmenter_.reset(
         new MultiSegmentSegmenter(options(), std::move(ftyp), std::move(moov)));
+    // If callers queued ID3 tags but did not enable emsg processing (which is
+    // what creates the external emsg_handler_), make sure a handler exists so
+    // the segmenter still flushes emsg boxes we push from EmitId3Tags.
+    if (!emsg_handler_ && options().id3_tags) {
+      emsg_handler_ = std::make_shared<mp4::DashEventMessageHandler>();
+    }
     dynamic_cast<MultiSegmentSegmenter*>(segmenter_.get())
         ->SetDashEventMessageHandler(emsg_handler_);
   }

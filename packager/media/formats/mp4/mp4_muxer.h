@@ -72,6 +72,11 @@ class MP4Muxer : public Muxer {
   void FireOnMediaStartEvent();
   void FireOnMediaEndEvent();
 
+  // Convert any in-window entries from options().id3_tags into emsg boxes,
+  // push them into emsg_handler_, drop them from the list. Past-pts tags are
+  // dropped with a warning; future-pts tags are left for a later segment.
+  void EmitId3Tags(const SegmentInfo& segment_info);
+
   // Get time in seconds since midnight, Jan. 1, 1904, in UTC Time.
   uint64_t IsoTimeNow();
 

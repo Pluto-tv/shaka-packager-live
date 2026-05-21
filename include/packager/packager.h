@@ -21,6 +21,7 @@
 #include <packager/export.h>
 #include <packager/file.h>
 #include <packager/hls_params.h>
+#include <packager/id3_tag.h>
 #include <packager/mp4_output_params.h>
 #include <packager/mpd_params.h>
 #include <packager/status.h>
@@ -97,6 +98,9 @@ struct PackagingParams {
   /// Flag used to enable parsing of EMSG (Event Message) boxes during fmp4
   /// parsing, and writing EMSG box data to output segments.
   bool emsg_processing = false;
+
+  /// ID3 tags to be inserted in the output.
+  Id3TagListPtr id3_tags;  // nil - no ID3 tags.
 };
 
 /// Defines a single input/output stream.

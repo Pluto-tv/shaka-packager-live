@@ -143,6 +143,7 @@ set(libpackager_sources
   live_packager_logging.cc
   ../include/packager/packager.h
   ../include/packager/live_packager.h
+  ../include/packager/id3_tag.h
 )
 
 set(libpackager_deps
