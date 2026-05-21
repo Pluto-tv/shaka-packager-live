@@ -157,3 +157,27 @@ void lp_removeCustomLogSink() {
     custom_sink.reset();
   }
 }
+
+void livepackager_insert_id3_tag(LivePackager_t lp,
+                                 int64_t pts,
+                                 const char* scheme_id_uri,
+                                 size_t scheme_id_uri_len,
+                                 const char* value,
+                                 size_t value_len,
+                                 uint32_t id,
+                                 uint32_t event_duration,
+                                 const uint8_t* data,
+                                 size_t size) {
+  if (lp == nullptr || lp->inner == nullptr) {
+    return;
+  }
+  std::string scheme;
+  if (scheme_id_uri != nullptr && scheme_id_uri_len > 0) {
+    scheme.assign(scheme_id_uri, scheme_id_uri_len);
+  }
+  std::string val;
+  if (value != nullptr && value_len > 0) {
+    val.assign(value, value_len);
+  }
+  lp->inner->InsertID3Tag(pts, scheme, val, id, event_duration, data, size);
+}

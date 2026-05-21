@@ -7,6 +7,8 @@
 #ifndef PACKAGER_LIVE_PACKAGER_H_
 #define PACKAGER_LIVE_PACKAGER_H_
 
+#include <string>
+
 #include <packager/packager.h>
 
 namespace shaka {
@@ -134,6 +136,8 @@ struct LiveConfig {
   /// Flag used to enable parsing of EMSG (Event Message) boxes during fmp4
   /// parsing, and writing EMSG box data to output segments.
   bool emsg_processing = false;
+
+  Id3TagListPtr id3_tags;
 };
 
 class LivePackager {
@@ -161,6 +165,15 @@ class LivePackager {
 
   LivePackager(const LivePackager&) = delete;
   LivePackager& operator=(const LivePackager&) = delete;
+
+  void EnableID3Tag();
+  void InsertID3Tag(int64_t pts,
+                    const std::string& scheme_id_uri,
+                    const std::string& value,
+                    uint32_t id,
+                    uint32_t event_duration,
+                    const uint8_t* data,
+                    size_t size);
 
  private:
   struct LivePackagerInternal;

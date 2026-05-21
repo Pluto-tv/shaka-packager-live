@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 #include <cstdio>
 #include <filesystem>
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -21,6 +22,7 @@
 #include <packager/media/base/aes_decryptor.h>
 #include <packager/media/base/aes_pattern_cryptor.h>
 #include <packager/media/base/byte_queue.h>
+#include <packager/media/base/fourccs.h>
 #include <packager/media/base/key_source.h>
 #include <packager/media/base/media_sample.h>
 #include <packager/media/base/raw_key_source.h>
@@ -557,6 +559,43 @@ void CheckSegment(const LiveConfig& config,
   }
 }
 
+// Walks the top-level boxes of a packaged MP4 segment and returns every emsg
+// box found, in order. Returns an empty vector if none are present or parsing
+// fails. Uses BoxReader::StartBox to peek size+type cheaply, then ReadBox to
+// fully parse only when the type is 'emsg' (so we don't break on mdat, which
+// BoxReader::ReadBox treats specially).
+std::vector<media::mp4::DASHEventMessageBox> ExtractEmsgBoxes(
+    const uint8_t* data,
+    size_t size) {
+  std::vector<media::mp4::DASHEventMessageBox> result;
+  size_t offset = 0;
+  while (offset + 8 <= size) {
+    media::FourCC type;
+    uint64_t box_size = 0;
+    bool err = false;
+    if (!media::mp4::BoxReader::StartBox(data + offset, size - offset, &type,
+                                         &box_size, &err)) {
+      break;
+    }
+    if (err || box_size == 0 || offset + box_size > size) {
+      break;
+    }
+    if (type == media::FOURCC_emsg) {
+      std::unique_ptr<media::mp4::BoxReader> reader(
+          media::mp4::BoxReader::ReadBox(data + offset,
+                                         static_cast<size_t>(box_size), &err));
+      if (!err && reader) {
+        media::mp4::DASHEventMessageBox box;
+        if (box.Parse(reader.get())) {
+          result.push_back(std::move(box));
+        }
+      }
+    }
+    offset += static_cast<size_t>(box_size);
+  }
+  return result;
+}
+
 }  // namespace
 
 TEST(GeneratePSSHData, GeneratesPSSHBoxesAndMSPRObject) {
@@ -1012,6 +1051,147 @@ TEST_F(LivePackagerBaseTest, EncryptionFailure) {
                      "invalid key and IV supplied to encryptor"),
               live_packager_->Package(init_seg, media_seg, out));
   }
+}
+
+TEST_F(LivePackagerBaseTest, EmsgSingleTagRoundTrip) {
+  std::vector<uint8_t> init_segment_buffer = ReadTestDataFile("input/init.mp4");
+  ASSERT_FALSE(init_segment_buffer.empty());
+
+  std::vector<uint8_t> segment_buffer = ReadTestDataFile("input/0001.m4s");
+  ASSERT_FALSE(segment_buffer.empty());
+
+  LiveConfig live_config;
+  live_config.format = LiveConfig::OutputFormat::FMP4;
+  live_config.track_type = LiveConfig::TrackType::VIDEO;
+  SetupLivePackagerConfig(live_config);
+  live_packager_->EnableID3Tag();
+
+  const std::string scheme = "https://aomedia.org/emsg/ID3";
+  const std::string value = "";
+  const uint32_t id = 42;
+  const uint32_t event_duration = 0x000000FF;
+  const std::vector<uint8_t> payload = {'I',  'D', '3', 0x04, 0x00,
+                                        0x00, 0,   0,   0,    0};
+
+  // pts=0 is guaranteed in-window: the segment's earliest presentation time
+  // for input/0001.m4s is also 0 in our fixture (the first segment).
+  live_packager_->InsertID3Tag(/*pts=*/0, scheme, value, id, event_duration,
+                               payload.data(), payload.size());
+
+  SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
+  SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+  SegmentBuffer out;
+  ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
+  ASSERT_GT(out.Size(), 0u);
+
+  auto boxes = ExtractEmsgBoxes(out.Data(), out.Size());
+  ASSERT_EQ(boxes.size(), 1u);
+
+  const auto& box = boxes.front();
+  EXPECT_EQ(box.version, 0);
+  EXPECT_EQ(box.scheme_id_uri, scheme);
+  EXPECT_EQ(box.value, value);
+  EXPECT_EQ(box.id, id);
+  EXPECT_EQ(box.event_duration, event_duration);
+  EXPECT_EQ(box.message_data, payload);
+  // tag.pts (0) - segment_start (0) == 0
+  EXPECT_EQ(box.presentation_time_delta, 0u);
+  EXPECT_GT(box.timescale, 0u);
+}
+
+TEST_F(LivePackagerBaseTest, EmsgMultipleTagsSortedByPts) {
+  std::vector<uint8_t> init_segment_buffer = ReadTestDataFile("input/init.mp4");
+  ASSERT_FALSE(init_segment_buffer.empty());
+  std::vector<uint8_t> segment_buffer = ReadTestDataFile("input/0001.m4s");
+  ASSERT_FALSE(segment_buffer.empty());
+
+  LiveConfig live_config;
+  live_config.format = LiveConfig::OutputFormat::FMP4;
+  live_config.track_type = LiveConfig::TrackType::VIDEO;
+  SetupLivePackagerConfig(live_config);
+  live_packager_->EnableID3Tag();
+
+  const std::string scheme = "https://aomedia.org/emsg/ID3";
+  const std::vector<uint8_t> payload_a = {'A'};
+  const std::vector<uint8_t> payload_b = {'B'};
+
+  // Insert with pts in reverse order; expect output sorted ascending.
+  live_packager_->InsertID3Tag(/*pts=*/100, scheme, "", /*id=*/2,
+                               /*event_duration=*/0, payload_b.data(),
+                               payload_b.size());
+  live_packager_->InsertID3Tag(/*pts=*/0, scheme, "", /*id=*/1,
+                               /*event_duration=*/0, payload_a.data(),
+                               payload_a.size());
+
+  SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
+  SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+  SegmentBuffer out;
+  ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
+
+  auto boxes = ExtractEmsgBoxes(out.Data(), out.Size());
+  ASSERT_EQ(boxes.size(), 2u);
+  EXPECT_EQ(boxes[0].id, 1u);
+  EXPECT_EQ(boxes[0].message_data, payload_a);
+  EXPECT_EQ(boxes[1].id, 2u);
+  EXPECT_EQ(boxes[1].message_data, payload_b);
+  EXPECT_LT(boxes[0].presentation_time_delta, boxes[1].presentation_time_delta);
+}
+
+TEST_F(LivePackagerBaseTest, EmsgPastPtsDroppedFuturePtsRetained) {
+  std::vector<uint8_t> init_segment_buffer = ReadTestDataFile("input/init.mp4");
+  ASSERT_FALSE(init_segment_buffer.empty());
+  std::vector<uint8_t> segment_buffer = ReadTestDataFile("input/0001.m4s");
+  ASSERT_FALSE(segment_buffer.empty());
+
+  LiveConfig live_config;
+  live_config.format = LiveConfig::OutputFormat::FMP4;
+  live_config.track_type = LiveConfig::TrackType::VIDEO;
+  SetupLivePackagerConfig(live_config);
+  live_packager_->EnableID3Tag();
+
+  const std::string scheme = "https://aomedia.org/emsg/ID3";
+  const std::vector<uint8_t> payload = {'X'};
+
+  // Past pts (negative) — must be dropped.
+  live_packager_->InsertID3Tag(/*pts=*/-1000, scheme, "", /*id=*/1,
+                               /*event_duration=*/0, payload.data(),
+                               payload.size());
+  // Future pts (very large) — must NOT be emitted this segment.
+  live_packager_->InsertID3Tag(
+      /*pts=*/std::numeric_limits<int64_t>::max() / 2, scheme, "", /*id=*/2,
+      /*event_duration=*/0, payload.data(), payload.size());
+
+  SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
+  SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+  SegmentBuffer out;
+  ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
+
+  auto boxes = ExtractEmsgBoxes(out.Data(), out.Size());
+  EXPECT_TRUE(boxes.empty())
+      << "Expected no emsg in segment (past pts dropped, future pts deferred), "
+         "got "
+      << boxes.size();
+}
+
+TEST_F(LivePackagerBaseTest, EmsgAbsentWhenNoTagsInserted) {
+  std::vector<uint8_t> init_segment_buffer = ReadTestDataFile("input/init.mp4");
+  ASSERT_FALSE(init_segment_buffer.empty());
+  std::vector<uint8_t> segment_buffer = ReadTestDataFile("input/0001.m4s");
+  ASSERT_FALSE(segment_buffer.empty());
+
+  LiveConfig live_config;
+  live_config.format = LiveConfig::OutputFormat::FMP4;
+  live_config.track_type = LiveConfig::TrackType::VIDEO;
+  SetupLivePackagerConfig(live_config);
+  // Note: NOT calling EnableID3Tag() and NOT calling InsertID3Tag().
+
+  SegmentData init_seg(init_segment_buffer.data(), init_segment_buffer.size());
+  SegmentData media_seg(segment_buffer.data(), segment_buffer.size());
+  SegmentBuffer out;
+  ASSERT_EQ(Status::OK, live_packager_->Package(init_seg, media_seg, out));
+
+  auto boxes = ExtractEmsgBoxes(out.Data(), out.Size());
+  EXPECT_TRUE(boxes.empty());
 }
 
 TEST_F(LivePackagerBaseTest, CheckContinutityCounter) {

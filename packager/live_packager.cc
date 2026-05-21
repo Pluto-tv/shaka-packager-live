@@ -378,6 +378,49 @@ Status LivePackager::PackageInit(const Segment& init_segment,
   return packager.Run();
 }
 
+void LivePackager::EnableID3Tag() {
+  if (config_.id3_tags == nullptr) {
+    config_.id3_tags = std::make_shared<Id3TagList>();
+  }
+}
+
+void LivePackager::InsertID3Tag(int64_t pts,
+                                const std::string& scheme_id_uri,
+                                const std::string& value,
+                                uint32_t id,
+                                uint32_t event_duration,
+                                const uint8_t* data,
+                                size_t size) {
+  if (size == 0) {
+    return;
+  }
+  if (data == nullptr) {
+    LOG(ERROR) << "InsertID3Tag called with null data and size=" << size;
+    return;
+  }
+
+  // Reasonable upper bound on the size of a single ID3v2 tag payload accepted
+  // via the public API.
+  constexpr size_t kMaxId3TagSize = 1024 * 1024;  // 1 MiB
+  if (size > kMaxId3TagSize) {
+    LOG(ERROR) << "InsertID3Tag rejected: size " << size << " exceeds limit "
+               << kMaxId3TagSize;
+    return;
+  }
+
+  if (config_.id3_tags == nullptr) {
+    config_.id3_tags = std::make_shared<Id3TagList>();
+  }
+  Id3TagData tag;
+  tag.pts = pts;
+  tag.scheme_id_uri = scheme_id_uri;
+  tag.value = value;
+  tag.id = id;
+  tag.event_duration = event_duration;
+  tag.data.assign(data, data + size);
+  config_.id3_tags->push_back(std::move(tag));
+}
+
 Status LivePackager::Package(const Segment& init_segment,
                              const Segment& media_segment,
                              SegmentBuffer& out) {
@@ -410,11 +453,22 @@ Status LivePackager::Package(const Segment& init_segment,
       config_.protection_system != ProtectionSystem::kNone;
   packaging_params.transport_stream_timestamp_offset_ms =
       config_.m2ts_offset_ms;
-  //TODO: packaging_params.enable_null_ts_packet_stuffing = true;
+  // TODO: packaging_params.enable_null_ts_packet_stuffing = true;
   packaging_params.cts_offset_adjustment =
       config_.format == LiveConfig::OutputFormat::TS;
   packaging_params.emsg_processing = config_.emsg_processing;
   packaging_params.chunking_params.single_segment_mode = true;
+
+  // Share the queued ID3 tags with the packager for this segment. MP4Muxer
+  // drains the list (one segment per Package() call); any tag outside the
+  // segment's pts range is treated as a caller bug and dropped. Caller must
+  // serialize InsertID3Tag/EnableID3Tag with Package on the same
+  // LivePackager instance; there is no internal locking.
+  if (config_.id3_tags != nullptr && !config_.id3_tags->empty()) {
+    config_.id3_tags->sort(
+        [](const Id3TagData& a, const Id3TagData& b) { return a.pts < b.pts; });
+    packaging_params.id3_tags = config_.id3_tags;
+  }
 
   if (!config_.decryption_key.empty() && !config_.decryption_key_id.empty()) {
     DecryptionParams& decryption_params = packaging_params.decryption_params;
